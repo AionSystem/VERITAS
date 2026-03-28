@@ -18,20 +18,12 @@
 
 ---
 
-## Architect's Note on AI Use
-
-This submission was designed, architected, and directed by Sheldon K. Salmon. AI tools (including large language models) were used as instruments — the same way a carpenter uses a saw. The intellectual core — the CERTUS Engine, the Damage Confidence Index, the four scoring dimensions, the validity thresholds, the STP integration, and the overall architectural vision — is wholly human‑originated and manually refined through six rounds of the ADA Red‑Team methodology.
-
-UNDP explicitly noted that "submissions produced solely with generative AI are not of interest." VERITAS is not a generative AI output; it is a human‑built system where AI serves as one of several tools (like TensorFlow.js for image analysis) under strict human oversight. Every line of code, every design decision, and every formula in the CERTUS Engine reflects human intent, verified through red‑team testing and iterative refinement.
-
----
-
 ## Overview
 
 VERITAS is a community‑operated damage certification platform for sudden‑onset crises.
 It collects reports offline & online, scores the epistemic confidence of each report using the CERTUS Engine, and delivers confidence‑weighted exports to responders within the critical 48‑hour window.
 
-- **Live Demo:** [veritas.aionsystem.com](https://veritas.aionsystem.com) *(available April 6)*
+- **Live Demo:** [aionsystem.github.io/VERITAS](https://aionsystem.github.io/VERITAS) *(available April 6)*
 - **2‑Minute Video:** [Watch on YouTube](#)
 
 ---
@@ -75,6 +67,14 @@ The **CERTUS Engine** scores each submission across four dimensions:
 | `≥ 0.70` | HIGH CONFIDENCE | 🟢 Green |
 | `0.40–0.69` | WATCH | 🟡 Amber |
 | `< 0.40` | REVIEW REQUIRED | 🔴 Red — human verification required |
+
+---
+
+## Architect's Note on AI Use
+
+This submission was designed, architected, and directed by Sheldon K. Salmon. AI tools (including large language models) were used as instruments — the same way a carpenter uses a saw. The intellectual core — the CERTUS Engine, the Damage Confidence Index, the four scoring dimensions, the validity thresholds, the STP integration, and the overall architectural vision — is wholly human‑originated and manually refined through six rounds of the ADA Red‑Team methodology.
+
+UNDP explicitly noted that "submissions produced solely with generative AI are not of interest." VERITAS is not a generative AI output; it is a human‑built system where AI serves as one of several tools (like TensorFlow.js for image analysis) under strict human oversight. Every line of code, every design decision, and every formula in the CERTUS Engine reflects human intent, verified through red‑team testing and iterative refinement.
 
 ---
 
