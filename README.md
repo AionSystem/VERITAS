@@ -27,6 +27,30 @@ UNDP explicitly noted that "submissions produced solely with generative AI are n
 
 ---
 
+## Quick Start
+
+Get VERITAS running on your machine in under a minute.
+
+```bash
+git clone https://github.com/AionSystem/VERITAS.git
+cd VERITAS
+```
+
+Then simply open index.html in your browser.
+For offline features (Service Worker, IndexedDB) to work, you may need to serve the files through a local web server. For example:
+
+```bash
+# Using Python
+python3 -m http.server 8000
+# Then visit http://localhost:8000
+```
+
+That’s it. You can now submit reports, explore the responder dashboard (access code: UNDP2026), and test the entire platform.
+
+For full Supabase sync and deployment, see Installation & Deployment.
+
+---
+
 ## Overview
 
 VERITAS is a community‑operated damage certification platform for sudden‑onset crises.
