@@ -96,5 +96,7 @@ DCI = (0.35×0.85) + (0.30×0.80) + (0.20×0.95) + (0.15×1.0)
 = 0.8775 → High Confidence
 
 
+```
+
 
 *For implementation details, see [`../CERTUS.md`](../CERTUS.md).*
