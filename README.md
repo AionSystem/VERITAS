@@ -18,6 +18,15 @@
 
 ---
 
+## Architect's Note on AI Use
+
+This submission was designed, architected, and directed by Sheldon K. Salmon. AI tools (including large language models) were used as instruments — the same way a carpenter uses a saw. The intellectual core — the CERTUS Engine, the Damage Confidence Index, the four scoring dimensions, the validity thresholds, the STP integration, and the overall architectural vision — is wholly human‑originated and manually refined through six rounds of the ADA Red‑Team methodology.
+
+UNDP explicitly noted that "submissions produced solely with generative AI are not of interest." VERITAS is not a generative AI output; it is a human‑built system where AI serves as one of several tools (like TensorFlow.js for image analysis) under strict human oversight. Every line of code, every design decision, and every formula in the CERTUS Engine reflects human intent, verified through red‑team testing and iterative refinement.
+
+
+---
+
 ## Overview
 
 VERITAS is a community‑operated damage certification platform for sudden‑onset crises.
@@ -68,13 +77,6 @@ The **CERTUS Engine** scores each submission across four dimensions:
 | `0.40–0.69` | WATCH | 🟡 Amber |
 | `< 0.40` | REVIEW REQUIRED | 🔴 Red — human verification required |
 
----
-
-## Architect's Note on AI Use
-
-This submission was designed, architected, and directed by Sheldon K. Salmon. AI tools (including large language models) were used as instruments — the same way a carpenter uses a saw. The intellectual core — the CERTUS Engine, the Damage Confidence Index, the four scoring dimensions, the validity thresholds, the STP integration, and the overall architectural vision — is wholly human‑originated and manually refined through six rounds of the ADA Red‑Team methodology.
-
-UNDP explicitly noted that "submissions produced solely with generative AI are not of interest." VERITAS is not a generative AI output; it is a human‑built system where AI serves as one of several tools (like TensorFlow.js for image analysis) under strict human oversight. Every line of code, every design decision, and every formula in the CERTUS Engine reflects human intent, verified through red‑team testing and iterative refinement.
 
 ---
 
@@ -90,6 +92,23 @@ UNDP explicitly noted that "submissions produced solely with generative AI are n
 | 🔍 **Consistency** | Checks that "Total Collapse" on a Road is flagged as suspicious (CCI reduced) |
 
 Full formula and thresholds are documented in [`docs/dci-formula.md`](docs/dci-formula.md).
+
+
+---
+
+## AI Photo Analysis
+
+VERITAS includes a simulation of the photo evidence scoring system. 
+The actual implementation would use TensorFlow.js with a model trained on 
+the open‑source xBD dataset (850,000 building polygons across 19 disaster types). 
+The model would run entirely client-side, offline-capable, with a confidence gate 
+(≥0.60) to prevent unreliable predictions from affecting DCI scores.
+
+**Why simulation?** The prototype demonstrates the architecture, formula, 
+and confidence gate logic. The model itself is a plug‑and‑play component — 
+any trained TensorFlow.js model can replace the simulation by updating 
+the `runAiAnalysis()` function. This keeps the prototype lightweight 
+and focused on the core innovation: the CERTUS Engine.
 
 ---
 
@@ -116,22 +135,6 @@ Every VERITAS dataset can be optionally sealed with the **Sovereign Trace Protoc
 1. In the responder dashboard, click **STP Seal** after exporting.
 2. The seal is generated via the STP API, creating a permanent ledger entry in the [SOVEREIGN-TRACE-PROTOCOL](https://github.com/AionSystem/SOVEREIGN-TRACE-PROTOCOL) GitHub repository.
 3. Download the STP file alongside your export to prove the dataset's existence and integrity at a specific moment in three civilizational time systems.
-
----
-
-## AI Photo Analysis
-
-VERITAS includes a simulation of the photo evidence scoring system. 
-The actual implementation would use TensorFlow.js with a model trained on 
-the open‑source xBD dataset (850,000 building polygons across 19 disaster types). 
-The model would run entirely client-side, offline-capable, with a confidence gate 
-(≥0.60) to prevent unreliable predictions from affecting DCI scores.
-
-**Why simulation?** The prototype demonstrates the architecture, formula, 
-and confidence gate logic. The model itself is a plug‑and‑play component — 
-any trained TensorFlow.js model can replace the simulation by updating 
-the `runAiAnalysis()` function. This keeps the prototype lightweight 
-and focused on the core innovation: the CERTUS Engine.
 
 
 ---
