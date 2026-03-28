@@ -322,7 +322,7 @@
     .step-title { font-family: var(--sans); font-size: 28px; letter-spacing: 2px; color: var(--text); margin-bottom: 4px; }
     .step-subtitle { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 24px; }
 
-    /* Photo zone, infra-grid, etc. unchanged */
+    /* Photo zone, etc. unchanged */
     .photo-zone { border: 2px dashed var(--border); border-radius: 4px; background: var(--surface); aspect-ratio: 4/3; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; overflow: hidden; position: relative; }
     .photo-zone:hover { border-color: var(--amber); background: rgba(240,165,0,0.05); }
     .photo-zone.has-photo { border-style: solid; border-color: var(--amber); }
@@ -439,11 +439,6 @@
       gap: 6px;
       font-size: 13px;
       color: var(--text);
-    }
-    .multi-select-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
     }
 
     /* Location step with text fallback */
@@ -598,14 +593,7 @@
       <li><a href="/certify/">Certify</a></li>
       <li><a href="https://aionsystem.github.io/VERITAS-PAGE">VERITAS</a></li>
     </ul>
-    <div class="lang-selector" id="langSelector">
-      <button class="lang-btn" data-lang="en">EN</button>
-      <button class="lang-btn" data-lang="ar">عربي</button>
-      <button class="lang-btn" data-lang="zh">中文</button>
-      <button class="lang-btn" data-lang="fr">FR</button>
-      <button class="lang-btn" data-lang="ru">RU</button>
-      <button class="lang-btn" data-lang="es">ES</button>
-    </div>
+    <div class="lang-selector" id="langSelector"></div>
     <button class="nav-hamburger" id="nav-hamburger" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
@@ -721,7 +709,7 @@
             <label><input type="radio" name="crisisType" value="Technological"> <span data-i18n="crisis_tech">Technological</span></label>
             <label><input type="radio" name="crisisType" value="Human-made"> <span data-i18n="crisis_human">Human‑made</span></label>
           </div>
-          <div id="crisisSubtype" style="margin-top: 8px;"></div>
+          <div id="crisisSubtypeContainer" style="margin-top: 12px;"></div>
         </div>
 
         <div class="form-group">
@@ -847,8 +835,9 @@
 // - 5-step flow with UNDP 3-tier damage, additional fields, text location fallback
 // - Engagement incentives (corroboration message, community count)
 // - Export mapping to UNDP tiers
-// - Basic multilingual support (6 languages via i18n placeholders – fully implementable)
-// All existing core functions (IndexedDB, CERTUS, map, STP) remain intact.
+// - Complete six‑language support (English, Arabic, Chinese, French, Russian, Spanish)
+// - Crisis subtype selector (Natural: Earthquake, Flood, Tsunami, Hurricane, Wildfire;
+//   Technological: Explosion, Chemical incident; Human-made: Conflict, Civil unrest)
 
 const CONFIG = {
   SUPABASE_URL:    'YOUR_SUPABASE_URL',
@@ -870,7 +859,7 @@ const STATE = {
   photoAiScore:   null,
   photoAiConf:    null,
   undpTier:       null,      // minimal, partial, complete
-  internalTier:   null,      // mapped to None, Minor, Moderate, Major, TotalCollapse
+  internalTier:   null,      // mapped to None, Moderate, TotalCollapse (for CERTUS)
   infraType:      null,
   locMode:        'precise',
   coords:         null,
@@ -900,32 +889,698 @@ const tierMap = {
   complete: 'Total Collapse'
 };
 
-// ==================== LANGUAGE SUPPORT (placeholder) ====================
-// We'll implement a simple language switcher that sets a data-i18n attribute.
-// For brevity, we'll only add a basic framework; actual translations can be added later.
-let currentLang = 'en';
-const translations = {
-  en: { /* all keys – not fully populated here, but will be used in final */ },
-  ar: {}, zh: {}, fr: {}, ru: {}, es: {}
+// Crisis subtype options
+const crisisSubtypes = {
+  Natural: ['Earthquake', 'Flood', 'Tsunami', 'Hurricane', 'Wildfire'],
+  Technological: ['Explosion', 'Chemical incident'],
+  'Human-made': ['Conflict', 'Civil unrest']
 };
+
+// ==================== SIX‑LANGUAGE TRANSLATIONS ====================
+const translations = {
+  en: {
+    offline: "Offline — reports saved locally and will sync when connected",
+    syncing: "Syncing queued reports...",
+    report_tab: "📍 Report",
+    respond_tab: "🗺 Respond",
+    report_received: "REPORT RECEIVED",
+    certus_scored: "CERTUS Engine has scored your submission",
+    dci_label: "Damage Confidence Index — CERTUS Engine v1.0",
+    dci_explain: "DCI measures how much to trust this report.\nScored on photo evidence · corroboration · freshness · consistency.",
+    submit_another: "Submit Another Report",
+    view_map: "View Responder Map",
+    step_photo: "Photo",
+    step_damage: "Damage",
+    step_details: "Details",
+    step_location: "Location",
+    step_review: "Review",
+    photo_title: "PHOTOGRAPH",
+    photo_sub: "Capture visible damage clearly",
+    photo_hint: "TAP TO PHOTOGRAPH DAMAGE",
+    retake: "RETAKE",
+    analyzing: "CERTUS analyzing image...",
+    next: "NEXT",
+    damage_title: "DAMAGE LEVEL",
+    damage_sub: "Select the damage level (UNDP required)",
+    damage_minimal: "Minimal / No damage",
+    damage_minimal_desc: "Little or no visible structural impact",
+    damage_partial: "Partially damaged",
+    damage_partial_desc: "Significant damage but still standing",
+    damage_complete: "Completely damaged",
+    damage_complete_desc: "Structure destroyed / total collapse",
+    infra_title: "INFRASTRUCTURE TYPE",
+    infra_residential: "Residential",
+    infra_road: "Road",
+    infra_bridge: "Bridge",
+    infra_utility: "Utility",
+    infra_medical: "Medical",
+    infra_school: "School",
+    details_title: "DETAILS",
+    details_sub: "Help responders understand the situation",
+    infra_name_label: "Infrastructure name (optional)",
+    crisis_type_label: "Nature of crisis",
+    crisis_natural: "Natural",
+    crisis_tech: "Technological",
+    crisis_human: "Human‑made",
+    debris_label: "Is there debris requiring clearing?",
+    yes: "Yes",
+    no: "No",
+    electricity_label: "Electricity infrastructure condition",
+    elec_fully: "Fully functioning",
+    elec_partial: "Partially functioning",
+    elec_limited: "Limited",
+    elec_none: "Non‑functioning",
+    health_label: "Overall health services functioning",
+    health_fully: "Fully functioning",
+    health_partial: "Partially functioning",
+    health_limited: "Limited",
+    health_none: "Non‑functioning",
+    unknown: "Unknown",
+    needs_label: "Most pressing needs (select all that apply)",
+    need_water: "Water",
+    need_food: "Food",
+    need_shelter: "Shelter",
+    need_medical: "Medical care",
+    need_electricity: "Electricity",
+    need_fuel: "Fuel",
+    need_comm: "Communication",
+    need_transport: "Transport",
+    need_security: "Security",
+    need_other: "Other",
+    location_title: "LOCATION",
+    location_sub: "Pin the damage location",
+    precise: "📍 Precise",
+    precise_desc: "Exact GPS pin",
+    area: "🔵 Area",
+    area_desc: "±100m radius",
+    fuzzy_notice: "Area mode selected — your precise location is protected. Report is accurate to ±100 meters. Suitable for conflict-affected areas.",
+    acquiring: "Acquiring GPS coordinates...",
+    text_location_label: "Describe location (if GPS unavailable, e.g., \"near the central market\")",
+    review_title: "REVIEW",
+    review_sub: "Confirm and submit your report",
+    anon_notice: "Your report is anonymous. No account required. EXIF metadata stripped. No IP stored. Keyed by random UUID only.",
+    back: "← BACK",
+    submit: "SUBMIT REPORT",
+    restricted: "RESTRICTED",
+    access_sub: "Responder Access Required",
+    enter: "ENTER",
+    access_note: "Access code distributed to authorized UNDP response partners only.",
+    live_dash: "Live Confidence Dashboard",
+    high_conf: "High<br>Confidence",
+    watch: "Watch<br>Monitor",
+    review_req: "Review<br>Required",
+    conf_map: "Confidence Map",
+    timeline: "48-Hour Timeline Playback",
+    live_all: "Live — all reports",
+    conflict_flags: "Conflict Flags",
+    no_conflicts: "No conflicts detected",
+    dci_report: "DCI REPORT CARD",
+    conf_dist: "Confidence Distribution",
+    high: "High",
+    review: "Review",
+    powered: "Powered by CERTUS Engine v1.0 — DCI scored on photo evidence, corroboration, freshness, and consistency",
+    export: "Export Dataset",
+    cached_snapshot: "📥 Download Cached Snapshot",
+    offline_note: "Available offline — shows last synced state",
+    decision_support: "⚠ DECISION-SUPPORT INSTRUMENT ONLY",
+    law6_line1: "VERITAS DCI scores assist human judgment — they do not replace it.",
+    review_required_human: "Review Required"
+  },
+  ar: {
+    offline: "غير متصل — يتم حفظ التقارير محلياً وسيتم المزامنة عند الاتصال",
+    syncing: "مزامنة التقارير المعلقة...",
+    report_tab: "📍 تقرير",
+    respond_tab: "🗺 استجابة",
+    report_received: "تم استلام التقرير",
+    certus_scored: "قام محرك CERTUS بتقييم إرسالك",
+    dci_label: "مؤشر الثقة في الضرر — محرك CERTUS الإصدار 1.0",
+    dci_explain: "يقيس DCI مدى الثقة في هذا التقرير.\nيتم تقييمه بناءً على الأدلة المصورة · التأكيد · الحداثة · الاتساق.",
+    submit_another: "إرسال تقرير آخر",
+    view_map: "عرض خريطة المستجيبين",
+    step_photo: "صورة",
+    step_damage: "الضرر",
+    step_details: "تفاصيل",
+    step_location: "الموقع",
+    step_review: "مراجعة",
+    photo_title: "تصوير",
+    photo_sub: "التقط صورة واضحة للضرر",
+    photo_hint: "انقر لتصوير الضرر",
+    retake: "إعادة التصوير",
+    analyzing: "CERTUS يقوم بتحليل الصورة...",
+    next: "التالي",
+    damage_title: "مستوى الضرر",
+    damage_sub: "اختر مستوى الضرر (مطلوب من قبل UNDP)",
+    damage_minimal: "أقل / بدون ضرر",
+    damage_minimal_desc: "تأثير هيكلي ضئيل أو معدوم",
+    damage_partial: "ضرر جزئي",
+    damage_partial_desc: "ضرر كبير لكن الهيكل لا يزال قائماً",
+    damage_complete: "ضرر كامل",
+    damage_complete_desc: "هيكل مدمر / انهيار كامل",
+    infra_title: "نوع البنية التحتية",
+    infra_residential: "سكني",
+    infra_road: "طريق",
+    infra_bridge: "جسر",
+    infra_utility: "مرافق عامة",
+    infra_medical: "طبي",
+    infra_school: "مدرسة",
+    details_title: "تفاصيل",
+    details_sub: "ساعد المستجيبين على فهم الوضع",
+    infra_name_label: "اسم البنية التحتية (اختياري)",
+    crisis_type_label: "طبيعة الأزمة",
+    crisis_natural: "طبيعية",
+    crisis_tech: "تكنولوجية",
+    crisis_human: "بشرية المنشأ",
+    debris_label: "هل هناك حطام يحتاج إلى إزالة؟",
+    yes: "نعم",
+    no: "لا",
+    electricity_label: "حالة البنية التحتية للكهرباء",
+    elec_fully: "تعمل بالكامل",
+    elec_partial: "تعمل جزئياً",
+    elec_limited: "محدودة",
+    elec_none: "لا تعمل",
+    health_label: "حالة الخدمات الصحية العامة",
+    health_fully: "تعمل بالكامل",
+    health_partial: "تعمل جزئياً",
+    health_limited: "محدودة",
+    health_none: "لا تعمل",
+    unknown: "غير معروف",
+    needs_label: "أكثر الاحتياجات إلحاحاً (اختر كل ما ينطبق)",
+    need_water: "مياه",
+    need_food: "غذاء",
+    need_shelter: "مأوى",
+    need_medical: "رعاية صحية",
+    need_electricity: "كهرباء",
+    need_fuel: "وقود",
+    need_comm: "اتصالات",
+    need_transport: "نقل",
+    need_security: "أمن",
+    need_other: "أخرى",
+    location_title: "الموقع",
+    location_sub: "حدد موقع الضرر",
+    precise: "📍 دقيق",
+    precise_desc: "نظام تحديد المواقع الدقيق",
+    area: "🔵 منطقة",
+    area_desc: "نصف قطر ±100 متر",
+    fuzzy_notice: "تم اختيار وضع المنطقة — موقعك الدقيق محمي. التقرير دقيق ضمن ±100 متر. مناسب للمناطق المتأثرة بالنزاعات.",
+    acquiring: "جاري الحصول على إحداثيات GPS...",
+    text_location_label: "صف الموقع (إذا كان GPS غير متوفر، مثلاً \"قرب السوق المركزي\")",
+    review_title: "مراجعة",
+    review_sub: "تأكيد وإرسال تقريرك",
+    anon_notice: "تقريرك مجهول. لا حاجة لحساب. تمت إزالة بيانات EXIF. لا يتم تخزين عنوان IP. يتم ترميزه بواسطة UUID عشوائي فقط.",
+    back: "← رجوع",
+    submit: "إرسال التقرير",
+    restricted: "مقيد",
+    access_sub: "وصول المستجيبين مطلوب",
+    enter: "دخول",
+    access_note: "رمز الوصول موزع على شركاء الاستجابة المعتمدين من UNDP فقط.",
+    live_dash: "لوحة الثقة الحية",
+    high_conf: "ثقة<br>عالية",
+    watch: "مراقبة<br>رصد",
+    review_req: "مراجعة<br>مطلوبة",
+    conf_map: "خريطة الثقة",
+    timeline: "تشغيل الجدول الزمني لـ 48 ساعة",
+    live_all: "مباشر — جميع التقارير",
+    conflict_flags: "علامات التضارب",
+    no_conflicts: "لم يتم اكتشاف تضاربات",
+    dci_report: "بطاقة تقرير DCI",
+    conf_dist: "توزيع الثقة",
+    high: "عالية",
+    review: "مراجعة",
+    powered: "مدعوم من CERTUS Engine v1.0 — يتم تقييم DCI بناءً على الأدلة المصورة · التأكيد · الحداثة · الاتساق",
+    export: "تصدير مجموعة البيانات",
+    cached_snapshot: "📥 تنزيل لقطة مخزنة مؤقتاً",
+    offline_note: "متاح دون اتصال — يعرض آخر حالة متزامنة",
+    decision_support: "⚠ أداة دعم القرار فقط",
+    law6_line1: "نتائج DCI لـ VERITAS تساعد في الحكم البشري — ولا تحل محله.",
+    review_required_human: "مراجعة مطلوبة"
+  },
+  zh: {
+    offline: "离线 — 报告保存在本地，联网后将同步",
+    syncing: "正在同步队列中的报告...",
+    report_tab: "📍 报告",
+    respond_tab: "🗺 响应",
+    report_received: "已收到报告",
+    certus_scored: "CERTUS引擎已对您的提交进行评分",
+    dci_label: "损害可信度指数 — CERTUS引擎 v1.0",
+    dci_explain: "DCI衡量报告的可信度。\n基于照片证据 · 印证 · 新鲜度 · 一致性评分。",
+    submit_another: "提交另一份报告",
+    view_map: "查看响应者地图",
+    step_photo: "照片",
+    step_damage: "损害",
+    step_details: "详情",
+    step_location: "位置",
+    step_review: "复核",
+    photo_title: "拍照",
+    photo_sub: "清晰拍摄损害情况",
+    photo_hint: "点击拍摄损害",
+    retake: "重拍",
+    analyzing: "CERTUS正在分析图像...",
+    next: "下一步",
+    damage_title: "损害等级",
+    damage_sub: "选择损害等级 (UNDP要求)",
+    damage_minimal: "极小 / 无损害",
+    damage_minimal_desc: "几乎没有可见的结构影响",
+    damage_partial: "部分受损",
+    damage_partial_desc: "严重损害但结构仍在",
+    damage_complete: "完全损毁",
+    damage_complete_desc: "结构毁坏 / 完全坍塌",
+    infra_title: "基础设施类型",
+    infra_residential: "住宅",
+    infra_road: "道路",
+    infra_bridge: "桥梁",
+    infra_utility: "公用设施",
+    infra_medical: "医疗",
+    infra_school: "学校",
+    details_title: "详情",
+    details_sub: "帮助响应者了解情况",
+    infra_name_label: "基础设施名称 (可选)",
+    crisis_type_label: "危机性质",
+    crisis_natural: "自然灾害",
+    crisis_tech: "技术事故",
+    crisis_human: "人为",
+    debris_label: "是否有需要清理的残骸？",
+    yes: "是",
+    no: "否",
+    electricity_label: "电力基础设施状况",
+    elec_fully: "完全正常",
+    elec_partial: "部分正常",
+    elec_limited: "有限",
+    elec_none: "无法运行",
+    health_label: "整体卫生服务运行状况",
+    health_fully: "完全正常",
+    health_partial: "部分正常",
+    health_limited: "有限",
+    health_none: "无法运行",
+    unknown: "未知",
+    needs_label: "最迫切的需求 (多选)",
+    need_water: "水",
+    need_food: "食物",
+    need_shelter: "住所",
+    need_medical: "医疗",
+    need_electricity: "电力",
+    need_fuel: "燃料",
+    need_comm: "通讯",
+    need_transport: "交通",
+    need_security: "安全",
+    need_other: "其他",
+    location_title: "位置",
+    location_sub: "标记损害位置",
+    precise: "📍 精确",
+    precise_desc: "精确GPS坐标",
+    area: "🔵 区域",
+    area_desc: "±100米半径",
+    fuzzy_notice: "已选择区域模式 — 您的精确位置受到保护。报告精度为±100米。适用于受冲突影响的地区。",
+    acquiring: "正在获取GPS坐标...",
+    text_location_label: "描述位置 (如果GPS不可用，例如“靠近中央市场”)",
+    review_title: "复核",
+    review_sub: "确认并提交您的报告",
+    anon_notice: "您的报告是匿名的。无需帐户。已剥离EXIF元数据。不存储IP。仅通过随机UUID标识。",
+    back: "← 返回",
+    submit: "提交报告",
+    restricted: "受限",
+    access_sub: "需要响应者权限",
+    enter: "进入",
+    access_note: "访问代码仅分发给授权的UNDP响应合作伙伴。",
+    live_dash: "实时可信度仪表板",
+    high_conf: "高<br>可信度",
+    watch: "观察<br>监视",
+    review_req: "需<br>复核",
+    conf_map: "可信度地图",
+    timeline: "48小时时间线回放",
+    live_all: "实时 — 所有报告",
+    conflict_flags: "冲突标记",
+    no_conflicts: "未检测到冲突",
+    dci_report: "DCI报告卡",
+    conf_dist: "可信度分布",
+    high: "高",
+    review: "复核",
+    powered: "由CERTUS引擎 v1.0驱动 — DCI基于照片证据、印证、新鲜度和一致性评分",
+    export: "导出数据集",
+    cached_snapshot: "📥 下载缓存快照",
+    offline_note: "离线可用 — 显示上次同步的状态",
+    decision_support: "⚠ 仅限决策支持工具",
+    law6_line1: "VERITAS DCI评分辅助人工判断 — 不能替代人工决策。",
+    review_required_human: "需要复核"
+  },
+  fr: {
+    offline: "Hors ligne — les rapports sont enregistrés localement et se synchroniseront à la connexion",
+    syncing: "Synchronisation des rapports en attente...",
+    report_tab: "📍 Rapport",
+    respond_tab: "🗺 Répondre",
+    report_received: "RAPPORT REÇU",
+    certus_scored: "Le moteur CERTUS a évalué votre soumission",
+    dci_label: "Indice de confiance des dommages — Moteur CERTUS v1.0",
+    dci_explain: "Le DCI mesure le degré de confiance accordé à ce rapport.\nNoté sur preuve photographique · corroboration · fraîcheur · cohérence.",
+    submit_another: "Soumettre un autre rapport",
+    view_map: "Voir la carte des intervenants",
+    step_photo: "Photo",
+    step_damage: "Dommage",
+    step_details: "Détails",
+    step_location: "Lieu",
+    step_review: "Révision",
+    photo_title: "PHOTOGRAPHIER",
+    photo_sub: "Capturez clairement les dommages visibles",
+    photo_hint: "APPUYEZ POUR PHOTOGRAPHIER LES DOMMAGES",
+    retake: "REPRENDRE",
+    analyzing: "CERTUS analyse l'image...",
+    next: "SUIVANT",
+    damage_title: "NIVEAU DE DOMMAGE",
+    damage_sub: "Sélectionnez le niveau de dommage (requis par le PNUD)",
+    damage_minimal: "Minime / Aucun dommage",
+    damage_minimal_desc: "Peu ou pas d'impact structurel visible",
+    damage_partial: "Partiellement endommagé",
+    damage_partial_desc: "Dommages importants mais toujours debout",
+    damage_complete: "Complètement endommagé",
+    damage_complete_desc: "Structure détruite / effondrement total",
+    infra_title: "TYPE D'INFRASTRUCTURE",
+    infra_residential: "Résidentiel",
+    infra_road: "Route",
+    infra_bridge: "Pont",
+    infra_utility: "Service public",
+    infra_medical: "Médical",
+    infra_school: "École",
+    details_title: "DÉTAILS",
+    details_sub: "Aidez les intervenants à comprendre la situation",
+    infra_name_label: "Nom de l'infrastructure (facultatif)",
+    crisis_type_label: "Nature de la crise",
+    crisis_natural: "Naturelle",
+    crisis_tech: "Technologique",
+    crisis_human: "Humaine",
+    debris_label: "Y a-t-il des débris à dégager ?",
+    yes: "Oui",
+    no: "Non",
+    electricity_label: "État de l'infrastructure électrique",
+    elec_fully: "Fonctionne totalement",
+    elec_partial: "Fonctionne partiellement",
+    elec_limited: "Limitée",
+    elec_none: "Ne fonctionne pas",
+    health_label: "Fonctionnement global des services de santé",
+    health_fully: "Fonctionne totalement",
+    health_partial: "Fonctionne partiellement",
+    health_limited: "Limitée",
+    health_none: "Ne fonctionne pas",
+    unknown: "Inconnu",
+    needs_label: "Besoins les plus urgents (sélectionnez tout ce qui s'applique)",
+    need_water: "Eau",
+    need_food: "Nourriture",
+    need_shelter: "Abri",
+    need_medical: "Soins médicaux",
+    need_electricity: "Électricité",
+    need_fuel: "Carburant",
+    need_comm: "Communication",
+    need_transport: "Transport",
+    need_security: "Sécurité",
+    need_other: "Autre",
+    location_title: "LIEU",
+    location_sub: "Épinglez l'emplacement des dommages",
+    precise: "📍 Précis",
+    precise_desc: "Localisation GPS exacte",
+    area: "🔵 Zone",
+    area_desc: "Rayon de ±100m",
+    fuzzy_notice: "Mode zone sélectionné — votre position précise est protégée. Le rapport est précis à ±100 mètres. Convient aux zones touchées par un conflit.",
+    acquiring: "Acquisition des coordonnées GPS...",
+    text_location_label: "Décrivez le lieu (si GPS indisponible, ex. \"près du marché central\")",
+    review_title: "RÉVISION",
+    review_sub: "Confirmez et soumettez votre rapport",
+    anon_notice: "Votre rapport est anonyme. Aucun compte requis. Métadonnées EXIF supprimées. Aucune adresse IP stockée. Identifié uniquement par un UUID aléatoire.",
+    back: "← RETOUR",
+    submit: "SOUMETTRE LE RAPPORT",
+    restricted: "RESTREINT",
+    access_sub: "Accès intervenant requis",
+    enter: "ENTRER",
+    access_note: "Code d'accès distribué uniquement aux partenaires d'intervention autorisés du PNUD.",
+    live_dash: "Tableau de bord de confiance en direct",
+    high_conf: "Haute<br>confiance",
+    watch: "Surveillance<br>À surveiller",
+    review_req: "Révision<br>requise",
+    conf_map: "Carte de confiance",
+    timeline: "Replay de la chronologie 48 heures",
+    live_all: "En direct — tous les rapports",
+    conflict_flags: "Drapeaux de conflit",
+    no_conflicts: "Aucun conflit détecté",
+    dci_report: "FICHE DE RAPPORT DCI",
+    conf_dist: "Distribution de la confiance",
+    high: "Élevée",
+    review: "Révision",
+    powered: "Propulsé par CERTUS Engine v1.0 — DCI noté sur preuve photographique, corroboration, fraîcheur et cohérence",
+    export: "Exporter le jeu de données",
+    cached_snapshot: "📥 Télécharger l'instantané en cache",
+    offline_note: "Disponible hors ligne — affiche le dernier état synchronisé",
+    decision_support: "⚠ OUTIL D'AIDE À LA DÉCISION UNIQUEMENT",
+    law6_line1: "Les scores DCI de VERITAS aident au jugement humain — ils ne le remplacent pas.",
+    review_required_human: "Révision requise"
+  },
+  ru: {
+    offline: "Офлайн — отчеты сохраняются локально и синхронизируются при подключении",
+    syncing: "Синхронизация ожидающих отчетов...",
+    report_tab: "📍 Отчет",
+    respond_tab: "🗺 Реагирование",
+    report_received: "ОТЧЕТ ПОЛУЧЕН",
+    certus_scored: "Движок CERTUS оценил вашу отправку",
+    dci_label: "Индекс доверия к ущербу — Движок CERTUS v1.0",
+    dci_explain: "DCI показывает, насколько можно доверять этому отчету.\nОценка на основе фото · подтверждения · свежести · согласованности.",
+    submit_another: "Отправить еще один отчет",
+    view_map: "Посмотреть карту реагирования",
+    step_photo: "Фото",
+    step_damage: "Ущерб",
+    step_details: "Детали",
+    step_location: "Местоположение",
+    step_review: "Проверка",
+    photo_title: "ФОТОГРАФИЯ",
+    photo_sub: "Четко запечатлейте видимые повреждения",
+    photo_hint: "НАЖМИТЕ, ЧТОБЫ СФОТОГРАФИРОВАТЬ ПОВРЕЖДЕНИЯ",
+    retake: "ПЕРЕСНЯТЬ",
+    analyzing: "CERTUS анализирует изображение...",
+    next: "ДАЛЕЕ",
+    damage_title: "УРОВЕНЬ ПОВРЕЖДЕНИЙ",
+    damage_sub: "Выберите уровень повреждений (требование ПРООН)",
+    damage_minimal: "Минимальные / Нет повреждений",
+    damage_minimal_desc: "Незначительное или отсутствующее структурное воздействие",
+    damage_partial: "Частичные повреждения",
+    damage_partial_desc: "Значительные повреждения, но конструкция стоит",
+    damage_complete: "Полное разрушение",
+    damage_complete_desc: "Конструкция уничтожена / полный обвал",
+    infra_title: "ТИП ИНФРАСТРУКТУРЫ",
+    infra_residential: "Жилая",
+    infra_road: "Дорога",
+    infra_bridge: "Мост",
+    infra_utility: "Коммунальная",
+    infra_medical: "Медицинская",
+    infra_school: "Школа",
+    details_title: "ДЕТАЛИ",
+    details_sub: "Помогите специалистам понять ситуацию",
+    infra_name_label: "Название объекта инфраструктуры (необязательно)",
+    crisis_type_label: "Характер кризиса",
+    crisis_natural: "Природный",
+    crisis_tech: "Техногенный",
+    crisis_human: "Социальный / конфликт",
+    debris_label: "Есть ли завалы, требующие расчистки?",
+    yes: "Да",
+    no: "Нет",
+    electricity_label: "Состояние электросетей",
+    elec_fully: "Полностью функционирует",
+    elec_partial: "Частично функционирует",
+    elec_limited: "Ограниченно",
+    elec_none: "Не функционирует",
+    health_label: "Общее состояние медицинских услуг",
+    health_fully: "Полностью функционируют",
+    health_partial: "Частично функционируют",
+    health_limited: "Ограниченно",
+    health_none: "Не функционируют",
+    unknown: "Неизвестно",
+    needs_label: "Наиболее насущные потребности (выберите все применимые)",
+    need_water: "Вода",
+    need_food: "Продовольствие",
+    need_shelter: "Укрытие",
+    need_medical: "Медицинская помощь",
+    need_electricity: "Электричество",
+    need_fuel: "Топливо",
+    need_comm: "Связь",
+    need_transport: "Транспорт",
+    need_security: "Безопасность",
+    need_other: "Другое",
+    location_title: "МЕСТОПОЛОЖЕНИЕ",
+    location_sub: "Отметьте место повреждения",
+    precise: "📍 Точное",
+    precise_desc: "Точные GPS-координаты",
+    area: "🔵 Область",
+    area_desc: "Радиус ±100 м",
+    fuzzy_notice: "Выбран режим области — ваше точное местоположение защищено. Отчет точен в пределах ±100 метров. Подходит для зон конфликтов.",
+    acquiring: "Получение GPS-координат...",
+    text_location_label: "Опишите местоположение (если GPS недоступен, например, \"возле центрального рынка\")",
+    review_title: "ПРОВЕРКА",
+    review_sub: "Подтвердите и отправьте отчет",
+    anon_notice: "Ваш отчет анонимен. Аккаунт не требуется. Метаданные EXIF удалены. IP не сохраняется. Ключ — случайный UUID.",
+    back: "← НАЗАД",
+    submit: "ОТПРАВИТЬ ОТЧЕТ",
+    restricted: "ОГРАНИЧЕННЫЙ ДОСТУП",
+    access_sub: "Требуется доступ для реагирования",
+    enter: "ВОЙТИ",
+    access_note: "Код доступа распространяется только среди уполномоченных партнеров ПРООН по реагированию.",
+    live_dash: "Интерактивная панель доверия",
+    high_conf: "Высокое<br>доверие",
+    watch: "Наблюдение<br>Мониторинг",
+    review_req: "Требуется<br>проверка",
+    conf_map: "Карта доверия",
+    timeline: "Воспроизведение 48-часовой шкалы",
+    live_all: "В реальном времени — все отчеты",
+    conflict_flags: "Конфликтные метки",
+    no_conflicts: "Конфликтов не обнаружено",
+    dci_report: "ОТЧЕТНАЯ КАРТА DCI",
+    conf_dist: "Распределение доверия",
+    high: "Высокое",
+    review: "Проверка",
+    powered: "Работает на движке CERTUS v1.0 — DCI оценивается по фото, подтверждению, свежести и согласованности",
+    export: "Экспорт набора данных",
+    cached_snapshot: "📥 Загрузить кэшированный снимок",
+    offline_note: "Доступно офлайн — показывает последнее синхронизированное состояние",
+    decision_support: "⚠ ТОЛЬКО ИНСТРУМЕНТ ПОДДЕРЖКИ РЕШЕНИЙ",
+    law6_line1: "Показатели DCI VERITAS помогают человеческому суждению — они не заменяют его.",
+    review_required_human: "Требуется проверка"
+  },
+  es: {
+    offline: "Sin conexión — los informes se guardan localmente y se sincronizarán cuando se conecte",
+    syncing: "Sincronizando informes pendientes...",
+    report_tab: "📍 Informe",
+    respond_tab: "🗺 Responder",
+    report_received: "INFORME RECIBIDO",
+    certus_scored: "El motor CERTUS ha evaluado su envío",
+    dci_label: "Índice de Confianza de Daños — Motor CERTUS v1.0",
+    dci_explain: "El DCI mide cuánto confiar en este informe.\nPuntuado por evidencia fotográfica · corroboración · actualidad · consistencia.",
+    submit_another: "Enviar otro informe",
+    view_map: "Ver mapa de respuesta",
+    step_photo: "Foto",
+    step_damage: "Daño",
+    step_details: "Detalles",
+    step_location: "Ubicación",
+    step_review: "Revisión",
+    photo_title: "FOTOGRAFÍA",
+    photo_sub: "Capture claramente los daños visibles",
+    photo_hint: "TOQUE PARA FOTOGRAFIAR EL DAÑO",
+    retake: "REPETIR",
+    analyzing: "CERTUS analizando imagen...",
+    next: "SIGUIENTE",
+    damage_title: "NIVEL DE DAÑO",
+    damage_sub: "Seleccione el nivel de daño (requerido por el PNUD)",
+    damage_minimal: "Mínimo / Sin daños",
+    damage_minimal_desc: "Poco o ningún impacto estructural visible",
+    damage_partial: "Dañado parcialmente",
+    damage_partial_desc: "Daños significativos pero aún en pie",
+    damage_complete: "Completamente dañado",
+    damage_complete_desc: "Estructura destruida / colapso total",
+    infra_title: "TIPO DE INFRAESTRUCTURA",
+    infra_residential: "Residencial",
+    infra_road: "Carretera",
+    infra_bridge: "Puente",
+    infra_utility: "Servicios públicos",
+    infra_medical: "Médico",
+    infra_school: "Escuela",
+    details_title: "DETALLES",
+    details_sub: "Ayude a los respondedores a entender la situación",
+    infra_name_label: "Nombre de la infraestructura (opcional)",
+    crisis_type_label: "Naturaleza de la crisis",
+    crisis_natural: "Natural",
+    crisis_tech: "Tecnológica",
+    crisis_human: "Antrópica / conflicto",
+    debris_label: "¿Hay escombros que requieran limpieza?",
+    yes: "Sí",
+    no: "No",
+    electricity_label: "Estado de la infraestructura eléctrica",
+    elec_fully: "Funciona completamente",
+    elec_partial: "Funciona parcialmente",
+    elec_limited: "Limitada",
+    elec_none: "No funciona",
+    health_label: "Funcionamiento general de los servicios de salud",
+    health_fully: "Funciona completamente",
+    health_partial: "Funciona parcialmente",
+    health_limited: "Limitado",
+    health_none: "No funciona",
+    unknown: "Desconocido",
+    needs_label: "Necesidades más urgentes (seleccione todas las que correspondan)",
+    need_water: "Agua",
+    need_food: "Alimentos",
+    need_shelter: "Albergue",
+    need_medical: "Atención médica",
+    need_electricity: "Electricidad",
+    need_fuel: "Combustible",
+    need_comm: "Comunicaciones",
+    need_transport: "Transporte",
+    need_security: "Seguridad",
+    need_other: "Otro",
+    location_title: "UBICACIÓN",
+    location_sub: "Señale la ubicación del daño",
+    precise: "📍 Precisa",
+    precise_desc: "Coordenadas GPS exactas",
+    area: "🔵 Área",
+    area_desc: "Radio ±100m",
+    fuzzy_notice: "Modo área seleccionado — su ubicación exacta está protegida. El informe es preciso a ±100 metros. Adecuado para zonas afectadas por conflictos.",
+    acquiring: "Obteniendo coordenadas GPS...",
+    text_location_label: "Describa la ubicación (si el GPS no está disponible, ej. \"cerca del mercado central\")",
+    review_title: "REVISIÓN",
+    review_sub: "Confirme y envíe su informe",
+    anon_notice: "Su informe es anónimo. No se requiere cuenta. Se eliminan los metadatos EXIF. No se almacena la IP. Identificado solo por un UUID aleatorio.",
+    back: "← ATRÁS",
+    submit: "ENVIAR INFORME",
+    restricted: "RESTRINGIDO",
+    access_sub: "Se requiere acceso para respondedores",
+    enter: "ENTRAR",
+    access_note: "El código de acceso se distribuye solo a los socios de respuesta autorizados por el PNUD.",
+    live_dash: "Tablero de confianza en vivo",
+    high_conf: "Alta<br>confianza",
+    watch: "Vigilancia<br>Monitorear",
+    review_req: "Revisión<br>requerida",
+    conf_map: "Mapa de confianza",
+    timeline: "Reproducción de línea de tiempo de 48 horas",
+    live_all: "En vivo — todos los informes",
+    conflict_flags: "Alertas de conflicto",
+    no_conflicts: "No se detectaron conflictos",
+    dci_report: "TARJETA DE INFORME DCI",
+    conf_dist: "Distribución de confianza",
+    high: "Alta",
+    review: "Revisión",
+    powered: "Impulsado por CERTUS Engine v1.0 — DCI puntuado por evidencia fotográfica, corroboración, actualidad y consistencia",
+    export: "Exportar conjunto de datos",
+    cached_snapshot: "📥 Descargar instantánea almacenada en caché",
+    offline_note: "Disponible sin conexión — muestra el último estado sincronizado",
+    decision_support: "⚠ SOLO INSTRUMENTO DE APOYO A DECISIONES",
+    law6_line1: "Las puntuaciones DCI de VERITAS ayudan al juicio humano — no lo reemplazan.",
+    review_required_human: "Revisión requerida"
+  }
+};
+
+let currentLang = 'en';
 function setLanguage(lang) {
   currentLang = lang;
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
-    if (translations[lang] && translations[lang][key]) {
-      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = translations[lang][key];
-      else el.innerHTML = translations[lang][key];
+    if (translations[lang] && translations[lang][key] !== undefined) {
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        if (el.getAttribute('placeholder')) el.placeholder = translations[lang][key];
+        else el.value = translations[lang][key];
+      } else {
+        el.innerHTML = translations[lang][key];
+      }
     }
   });
   document.querySelectorAll('.lang-btn').forEach(btn => {
-    if (btn.getAttribute('data-lang') === lang) btn.classList.add('active');
-    else btn.classList.remove('active');
+    btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
   });
 }
-// Attach language buttons
-document.querySelectorAll('.lang-btn').forEach(btn => {
-  btn.addEventListener('click', () => setLanguage(btn.getAttribute('data-lang')));
-});
+
+// Populate language buttons
+const langSelector = document.getElementById('langSelector');
+if (langSelector) {
+  const langs = ['en', 'ar', 'zh', 'fr', 'ru', 'es'];
+  langs.forEach(l => {
+    const btn = document.createElement('button');
+    btn.className = 'lang-btn';
+    btn.setAttribute('data-lang', l);
+    btn.textContent = l.toUpperCase();
+    btn.addEventListener('click', () => setLanguage(l));
+    langSelector.appendChild(btn);
+  });
+  setLanguage('en');
+}
 
 // ==================== INDEXEDDB (unchanged) ====================
 const DB_NAME = 'veritas-db';
@@ -952,7 +1607,7 @@ function dbGetAll() { return new Promise((resolve, reject) => { const tx = db.tr
 function dbGetUnsynced() { return new Promise((resolve, reject) => { const tx = db.transaction('reports', 'readonly'); const idx = tx.objectStore('reports').index('synced'); idx.getAll(IDBKeyRange.only(false)).onsuccess = e => resolve(e.target.result); tx.onerror = reject; }); }
 function dbMarkSynced(uuid) { return new Promise((resolve, reject) => { const tx = db.transaction('reports', 'readwrite'); const store = tx.objectStore('reports'); const req = store.get(uuid); req.onsuccess = e => { const r = e.target.result; if (r) { r.synced = true; store.put(r).onsuccess = resolve; } else resolve(); }; tx.onerror = reject; }); }
 
-// ==================== CERTUS ENGINE (unchanged, uses internal tier) ====================
+// ==================== CERTUS ENGINE (unchanged) ====================
 const CERTUS = {
   W: { PES: 0.35, COR: 0.30, TFR: 0.20, CCI: 0.15 },
   PES_effective(rawScore, modelConf) { if (!rawScore || modelConf === null || modelConf < 0.60) return 0.50; return Math.max(0, Math.min(1, rawScore)); },
@@ -1039,6 +1694,22 @@ function updateLocationPin() {
   if (STATE.locMode === 'fuzzy') L.circle([lat, lng], { radius: CONFIG.FUZZY_RADIUS, color: '#f0a500', fillOpacity: 0.1, weight: 1 }).addTo(STATE.reportMap);
 }
 
+function updateCrisisSubtype() {
+  const container = document.getElementById('crisisSubtypeContainer');
+  const selectedCrisis = document.querySelector('input[name="crisisType"]:checked')?.value;
+  if (!selectedCrisis || !crisisSubtypes[selectedCrisis]) {
+    container.innerHTML = '';
+    return;
+  }
+  const subtypes = crisisSubtypes[selectedCrisis];
+  let html = '<div class="radio-group" id="crisisSubtypeGroup">';
+  subtypes.forEach(sub => {
+    html += `<label><input type="radio" name="crisisSubtype" value="${sub}"> ${sub}</label>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
 function collectAdditionalFields() {
   STATE.additionalFields = {
     infraName: document.getElementById('infraName').value,
@@ -1121,14 +1792,16 @@ function resetReport() {
   document.querySelectorAll('.damage-btn, .infra-btn').forEach(b => b.classList.remove('selected'));
   document.getElementById('locPrecise').classList.add('selected'); document.getElementById('locFuzzy').classList.remove('selected');
   document.getElementById('textLocation').value = '';
-  // reset additional fields
   document.getElementById('infraName').value = '';
   document.querySelectorAll('input[name="crisisType"], input[name="debris"], input[name="electricity"], input[name="health"]').forEach(r => r.checked = false);
   document.querySelectorAll('#needsGroup input').forEach(cb => cb.checked = false);
+  document.getElementById('crisisSubtypeContainer').innerHTML = '';
   for (let i = 1; i <= 5; i++) { const sc = document.getElementById(`sc${i}`); sc.classList.remove('active', 'done'); sc.textContent = i; document.getElementById(`sl${i}`).classList.remove('active'); document.getElementById(`step${i}`).classList.remove('active'); }
   for (let i = 1; i <= 4; i++) document.getElementById(`sline${i}`).classList.remove('done');
   document.getElementById('step1').classList.add('active'); document.getElementById('sc1').classList.add('active'); document.getElementById('sl1').classList.add('active');
 }
+
+// ==================== RESPOND VIEW FUNCTIONS (unchanged) ====================
 function checkAccess(e) { if (e.key === 'Enter') checkAccessBtn(); }
 function checkAccessBtn() { const code = document.getElementById('accessInput').value.trim().toUpperCase(); if (code === CONFIG.ACCESS_CODE.toUpperCase()) { STATE.respondAuth = true; document.getElementById('accessGate').style.display = 'none'; document.getElementById('respondDashboard').classList.add('show'); initRespondDashboard(); } else { toast('Invalid access code'); document.getElementById('accessInput').value = ''; } }
 async function initRespondDashboard() { const reports = await dbGetAll(); updateDashboardCounts(reports); initRespondMap(reports); updateReportCard(reports); updateConflictFlags(reports); updateExportPreview(reports); }
@@ -1156,7 +1829,7 @@ function toast(msg, duration = 2500) { const container = document.getElementById
 window.addEventListener('online', () => { STATE.isOnline = true; document.getElementById('offlineBanner').classList.remove('show'); syncPending(); toast('Back online — syncing reports'); });
 window.addEventListener('offline', () => { STATE.isOnline = false; document.getElementById('offlineBanner').classList.add('show'); toast('Offline — reports saved locally'); });
 
-// STP INTEGRATION (unchanged)
+// ==================== STP INTEGRATION (unchanged) ====================
 let currentSTPSeal = null;
 async function stampWithSTP() {
   const reports = await dbGetAll();
@@ -1194,7 +1867,7 @@ function downloadSTPSeal() {
   toast('STP seal file downloaded');
 }
 
-// Triple‑time display (same as main site)
+// ==================== TRIPLE-TIME DISPLAY ====================
 const GREGORIAN_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 function gregorianString(d) { return `${GREGORIAN_MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`; }
 function jdFromGregorian(y,m,d) { const a=Math.floor((14-m)/12), yy=y+4800-a, mm=m+12*a-3; return d+Math.floor((153*mm+2)/5)+365*yy+Math.floor(yy/4)-Math.floor(yy/100)+Math.floor(yy/400)-32045; }
@@ -1212,24 +1885,24 @@ const gel = document.getElementById('tt-gregorian'); if(gel) { gel.classList.rem
 const del = document.getElementById('tt-dreamspell'); if(del) { del.classList.remove('loading'); del.textContent = dreamspellString(now); }
 const hel = document.getElementById('tt-hebrew'); if(hel) { hel.classList.remove('loading'); hel.textContent = hebrewString(now); }
 
-// Background canvas (same as main site)
+// ==================== BACKGROUND CANVAS ====================
 const canvas = document.getElementById('hero-canvas');
-const ctx = canvas.getContext('2d');
-let width, height, animFrame;
-let particles = [];
-function resizeCanvas() { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; }
-function initParticles() { particles = []; for (let i = 0; i < 120; i++) { particles.push({ x: Math.random() * width, y: Math.random() * height, radius: 1 + Math.random() * 2, alpha: 0.3 + Math.random() * 0.5, speed: 0.2 + Math.random() * 0.8 }); } }
-function drawCanvas() { ctx.clearRect(0, 0, width, height); ctx.fillStyle = '#050508'; ctx.fillRect(0, 0, width, height); for (let p of particles) { ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fillStyle = `rgba(201, 160, 40, ${p.alpha})`; ctx.fill(); p.y += p.speed; if (p.y > height) p.y = 0; } animFrame = requestAnimationFrame(drawCanvas); }
+const ctxCanvas = canvas.getContext('2d');
+let widthCanvas, heightCanvas, animFrameCanvas;
+let particlesCanvas = [];
+function resizeCanvas() { widthCanvas = window.innerWidth; heightCanvas = window.innerHeight; canvas.width = widthCanvas; canvas.height = heightCanvas; }
+function initParticles() { particlesCanvas = []; for (let i = 0; i < 120; i++) { particlesCanvas.push({ x: Math.random() * widthCanvas, y: Math.random() * heightCanvas, radius: 1 + Math.random() * 2, alpha: 0.3 + Math.random() * 0.5, speed: 0.2 + Math.random() * 0.8 }); } }
+function drawCanvas() { ctxCanvas.clearRect(0, 0, widthCanvas, heightCanvas); ctxCanvas.fillStyle = '#050508'; ctxCanvas.fillRect(0, 0, widthCanvas, heightCanvas); for (let p of particlesCanvas) { ctxCanvas.beginPath(); ctxCanvas.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctxCanvas.fillStyle = `rgba(201, 160, 40, ${p.alpha})`; ctxCanvas.fill(); p.y += p.speed; if (p.y > heightCanvas) p.y = 0; } animFrameCanvas = requestAnimationFrame(drawCanvas); }
 resizeCanvas(); initParticles(); drawCanvas(); window.addEventListener('resize', () => { resizeCanvas(); initParticles(); });
 
-// Cursor
+// ==================== CURSOR ====================
 const cursor = document.getElementById('custom-cursor');
 if (cursor) {
   document.addEventListener('mousemove', (e) => { cursor.style.left = e.clientX + 'px'; cursor.style.top = e.clientY + 'px'; });
   document.querySelectorAll('a, button, .veritas-tab, .photo-zone, .damage-btn, .infra-btn, .loc-opt, .export-btn, .glitch-button, .cta').forEach(el => { el.addEventListener('mouseenter', () => cursor.classList.add('hover')); el.addEventListener('mouseleave', () => cursor.classList.remove('hover')); });
 }
 
-// Mobile menu
+// ==================== MOBILE MENU ====================
 const hamburger = document.getElementById('nav-hamburger');
 const mobileNav = document.getElementById('mobile-nav');
 if (hamburger && mobileNav) {
@@ -1237,13 +1910,17 @@ if (hamburger && mobileNav) {
   mobileNav.querySelectorAll('a').forEach(link => { link.addEventListener('click', () => { hamburger.classList.remove('open'); mobileNav.classList.remove('open'); }); });
 }
 
-// Initialise
+// ==================== INITIALISATION ====================
 window.addEventListener('DOMContentLoaded', async () => {
   await initDB();
   if (!STATE.isOnline) document.getElementById('offlineBanner').classList.add('show');
   STATE.reports = await dbGetAll();
   if ('serviceWorker' in navigator) { /* optional */ }
   if (STATE.isOnline) syncPending();
+  // Attach crisis subtype listener
+  document.querySelectorAll('input[name="crisisType"]').forEach(radio => {
+    radio.addEventListener('change', updateCrisisSubtype);
+  });
 });
 </script>
 </body>
