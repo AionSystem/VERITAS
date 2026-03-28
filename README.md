@@ -65,6 +65,19 @@ Full formula and thresholds are documented in [`docs/dci-formula.md`](docs/dci-f
 
 ---
 
+🧾 Sovereign Trace Protocol Integration
+
+Every VERITAS dataset can be optionally sealed with the Sovereign Trace Protocol – a permanence infrastructure that stamps the data with a triple‑time cryptographic seal (Gregorian, Hebrew lunisolar, 13‑Moon Dreamspell). The SHA‑256 hash of the full dataset is bound to the seal, making the export tamper‑evident and independently verifiable using the open‑source STP code.
+
+How it works:
+
+1. In the responder dashboard, click STP Seal after exporting.
+2. The seal is generated via the STP API, creating a permanent ledger entry in the SOVEREIGN-TRACE-PROTOCOL GitHub repository.
+3. Download the STP file alongside your export to prove the dataset’s existence and integrity at a specific moment in three civilizational time systems.
+
+
+---
+
 ## Technical Stack
 
 | Layer               | Technology                             | Why |
