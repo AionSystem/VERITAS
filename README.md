@@ -7,7 +7,7 @@
 [![Seal](https://img.shields.io/badge/Seal-SHA--256%20Bound-4527A0?style=flat-square&logo=hashnode&logoColor=white)](https://github.com/AionSystem/VERITAS)
 [![Status](https://img.shields.io/badge/STATUS-Production-1976D2?style=flat-square)](https://github.com/AionSystem/VERITAS)
 [![License](https://img.shields.io/github/license/AionSystem/VERITAS?color=blue)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v1.0-orange)](#)
+[![Version](https://img.shields.io/badge/version-v1.0.0-orange)](#)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](#)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
 [![Made with JavaScript](https://img.shields.io/badge/Made%20with-JavaScript-yellow)](#)
