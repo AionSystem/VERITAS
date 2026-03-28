@@ -1,4 +1,4 @@
-```markdown
+
 # Anonymization & Privacy Protocol
 
 VERITAS is designed from the ground up to protect community reporters, especially in conflict‑sensitive areas. No personal data is ever collected or stored.
