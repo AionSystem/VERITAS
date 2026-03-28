@@ -1,0 +1,2062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0c0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="description" content="VERITAS — Community Damage Certification Platform. Powered by CERTUS Engine v1.0.">
+<title>VERITAS — Damage Certification</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════════
+   VERITAS DESIGN SYSTEM — Precision Instrument Aesthetic
+   Polymath Council: Design Thinker lead
+═══════════════════════════════════════════════════════ */
+:root {
+  --bg:        #0a0c0f;
+  --bg2:       #0f1217;
+  --surface:   #141820;
+  --panel:     #191f2a;
+  --border:    #222b38;
+  --border2:   #2d3848;
+
+  --high:      #f0a500;
+  --high-l:    rgba(240,165,0,0.12);
+  --high-d:    #b07800;
+  --watch:     #e87c1e;
+  --watch-l:   rgba(232,124,30,0.12);
+  --review:    #e84040;
+  --review-l:  rgba(232,64,64,0.12);
+  --clean:     #00d084;
+  --clean-l:   rgba(0,208,132,0.1);
+
+  --text:      #d8dde8;
+  --text2:     #8a96a8;
+  --muted:     #4a5568;
+  --dim:       #252d3a;
+
+  --mono:      'IBM Plex Mono', monospace;
+  --sans:      'Outfit', sans-serif;
+  --display:   'Bebas Neue', sans-serif;
+
+  --r:         4px;
+  --ease:      cubic-bezier(0.16,1,0.3,1);
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { height:100%; }
+body {
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.5;
+  height:100%;
+  overflow-x:hidden;
+}
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  background:
+    linear-gradient(rgba(240,165,0,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(240,165,0,0.015) 1px, transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;
+  z-index:0;
+}
+
+/* ── LAYOUT ── */
+#app { position:relative; z-index:1; min-height:100vh; display:flex; flex-direction:column; }
+
+/* ── HEADER ── */
+.v-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 20px;
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  position:sticky; top:0; z-index:100;
+  backdrop-filter:blur(12px);
+}
+.v-logo {
+  display:flex; align-items:center; gap:10px;
+}
+.v-logo-mark {
+  width:36px; height:36px;
+  background:var(--high);
+  clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.v-logo-mark span {
+  font-family:var(--display);
+  font-size:14px;
+  color:#000;
+  letter-spacing:1px;
+}
+.v-logo-text { display:flex; flex-direction:column; }
+.v-logo-name {
+  font-family:var(--display);
+  font-size:22px;
+  color:var(--high);
+  letter-spacing:3px;
+  line-height:1;
+}
+.v-logo-sub {
+  font-family:var(--mono);
+  font-size:9px;
+  color:var(--muted);
+  letter-spacing:2px;
+  text-transform:uppercase;
+}
+.certus-badge {
+  display:flex; align-items:center; gap:6px;
+  padding:4px 10px;
+  border:1px solid var(--border2);
+  background:var(--surface);
+  font-family:var(--mono);
+  font-size:9px;
+  color:var(--high);
+  letter-spacing:1px;
+  text-transform:uppercase;
+}
+.certus-dot {
+  width:6px; height:6px; border-radius:50%;
+  background:var(--high);
+  animation:pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* ── NAV TABS ── */
+.v-nav {
+  display:flex;
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+}
+.v-nav-btn {
+  flex:1; padding:12px 0;
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:var(--muted);
+  background:none;
+  border:none;
+  border-bottom:2px solid transparent;
+  cursor:pointer;
+  transition:all 0.2s;
+}
+.v-nav-btn.active {
+  color:var(--high);
+  border-bottom-color:var(--high);
+}
+
+/* ── VIEWS ── */
+.v-view { display:none; flex:1; flex-direction:column; }
+.v-view.active { display:flex; }
+
+/* ── OFFLINE BANNER ── */
+.offline-banner {
+  background:var(--review-l);
+  border-bottom:1px solid var(--review);
+  padding:8px 20px;
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--review);
+  letter-spacing:1px;
+  display:none;
+  align-items:center;
+  gap:8px;
+}
+.offline-banner.show { display:flex; }
+.sync-queue {
+  background:var(--watch-l);
+  border-bottom:1px solid var(--watch);
+  padding:6px 20px;
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--watch);
+  letter-spacing:1px;
+  display:none;
+  align-items:center;
+  gap:8px;
+}
+.sync-queue.show { display:flex; }
+
+/* ═══════════════════════════════════════════════════
+   REPORT VIEW — Community Submission
+   Cognitive Psychologist: zero friction under stress
+═══════════════════════════════════════════════════ */
+.report-container {
+  max-width:480px;
+  margin:0 auto;
+  padding:20px;
+  width:100%;
+}
+
+/* Step progress */
+.step-progress {
+  display:flex; align-items:center;
+  margin-bottom:28px; gap:0;
+}
+.step-node {
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  flex:1;
+}
+.step-circle {
+  width:32px; height:32px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); font-size:11px; font-weight:600;
+  border:2px solid var(--border2);
+  color:var(--muted);
+  background:var(--surface);
+  transition:all 0.3s var(--ease);
+  position:relative; z-index:1;
+}
+.step-circle.active {
+  border-color:var(--high);
+  color:var(--high);
+  background:var(--high-l);
+  box-shadow:0 0 16px rgba(240,165,0,0.25);
+}
+.step-circle.done {
+  border-color:var(--clean);
+  color:var(--clean);
+  background:var(--clean-l);
+}
+.step-label {
+  font-family:var(--mono); font-size:8px;
+  letter-spacing:1px; text-transform:uppercase;
+  color:var(--muted);
+}
+.step-label.active { color:var(--high); }
+.step-line {
+  flex:1; height:2px;
+  background:var(--border2);
+  margin-bottom:18px;
+}
+.step-line.done { background:var(--clean); }
+
+/* Step panels */
+.step-panel { display:none; animation:stepIn 0.3s var(--ease); }
+.step-panel.active { display:block; }
+@keyframes stepIn { from{opacity:0;transform:translateX(10px)} to{opacity:1;transform:translateX(0)} }
+
+.step-title {
+  font-family:var(--display);
+  font-size:28px;
+  letter-spacing:2px;
+  color:var(--text);
+  margin-bottom:4px;
+}
+.step-subtitle {
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:24px;
+}
+
+/* Photo step */
+.photo-zone {
+  border:2px dashed var(--border2);
+  border-radius:var(--r);
+  background:var(--surface);
+  aspect-ratio:4/3;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  cursor:pointer;
+  transition:all 0.2s;
+  overflow:hidden;
+  position:relative;
+}
+.photo-zone:hover { border-color:var(--high); background:var(--high-l); }
+.photo-zone.has-photo { border-style:solid; border-color:var(--high); }
+.photo-icon { font-size:40px; margin-bottom:12px; opacity:0.4; }
+.photo-hint { font-family:var(--mono); font-size:10px; color:var(--muted); letter-spacing:1px; }
+#photoPreview {
+  position:absolute; inset:0;
+  width:100%; height:100%; object-fit:cover;
+  display:none;
+}
+#photoPreview.show { display:block; }
+.photo-retake {
+  position:absolute; bottom:10px; right:10px;
+  background:rgba(0,0,0,0.7); border:1px solid var(--border2);
+  color:var(--text); font-family:var(--mono); font-size:9px;
+  padding:4px 10px; cursor:pointer; letter-spacing:1px;
+  display:none;
+}
+.photo-retake.show { display:block; }
+#photoInput { display:none; }
+
+.photo-ai-status {
+  margin-top:12px;
+  padding:10px 14px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text2);
+  display:none;
+}
+.photo-ai-status.show { display:flex; align-items:center; gap:8px; }
+
+/* Damage tiers */
+.tier-grid {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:8px; margin-bottom:16px;
+}
+.tier-btn {
+  padding:14px 10px;
+  border:2px solid var(--border2);
+  background:var(--surface);
+  border-radius:var(--r);
+  cursor:pointer;
+  text-align:center;
+  transition:all 0.15s;
+}
+.tier-btn:hover { border-color:var(--border2); background:var(--panel); }
+.tier-btn.selected { border-color:var(--high); background:var(--high-l); }
+.tier-indicator {
+  width:12px; height:12px; border-radius:50%;
+  margin:0 auto 8px;
+}
+.tier-none .tier-indicator { background:#00d084; }
+.tier-minor .tier-indicator { background:#60d040; }
+.tier-moderate .tier-indicator { background:var(--watch); }
+.tier-major .tier-indicator { background:#e04020; }
+.tier-total .tier-indicator { background:var(--review); box-shadow:0 0 8px var(--review); }
+.tier-label { font-family:var(--mono); font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--text); }
+.tier-desc { font-size:11px; color:var(--muted); margin-top:4px; }
+.tier-btn.full-width { grid-column:span 2; }
+
+/* Infrastructure type */
+.infra-grid {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:8px; margin-bottom:16px;
+}
+.infra-btn {
+  padding:12px 8px;
+  border:1px solid var(--border2);
+  background:var(--surface);
+  border-radius:var(--r);
+  cursor:pointer;
+  text-align:center;
+  transition:all 0.15s;
+}
+.infra-btn:hover { border-color:var(--border2); background:var(--panel); }
+.infra-btn.selected { border-color:var(--high); background:var(--high-l); }
+.infra-icon { font-size:22px; margin-bottom:6px; }
+.infra-label { font-family:var(--mono); font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--text2); }
+
+/* Location step */
+.location-options {
+  display:flex; gap:8px; margin-bottom:16px;
+}
+.loc-opt {
+  flex:1; padding:12px;
+  border:2px solid var(--border2);
+  background:var(--surface);
+  border-radius:var(--r);
+  cursor:pointer;
+  text-align:center;
+  transition:all 0.15s;
+}
+.loc-opt:hover { border-color:var(--high); }
+.loc-opt.selected { border-color:var(--high); background:var(--high-l); }
+.loc-opt-label { font-family:var(--mono); font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--text); }
+.loc-opt-desc { font-size:11px; color:var(--muted); margin-top:4px; }
+
+.fuzzy-notice {
+  padding:8px 12px;
+  background:var(--panel);
+  border:1px solid var(--border2);
+  border-radius:var(--r);
+  font-family:var(--mono);
+  font-size:9px;
+  color:var(--muted);
+  letter-spacing:0.5px;
+  margin-bottom:12px;
+  display:none;
+}
+.fuzzy-notice.show { display:block; }
+
+#locationMap {
+  height:180px;
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  margin-bottom:12px;
+  overflow:hidden;
+}
+.gps-coords {
+  font-family:var(--mono); font-size:10px;
+  color:var(--text2);
+  letter-spacing:0.5px;
+  padding:8px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+}
+
+/* Submit step */
+.submit-summary {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:16px;
+  margin-bottom:20px;
+}
+.summary-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:6px 0;
+  border-bottom:1px solid var(--dim);
+}
+.summary-row:last-child { border-bottom:none; }
+.summary-key { font-family:var(--mono); font-size:10px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+.summary-val { font-family:var(--mono); font-size:11px; color:var(--text); }
+
+.anon-notice {
+  display:flex; gap:10px;
+  padding:12px;
+  background:var(--clean-l);
+  border:1px solid var(--clean);
+  border-radius:var(--r);
+  margin-bottom:20px;
+  font-size:12px;
+  color:var(--text2);
+}
+.anon-icon { font-size:16px; flex-shrink:0; }
+
+/* Confirmation screen */
+.confirm-screen {
+  text-align:center;
+  padding:32px 20px;
+  display:none;
+}
+.confirm-screen.show { display:block; }
+.confirm-check {
+  width:72px; height:72px; border-radius:50%;
+  background:var(--clean-l);
+  border:2px solid var(--clean);
+  display:flex; align-items:center; justify-content:center;
+  font-size:32px;
+  margin:0 auto 20px;
+  animation:popIn 0.4s var(--ease);
+}
+@keyframes popIn { from{transform:scale(0.5);opacity:0} to{transform:scale(1);opacity:1} }
+
+.dci-display {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:20px;
+  margin:20px 0;
+}
+.dci-label {
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:8px;
+}
+.dci-score-large {
+  font-family:var(--display);
+  font-size:64px;
+  letter-spacing:2px;
+  line-height:1;
+  margin-bottom:4px;
+}
+.dci-score-large.high { color:var(--high); }
+.dci-score-large.watch { color:var(--watch); }
+.dci-score-large.review { color:var(--review); }
+.dci-tier-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 12px;
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  border:1px solid;
+  margin-bottom:12px;
+}
+.dci-tier-badge.high { border-color:var(--high); color:var(--high); background:var(--high-l); }
+.dci-tier-badge.watch { border-color:var(--watch); color:var(--watch); background:var(--watch-l); }
+.dci-tier-badge.review { border-color:var(--review); color:var(--review); background:var(--review-l); }
+.dci-explain {
+  font-family:var(--mono);
+  font-size:9px;
+  color:var(--muted);
+  letter-spacing:0.5px;
+  line-height:1.6;
+}
+
+/* Buttons */
+.btn {
+  display:block; width:100%;
+  padding:14px;
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  border:none;
+  cursor:pointer;
+  border-radius:var(--r);
+  transition:all 0.15s;
+}
+.btn-primary {
+  background:var(--high);
+  color:#000;
+  font-weight:600;
+}
+.btn-primary:hover { background:var(--high-d); }
+.btn-primary:disabled { opacity:0.4; cursor:not-allowed; }
+.btn-secondary {
+  background:var(--surface);
+  color:var(--text);
+  border:1px solid var(--border2);
+  margin-top:10px;
+}
+.btn-secondary:hover { border-color:var(--high); color:var(--high); }
+.btn-sm {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 16px;
+  width:auto;
+}
+
+/* ═══════════════════════════════════════════════════
+   RESPOND VIEW — Responder Dashboard
+   Systems Architect: data pipeline visibility
+═══════════════════════════════════════════════════ */
+.access-gate {
+  max-width:400px;
+  margin:60px auto;
+  padding:32px 24px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  text-align:center;
+}
+.access-gate-title {
+  font-family:var(--display);
+  font-size:32px;
+  letter-spacing:3px;
+  color:var(--high);
+  margin-bottom:8px;
+}
+.access-gate-sub {
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--muted);
+  letter-spacing:1.5px;
+  margin-bottom:28px;
+}
+.access-input {
+  width:100%;
+  padding:12px 14px;
+  background:var(--bg);
+  border:1px solid var(--border2);
+  border-radius:var(--r);
+  color:var(--text);
+  font-family:var(--mono);
+  font-size:16px;
+  letter-spacing:4px;
+  text-align:center;
+  text-transform:uppercase;
+  margin-bottom:16px;
+  outline:none;
+}
+.access-input:focus { border-color:var(--high); }
+
+.respond-dashboard { padding:16px; display:none; }
+.respond-dashboard.show { display:block; }
+
+/* Confidence dashboard */
+.confidence-dash {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:8px; margin-bottom:16px;
+}
+.conf-card {
+  padding:14px 10px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  text-align:center;
+}
+.conf-card.high { border-color:var(--high); background:var(--high-l); }
+.conf-card.watch { border-color:var(--watch); background:var(--watch-l); }
+.conf-card.review { border-color:var(--review); background:var(--review-l); }
+.conf-count {
+  font-family:var(--display);
+  font-size:40px;
+  line-height:1;
+  margin-bottom:4px;
+}
+.conf-card.high .conf-count { color:var(--high); }
+.conf-card.watch .conf-count { color:var(--watch); }
+.conf-card.review .conf-count { color:var(--review); }
+.conf-tier {
+  font-family:var(--mono);
+  font-size:8px;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+
+/* Map */
+#respondMap {
+  height:320px;
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  margin-bottom:16px;
+  overflow:hidden;
+}
+
+/* Conflict flags */
+.conflict-section { margin-bottom:16px; }
+.section-label {
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:10px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+.conflict-item {
+  padding:10px 12px;
+  background:var(--surface);
+  border:1px solid var(--review);
+  border-left:3px solid var(--review);
+  border-radius:var(--r);
+  margin-bottom:6px;
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text2);
+  line-height:1.6;
+}
+
+/* Timeline */
+.timeline-wrap {
+  padding:14px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  margin-bottom:16px;
+}
+.timeline-label {
+  font-family:var(--mono); font-size:9px;
+  letter-spacing:2px; text-transform:uppercase;
+  color:var(--muted); margin-bottom:10px;
+}
+#timelineSlider {
+  width:100%; accent-color:var(--high);
+  margin-bottom:6px;
+}
+.timeline-time {
+  font-family:var(--mono); font-size:10px;
+  color:var(--text2); text-align:right;
+}
+
+/* Export */
+.export-section {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:16px;
+  margin-bottom:16px;
+}
+.export-header-preview {
+  font-family:var(--mono);
+  font-size:9px;
+  color:var(--muted);
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:10px;
+  margin-top:12px;
+  line-height:1.8;
+  overflow-x:auto;
+  white-space:pre;
+}
+.export-btns { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+.export-btn {
+  flex:1; min-width:100px;
+  padding:10px;
+  background:var(--panel);
+  border:1px solid var(--border2);
+  color:var(--text);
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  cursor:pointer;
+  border-radius:var(--r);
+  transition:all 0.15s;
+}
+.export-btn:hover { border-color:var(--high); color:var(--high); }
+
+/* DCI Report Card */
+.report-card {
+  padding:16px;
+  background:var(--surface);
+  border:1px solid var(--high);
+  border-radius:var(--r);
+  margin-bottom:16px;
+}
+.report-card-title {
+  font-family:var(--display);
+  font-size:20px;
+  letter-spacing:3px;
+  color:var(--high);
+  margin-bottom:14px;
+}
+.rc-bar-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.rc-bar-label { font-family:var(--mono); font-size:9px; color:var(--muted); width:80px; letter-spacing:0.5px; }
+.rc-bar-track { flex:1; height:6px; background:var(--dim); border-radius:3px; overflow:hidden; }
+.rc-bar-fill { height:100%; border-radius:3px; transition:width 0.8s var(--ease); }
+.rc-bar-val { font-family:var(--mono); font-size:9px; color:var(--text2); width:30px; text-align:right; }
+
+/* Law 6 footer */
+.law6-footer {
+  padding:12px 16px;
+  background:rgba(232,64,64,0.05);
+  border-top:1px solid rgba(232,64,64,0.2);
+  font-family:var(--mono);
+  font-size:9px;
+  color:var(--muted);
+  letter-spacing:0.5px;
+  line-height:1.7;
+  text-align:center;
+}
+.law6-footer strong { color:var(--review); }
+
+/* ── UTILITIES ── */
+.mt-8 { margin-top:8px; }
+.mt-16 { margin-top:16px; }
+.mb-16 { margin-bottom:16px; }
+.gap-8 { display:flex; flex-direction:column; gap:8px; }
+
+/* ── LOADING ── */
+.spinner {
+  width:14px; height:14px;
+  border:2px solid var(--border2);
+  border-top-color:var(--high);
+  border-radius:50%;
+  animation:spin 0.6s linear infinite;
+  display:inline-block;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* ── TOAST ── */
+.toast-container {
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+  z-index:1000; display:flex; flex-direction:column; align-items:center; gap:8px;
+  pointer-events:none;
+}
+.toast {
+  padding:10px 20px;
+  background:var(--panel);
+  border:1px solid var(--border2);
+  border-radius:100px;
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:1px;
+  color:var(--text);
+  animation:toastIn 0.3s var(--ease);
+  pointer-events:none;
+}
+@keyframes toastIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── LEAFLET OVERRIDES ── */
+.leaflet-container { background:#0a0c0f !important; font-family:var(--mono) !important; }
+.dci-popup {
+  font-family:var(--mono);
+  font-size:10px;
+  line-height:1.6;
+}
+
+@media (max-width:360px) {
+  .infra-grid { grid-template-columns:repeat(2,1fr); }
+  .confidence-dash { grid-template-columns:1fr 1fr 1fr; }
+  .conf-count { font-size:32px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- OFFLINE BANNER -->
+  <div class="offline-banner" id="offlineBanner">
+    <span>📡</span> Offline — reports saved locally and will sync when connected
+  </div>
+  <div class="sync-queue" id="syncQueue">
+    <span class="spinner"></span>
+    <span id="syncQueueText">Syncing queued reports...</span>
+  </div>
+
+  <!-- HEADER -->
+  <header class="v-header">
+    <div class="v-logo">
+      <div class="v-logo-mark"><span>V</span></div>
+      <div class="v-logo-text">
+        <div class="v-logo-name">VERITAS</div>
+        <div class="v-logo-sub">Damage Certification</div>
+      </div>
+    </div>
+    <div class="certus-badge">
+      <div class="certus-dot"></div>
+      CERTUS v1.0
+    </div>
+  </header>
+
+  <!-- NAV -->
+  <nav class="v-nav">
+    <button class="v-nav-btn active" id="navReport" onclick="switchView('report')">
+      📍 Report
+    </button>
+    <button class="v-nav-btn" id="navRespond" onclick="switchView('respond')">
+      🗺 Respond
+    </button>
+  </nav>
+
+  <!-- ═══════════════════════════════════════
+       REPORT VIEW
+  ═══════════════════════════════════════ -->
+  <div class="v-view active" id="viewReport">
+
+    <!-- Confirmation screen (hidden until submit) -->
+    <div class="confirm-screen" id="confirmScreen">
+      <div class="confirm-check">✓</div>
+      <div style="font-family:var(--display);font-size:28px;letter-spacing:2px;color:var(--text);margin-bottom:6px;">REPORT RECEIVED</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:24px;">CERTUS Engine has scored your submission</div>
+
+      <div class="dci-display">
+        <div class="dci-label">Damage Confidence Index — CERTUS Engine v1.0</div>
+        <div class="dci-score-large" id="confirmDciScore">—</div>
+        <div id="confirmDciBadge" class="dci-tier-badge high mb-16">HIGH CONFIDENCE</div>
+        <div class="dci-explain">
+          DCI measures how much to trust this report.<br>
+          Scored on photo evidence · corroboration · freshness · consistency.
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="resetReport()">Submit Another Report</button>
+      <button class="btn btn-secondary" onclick="switchView('respond')">View Responder Map</button>
+    </div>
+
+    <!-- Submission form -->
+    <div id="reportForm" class="report-container">
+
+      <!-- Step progress -->
+      <div class="step-progress">
+        <div class="step-node">
+          <div class="step-circle active" id="sc1">1</div>
+          <div class="step-label active" id="sl1">Photo</div>
+        </div>
+        <div class="step-line" id="sline1"></div>
+        <div class="step-node">
+          <div class="step-circle" id="sc2">2</div>
+          <div class="step-label" id="sl2">Classify</div>
+        </div>
+        <div class="step-line" id="sline2"></div>
+        <div class="step-node">
+          <div class="step-circle" id="sc3">3</div>
+          <div class="step-label" id="sl3">Location</div>
+        </div>
+        <div class="step-line" id="sline3"></div>
+        <div class="step-node">
+          <div class="step-circle" id="sc4">4</div>
+          <div class="step-label" id="sl4">Submit</div>
+        </div>
+      </div>
+
+      <!-- STEP 1: PHOTO -->
+      <div class="step-panel active" id="step1">
+        <div class="step-title">PHOTOGRAPH</div>
+        <div class="step-subtitle">Capture visible damage clearly</div>
+
+        <div class="photo-zone" id="photoZone" onclick="triggerPhotoCapture()">
+          <div class="photo-icon">📷</div>
+          <div class="photo-hint">TAP TO PHOTOGRAPH DAMAGE</div>
+          <img id="photoPreview" alt="Damage photo">
+          <button class="photo-retake" id="photoRetake" onclick="event.stopPropagation(); triggerPhotoCapture()">
+            RETAKE
+          </button>
+        </div>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" onchange="handlePhoto(this)">
+
+        <div class="photo-ai-status" id="photoAiStatus">
+          <span class="spinner"></span>
+          <span id="aiStatusText">CERTUS analyzing image...</span>
+        </div>
+
+        <button class="btn btn-primary mt-16" id="step1Next" onclick="goStep(2)" disabled>
+          NEXT — CLASSIFY DAMAGE
+        </button>
+      </div>
+
+      <!-- STEP 2: CLASSIFY -->
+      <div class="step-panel" id="step2">
+        <div class="step-title">CLASSIFY</div>
+        <div class="step-subtitle">Select damage level and structure type</div>
+
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">Damage Level</div>
+        <div class="tier-grid">
+          <button class="tier-btn tier-none" onclick="selectTier('None')" id="tier-None">
+            <div class="tier-indicator"></div>
+            <div class="tier-label">None</div>
+            <div class="tier-desc">No visible damage</div>
+          </button>
+          <button class="tier-btn tier-minor" onclick="selectTier('Minor')" id="tier-Minor">
+            <div class="tier-indicator"></div>
+            <div class="tier-label">Minor</div>
+            <div class="tier-desc">Cracks, cosmetic</div>
+          </button>
+          <button class="tier-btn tier-moderate" onclick="selectTier('Moderate')" id="tier-Moderate">
+            <div class="tier-indicator"></div>
+            <div class="tier-label">Moderate</div>
+            <div class="tier-desc">Significant damage</div>
+          </button>
+          <button class="tier-btn tier-major" onclick="selectTier('Major')" id="tier-Major">
+            <div class="tier-indicator"></div>
+            <div class="tier-label">Major</div>
+            <div class="tier-desc">Structural damage</div>
+          </button>
+          <button class="tier-btn tier-total full-width" onclick="selectTier('Total Collapse')" id="tier-Total Collapse">
+            <div class="tier-indicator"></div>
+            <div class="tier-label">Total Collapse</div>
+            <div class="tier-desc">Structure destroyed</div>
+          </button>
+        </div>
+
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;margin-top:16px;">Structure Type</div>
+        <div class="infra-grid">
+          <button class="infra-btn" onclick="selectInfra('Residential')" id="infra-Residential">
+            <div class="infra-icon">🏠</div>
+            <div class="infra-label">Residential</div>
+          </button>
+          <button class="infra-btn" onclick="selectInfra('Road')" id="infra-Road">
+            <div class="infra-icon">🛣️</div>
+            <div class="infra-label">Road</div>
+          </button>
+          <button class="infra-btn" onclick="selectInfra('Bridge')" id="infra-Bridge">
+            <div class="infra-icon">🌉</div>
+            <div class="infra-label">Bridge</div>
+          </button>
+          <button class="infra-btn" onclick="selectInfra('Utility')" id="infra-Utility">
+            <div class="infra-icon">⚡</div>
+            <div class="infra-label">Utility</div>
+          </button>
+          <button class="infra-btn" onclick="selectInfra('Medical')" id="infra-Medical">
+            <div class="infra-icon">🏥</div>
+            <div class="infra-label">Medical</div>
+          </button>
+          <button class="infra-btn" onclick="selectInfra('School')" id="infra-School">
+            <div class="infra-icon">🏫</div>
+            <div class="infra-label">School</div>
+          </button>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button class="btn btn-secondary" style="flex:0 0 80px" onclick="goStep(1)">← BACK</button>
+          <button class="btn btn-primary" id="step2Next" onclick="goStep(3)" disabled>NEXT — LOCATION</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: LOCATION -->
+      <div class="step-panel" id="step3">
+        <div class="step-title">LOCATION</div>
+        <div class="step-subtitle">Pin the damage location</div>
+
+        <div class="location-options">
+          <div class="loc-opt selected" id="locPrecise" onclick="selectLocMode('precise')">
+            <div class="loc-opt-label">📍 Precise</div>
+            <div class="loc-opt-desc">Exact GPS pin</div>
+          </div>
+          <div class="loc-opt" id="locFuzzy" onclick="selectLocMode('fuzzy')">
+            <div class="loc-opt-label">🔵 Area</div>
+            <div class="loc-opt-desc">±100m radius</div>
+          </div>
+        </div>
+
+        <div class="fuzzy-notice show" id="fuzzyNotice" style="display:none">
+          Area mode selected — your precise location is protected. Report is accurate to ±100 meters. Suitable for conflict-affected areas.
+        </div>
+
+        <div id="locationMap"></div>
+        <div class="gps-coords" id="gpsCoords">
+          <span style="color:var(--muted)">Acquiring GPS coordinates...</span>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button class="btn btn-secondary" style="flex:0 0 80px" onclick="goStep(2)">← BACK</button>
+          <button class="btn btn-primary" id="step3Next" onclick="goStep(4)" disabled>NEXT — REVIEW</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: SUBMIT -->
+      <div class="step-panel" id="step4">
+        <div class="step-title">REVIEW</div>
+        <div class="step-subtitle">Confirm and submit your report</div>
+
+        <div class="submit-summary" id="submitSummary">
+          <div class="summary-row">
+            <span class="summary-key">Damage Level</span>
+            <span class="summary-val" id="sumTier">—</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">Structure Type</span>
+            <span class="summary-val" id="sumInfra">—</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">Location Mode</span>
+            <span class="summary-val" id="sumLocMode">—</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">Coordinates</span>
+            <span class="summary-val" id="sumCoords">—</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">Photo</span>
+            <span class="summary-val" id="sumPhoto">—</span>
+          </div>
+        </div>
+
+        <div class="anon-notice">
+          <span class="anon-icon">🔒</span>
+          <span>Your report is anonymous. No account required. EXIF metadata stripped. No IP stored. Keyed by random UUID only.</span>
+        </div>
+
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" style="flex:0 0 80px" onclick="goStep(3)">← BACK</button>
+          <button class="btn btn-primary" id="submitBtn" onclick="submitReport()">SUBMIT REPORT</button>
+        </div>
+      </div>
+
+    </div><!-- /report-container -->
+  </div><!-- /viewReport -->
+
+  <!-- ═══════════════════════════════════════
+       RESPOND VIEW
+  ═══════════════════════════════════════ -->
+  <div class="v-view" id="viewRespond">
+
+    <!-- Access gate -->
+    <div id="accessGate" class="access-gate" style="margin:40px auto;">
+      <div class="access-gate-title">RESTRICTED</div>
+      <div class="access-gate-sub">Responder Access Required</div>
+      <input class="access-input" id="accessInput" type="text" placeholder="ACCESS CODE"
+        maxlength="8" onkeyup="checkAccess(event)">
+      <button class="btn btn-primary" onclick="checkAccessBtn()">ENTER</button>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:16px;letter-spacing:0.5px;">
+        Access code distributed to authorized UNDP response partners only.
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="respond-dashboard" id="respondDashboard">
+
+      <!-- Confidence dashboard -->
+      <div class="section-label">Live Confidence Dashboard</div>
+      <div class="confidence-dash">
+        <div class="conf-card high">
+          <div class="conf-count" id="dashHigh">0</div>
+          <div class="conf-tier">High<br>Confidence</div>
+        </div>
+        <div class="conf-card watch">
+          <div class="conf-count" id="dashWatch">0</div>
+          <div class="conf-tier">Watch<br>Monitor</div>
+        </div>
+        <div class="conf-card review">
+          <div class="conf-count" id="dashReview">0</div>
+          <div class="conf-tier">Review<br>Required</div>
+        </div>
+      </div>
+
+      <!-- Map -->
+      <div class="section-label">Confidence Map</div>
+      <div id="respondMap"></div>
+
+      <!-- Timeline -->
+      <div class="timeline-wrap">
+        <div class="timeline-label">48-Hour Timeline Playback</div>
+        <input type="range" id="timelineSlider" min="0" max="100" value="100" oninput="updateTimeline(this.value)">
+        <div class="timeline-time" id="timelineTime">Live — all reports</div>
+      </div>
+
+      <!-- Conflict flags -->
+      <div class="section-label" id="conflictSectionLabel">Conflict Flags</div>
+      <div id="conflictList">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);padding:10px;text-align:center;">
+          No conflicts detected
+        </div>
+      </div>
+
+      <!-- DCI Report Card -->
+      <div class="report-card">
+        <div class="report-card-title">DCI REPORT CARD</div>
+        <div class="section-label">Confidence Distribution</div>
+        <div class="rc-bar-row">
+          <span class="rc-bar-label">High</span>
+          <div class="rc-bar-track"><div class="rc-bar-fill" id="rcHigh" style="width:0%;background:var(--high)"></div></div>
+          <span class="rc-bar-val" id="rcHighPct">0%</span>
+        </div>
+        <div class="rc-bar-row">
+          <span class="rc-bar-label">Watch</span>
+          <div class="rc-bar-track"><div class="rc-bar-fill" id="rcWatch" style="width:0%;background:var(--watch)"></div></div>
+          <span class="rc-bar-val" id="rcWatchPct">0%</span>
+        </div>
+        <div class="rc-bar-row">
+          <span class="rc-bar-label">Review</span>
+          <div class="rc-bar-track"><div class="rc-bar-fill" id="rcReview" style="width:0%;background:var(--review)"></div></div>
+          <span class="rc-bar-val" id="rcReviewPct">0%</span>
+        </div>
+        <div style="margin-top:12px;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.5px;">
+          Powered by CERTUS Engine v1.0 — DCI scored on photo evidence, corroboration, freshness, and consistency
+        </div>
+      </div>
+
+      <!-- Export -->
+      <div class="export-section">
+        <div class="section-label">Export Dataset</div>
+        <div class="export-btns">
+          <button class="export-btn" onclick="exportData('json')">JSON + DCI</button>
+          <button class="export-btn" onclick="exportData('csv')">CSV</button>
+          <button class="export-btn" onclick="exportData('geojson')">GeoJSON</button>
+        </div>
+        <div class="export-header-preview" id="exportPreview">
+VERITAS INTEGRITY EXPORT
+Powered by CERTUS Engine v1.0
+Reports: —
+Generated: —
+SHA-256: computing...
+Decision-support only. Review Required reports
+require human field verification.
+        </div>
+      </div>
+
+      <!-- Offline fallback -->
+      <div style="margin-bottom:16px;">
+        <button class="btn btn-secondary btn-sm" onclick="exportCachedSnapshot()">
+          📥 Download Cached Snapshot
+        </button>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;letter-spacing:0.5px;">
+          Available offline — shows last synced state
+        </div>
+      </div>
+
+      <!-- Law 6 footer -->
+      <div class="law6-footer">
+        <strong>⚠ DECISION-SUPPORT INSTRUMENT ONLY</strong><br>
+        VERITAS DCI scores assist human judgment — they do not replace it.<br>
+        <strong>Review Required</strong> reports must receive human field verification before informing any resource deployment decision.
+      </div>
+
+    </div><!-- /respondDashboard -->
+  </div><!-- /viewRespond -->
+
+</div><!-- /app -->
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// VERITAS v1.0 — Core Application
+// Community Damage Certification Platform
+// Powered by CERTUS Engine v1.0
+// Architect: Sheldon K. Salmon · AionSystem
+// ═══════════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────────────
+// CONFIGURATION — Update before deployment
+// ─────────────────────────────────────────────────────────────────
+const CONFIG = {
+  SUPABASE_URL:    'YOUR_SUPABASE_URL',
+  SUPABASE_ANON:   'YOUR_SUPABASE_ANON_KEY',
+  ACCESS_CODE:     'UNDP2026',    // Change before deployment
+  USE_SUPABASE:    false,          // Set true when Supabase is configured
+  MAP_CENTER:      [0, 20],        // Default map center
+  MAP_ZOOM:        3,
+  FUZZY_RADIUS:    100,            // meters
+  DCI_THRESHOLDS:  { HIGH: 0.70, WATCH: 0.40 },
+  DEDUP_RADIUS:    10,             // meters
+  DEDUP_WINDOW:    120,            // seconds
+};
+
+// ─────────────────────────────────────────────────────────────────
+// APPLICATION STATE
+// ─────────────────────────────────────────────────────────────────
+const STATE = {
+  currentStep:    1,
+  currentView:    'report',
+  photo:          null,       // base64 canvas data (EXIF stripped)
+  photoAiScore:   null,       // PES from AI analysis (0–1)
+  photoAiConf:    null,       // model confidence
+  damageTier:     null,
+  infraType:      null,
+  locMode:        'precise',
+  coords:         null,       // {lat, lng}
+  reports:        [],         // in-memory store
+  isOnline:       navigator.onLine,
+  syncQueue:      [],
+  respondAuth:    false,
+  respondMap:     null,
+  reportMap:      null,
+  reportMarker:   null,
+};
+
+// ─────────────────────────────────────────────────────────────────
+// INDEXEDDB — Offline Storage
+// ─────────────────────────────────────────────────────────────────
+const DB_NAME = 'veritas-db';
+const DB_VER  = 1;
+let db = null;
+
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('reports')) {
+        const store = d.createObjectStore('reports', { keyPath: 'uuid' });
+        store.createIndex('timestamp', 'timestamp', { unique: false });
+        store.createIndex('synced', 'synced', { unique: false });
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror   = e => reject(e);
+  });
+}
+
+function dbPut(report) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('reports', 'readwrite');
+    tx.objectStore('reports').put(report).onsuccess = () => resolve();
+    tx.onerror = reject;
+  });
+}
+
+function dbGetAll() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('reports', 'readonly');
+    tx.objectStore('reports').getAll().onsuccess = e => resolve(e.target.result);
+    tx.onerror = reject;
+  });
+}
+
+function dbGetUnsynced() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('reports', 'readonly');
+    const idx = tx.objectStore('reports').index('synced');
+    idx.getAll(IDBKeyRange.only(false)).onsuccess = e => resolve(e.target.result);
+    tx.onerror = reject;
+  });
+}
+
+function dbMarkSynced(uuid) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('reports', 'readwrite');
+    const store = tx.objectStore('reports');
+    const req = store.get(uuid);
+    req.onsuccess = e => {
+      const r = e.target.result;
+      if (r) { r.synced = true; store.put(r).onsuccess = resolve; }
+      else resolve();
+    };
+    tx.onerror = reject;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// CERTUS ENGINE v1.0
+// DCI = 0.35×PES_eff + 0.30×COR + 0.20×TFR + 0.15×CCI
+// ─────────────────────────────────────────────────────────────────
+const CERTUS = {
+  W: { PES: 0.35, COR: 0.30, TFR: 0.20, CCI: 0.15 },
+
+  // Photo Evidence Score — effective (confidence gate at 0.60)
+  PES_effective(rawScore, modelConf) {
+    if (!rawScore || modelConf === null || modelConf < 0.60) return 0.50;
+    return Math.max(0, Math.min(1, rawScore));
+  },
+
+  // Corroboration Score
+  // Single report = 0.50 (neutral, not penalized)
+  // Multi report = agreement ratio, -0.15 per contradiction (floor 0)
+  COR(reports_nearby) {
+    if (!reports_nearby || reports_nearby.length === 0) return 0.50;
+    if (reports_nearby.length === 1) return 0.50;
+    const tier = reports_nearby[0].tier;
+    const agreements = reports_nearby.filter(r => r.tier === tier).length;
+    const contradictions = reports_nearby.length - agreements;
+    let score = agreements / reports_nearby.length;
+    score -= contradictions * 0.15;
+    return Math.max(0, Math.min(1, score));
+  },
+
+  // Temporal Freshness — decays to 0 over 48 hours
+  TFR(timestampISO) {
+    const hoursElapsed = (Date.now() - new Date(timestampISO).getTime()) / 3600000;
+    return Math.max(0, 1 - (hoursElapsed / 48));
+  },
+
+  // Classification Consistency
+  CCI(tier, infraType) {
+    // Cross-category logic checks
+    if (!tier || !infraType) return 0.80;
+    // Roads/Bridges don't "collapse" the same way residential does — flag Total Collapse on Road
+    if (tier === 'Total Collapse' && infraType === 'Road') return 0.70;
+    if (tier === 'Total Collapse' && infraType === 'Utility') return 0.75;
+    return 1.0;
+  },
+
+  // Main DCI calculation
+  score(report, nearbyReports = []) {
+    const PES = this.PES_effective(report.photoAiScore, report.photoAiConf);
+    const COR = this.COR(nearbyReports);
+    const TFR = this.TFR(report.timestamp);
+    const CCI = this.CCI(report.tier, report.infraType);
+
+    const dci = (
+      this.W.PES * PES +
+      this.W.COR * COR +
+      this.W.TFR * TFR +
+      this.W.CCI * CCI
+    );
+
+    return {
+      dci:  parseFloat(dci.toFixed(3)),
+      PES, COR, TFR, CCI,
+      tier: dci >= CONFIG.DCI_THRESHOLDS.HIGH ? 'high'
+          : dci >= CONFIG.DCI_THRESHOLDS.WATCH ? 'watch'
+          : 'review',
+    };
+  },
+
+  // Tier label
+  tierLabel(tier) {
+    return { high: 'HIGH CONFIDENCE', watch: 'WATCH', review: 'REVIEW REQUIRED' }[tier];
+  },
+
+  // Tier color
+  tierColor(tier) {
+    return { high: '#f0a500', watch: '#e87c1e', review: '#e84040' }[tier];
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────
+// UUID GENERATOR — Client-side, not traceable to device
+// ─────────────────────────────────────────────────────────────────
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PHOTO HANDLER — EXIF stripping via canvas
+// ─────────────────────────────────────────────────────────────────
+function triggerPhotoCapture() {
+  document.getElementById('photoInput').click();
+}
+
+function handlePhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      // Strip EXIF by redrawing to canvas
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.min(img.width,  1920);
+      canvas.height = Math.min(img.height, 1440);
+      const ratio = Math.min(canvas.width/img.width, canvas.height/img.height);
+      canvas.width  = img.width  * ratio;
+      canvas.height = img.height * ratio;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      // Store clean base64 (EXIF gone)
+      STATE.photo = canvas.toDataURL('image/jpeg', 0.85);
+
+      // Show preview
+      const preview = document.getElementById('photoPreview');
+      preview.src = STATE.photo;
+      preview.classList.add('show');
+      document.getElementById('photoRetake').classList.add('show');
+      document.getElementById('photoZone').classList.add('has-photo');
+
+      // Run CERTUS AI analysis (simulated — replace with TF.js model)
+      runAiAnalysis();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function runAiAnalysis() {
+  const statusEl = document.getElementById('photoAiStatus');
+  statusEl.classList.add('show');
+  document.getElementById('aiStatusText').textContent = 'CERTUS analyzing image...';
+
+  // Simulated TF.js analysis — replace with actual MobileNet v2 on xBD dataset
+  setTimeout(() => {
+    // In production: load TF.js model, classify image, get confidence
+    const mockScore = 0.65 + Math.random() * 0.30;
+    const mockConf  = 0.55 + Math.random() * 0.40;
+
+    STATE.photoAiScore = parseFloat(mockScore.toFixed(3));
+    STATE.photoAiConf  = parseFloat(mockConf.toFixed(3));
+
+    const confGated = mockConf >= 0.60;
+    document.getElementById('aiStatusText').innerHTML =
+      `CERTUS: Photo scored ${mockScore.toFixed(2)} · Confidence ${(mockConf*100).toFixed(0)}%` +
+      (confGated ? '' : ' <span style="color:var(--watch)">[gated — model confidence below threshold]</span>');
+
+    document.getElementById('step1Next').disabled = false;
+  }, 1200);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// STEP NAVIGATION
+// ─────────────────────────────────────────────────────────────────
+function goStep(step) {
+  // Validate current step before advancing
+  if (step === 2 && !STATE.photo) { toast('Add a photo first'); return; }
+  if (step === 3 && (!STATE.damageTier || !STATE.infraType)) {
+    toast('Select damage level and structure type'); return;
+  }
+
+  // Hide all panels
+  for (let i = 1; i <= 4; i++) {
+    document.getElementById(`step${i}`).classList.remove('active');
+    document.getElementById(`sc${i}`).classList.remove('active', 'done');
+    document.getElementById(`sl${i}`).classList.remove('active');
+  }
+  for (let i = 1; i <= 3; i++) {
+    document.getElementById(`sline${i}`).classList.remove('done');
+  }
+
+  // Mark done steps
+  for (let i = 1; i < step; i++) {
+    document.getElementById(`sc${i}`).classList.add('done');
+    document.getElementById(`sc${i}`).textContent = '✓';
+    if (i <= 3) document.getElementById(`sline${i}`).classList.add('done');
+  }
+
+  // Mark active
+  document.getElementById(`sc${step}`).classList.add('active');
+  document.getElementById(`sl${step}`).classList.add('active');
+  document.getElementById(`step${step}`).classList.add('active');
+  STATE.currentStep = step;
+
+  // Step-specific init
+  if (step === 3) initLocationStep();
+  if (step === 4) populateSummary();
+
+  window.scrollTo(0, 0);
+}
+
+function selectTier(tier) {
+  STATE.damageTier = tier;
+  document.querySelectorAll('[id^="tier-"]').forEach(b => b.classList.remove('selected'));
+  document.getElementById(`tier-${tier}`).classList.add('selected');
+  checkStep2();
+}
+
+function selectInfra(type) {
+  STATE.infraType = type;
+  document.querySelectorAll('[id^="infra-"]').forEach(b => b.classList.remove('selected'));
+  document.getElementById(`infra-${type}`).classList.add('selected');
+  checkStep2();
+}
+
+function checkStep2() {
+  document.getElementById('step2Next').disabled = !(STATE.damageTier && STATE.infraType);
+}
+
+function selectLocMode(mode) {
+  STATE.locMode = mode;
+  document.getElementById('locPrecise').classList.toggle('selected', mode === 'precise');
+  document.getElementById('locFuzzy').classList.toggle('selected', mode === 'fuzzy');
+  document.getElementById('fuzzyNotice').style.display = mode === 'fuzzy' ? 'block' : 'none';
+  if (STATE.coords && STATE.reportMap) updateLocationPin();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// LOCATION STEP
+// ─────────────────────────────────────────────────────────────────
+function initLocationStep() {
+  // Init map if not already
+  if (!STATE.reportMap) {
+    STATE.reportMap = L.map('locationMap', { zoomControl:true, attributionControl:false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      className: 'map-tiles'
+    }).addTo(STATE.reportMap);
+    STATE.reportMap.setView(CONFIG.MAP_CENTER, 4);
+  }
+
+  // Request GPS
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        STATE.coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        updateLocationPin();
+        document.getElementById('step3Next').disabled = false;
+        document.getElementById('gpsCoords').innerHTML =
+          `<span style="color:var(--high)">✓</span> ${STATE.coords.lat.toFixed(6)}, ${STATE.coords.lng.toFixed(6)}`;
+      },
+      err => {
+        document.getElementById('gpsCoords').innerHTML =
+          '<span style="color:var(--watch)">GPS unavailable — tap map to pin location</span>';
+        STATE.reportMap.on('click', e => {
+          STATE.coords = { lat: e.latlng.lat, lng: e.latlng.lng };
+          updateLocationPin();
+          document.getElementById('step3Next').disabled = false;
+          document.getElementById('gpsCoords').innerHTML =
+            `<span style="color:var(--high)">✓ Manual pin:</span> ${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}`;
+        });
+      }
+    );
+  }
+}
+
+function updateLocationPin() {
+  if (!STATE.coords || !STATE.reportMap) return;
+  const { lat, lng } = STATE.coords;
+
+  if (STATE.reportMarker) STATE.reportMap.removeLayer(STATE.reportMarker);
+
+  const icon = L.divIcon({
+    className: '',
+    html: `<div style="width:16px;height:16px;background:var(--high);border-radius:50%;border:2px solid #000;box-shadow:0 0 12px rgba(240,165,0,0.6)"></div>`,
+    iconSize: [16, 16], iconAnchor: [8, 8],
+  });
+  STATE.reportMarker = L.marker([lat, lng], { icon }).addTo(STATE.reportMap);
+  STATE.reportMap.setView([lat, lng], 16);
+
+  if (STATE.locMode === 'fuzzy') {
+    L.circle([lat, lng], { radius: CONFIG.FUZZY_RADIUS, color: '#f0a500', fillOpacity: 0.1, weight: 1 })
+      .addTo(STATE.reportMap);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SUMMARY
+// ─────────────────────────────────────────────────────────────────
+function populateSummary() {
+  document.getElementById('sumTier').textContent = STATE.damageTier || '—';
+  document.getElementById('sumInfra').textContent = STATE.infraType || '—';
+  document.getElementById('sumLocMode').textContent = STATE.locMode === 'fuzzy' ? 'Area (±100m)' : 'Precise GPS';
+  document.getElementById('sumCoords').textContent = STATE.coords
+    ? `${STATE.coords.lat.toFixed(5)}, ${STATE.coords.lng.toFixed(5)}` : '—';
+  document.getElementById('sumPhoto').textContent = STATE.photo ? 'Captured (EXIF stripped)' : '—';
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SUBMIT REPORT
+// ─────────────────────────────────────────────────────────────────
+async function submitReport() {
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'SUBMITTING...';
+
+  // Apply GPS fuzzing if selected
+  let lat = STATE.coords.lat;
+  let lng = STATE.coords.lng;
+  if (STATE.locMode === 'fuzzy') {
+    const offsetLat = (Math.random() - 0.5) * (CONFIG.FUZZY_RADIUS / 111000);
+    const offsetLng = (Math.random() - 0.5) * (CONFIG.FUZZY_RADIUS / (111000 * Math.cos(lat * Math.PI/180)));
+    lat += offsetLat;
+    lng += offsetLng;
+  }
+
+  const timestamp = new Date().toISOString();
+  const uuid = generateUUID();
+
+  // Find nearby reports for corroboration
+  const allReports = await dbGetAll();
+  const nearby = findNearby(allReports, lat, lng, 50);
+
+  // Score with CERTUS
+  const report = {
+    uuid, timestamp, lat, lng,
+    tier:         STATE.damageTier,
+    infraType:    STATE.infraType,
+    locMode:      STATE.locMode,
+    photoAiScore: STATE.photoAiScore,
+    photoAiConf:  STATE.photoAiConf,
+    synced:       false,
+  };
+
+  const certus = CERTUS.score(report, nearby);
+  report.dci       = certus.dci;
+  report.dciTier   = certus.tier;
+  report.dciPES    = certus.PES;
+  report.dciCOR    = certus.COR;
+  report.dciTFR    = certus.TFR;
+  report.dciCCI    = certus.CCI;
+
+  // Save to IndexedDB
+  await dbPut(report);
+  STATE.reports.push(report);
+
+  // Try sync to Supabase
+  if (STATE.isOnline && CONFIG.USE_SUPABASE) {
+    syncToSupabase(report);
+  }
+
+  // Show confirmation with DCI
+  showConfirmation(report, certus);
+}
+
+function showConfirmation(report, certus) {
+  document.getElementById('reportForm').style.display = 'none';
+  const screen = document.getElementById('confirmScreen');
+  screen.classList.add('show');
+
+  const scoreEl = document.getElementById('confirmDciScore');
+  scoreEl.textContent = certus.dci.toFixed(2);
+  scoreEl.className = `dci-score-large ${certus.tier}`;
+
+  const badge = document.getElementById('confirmDciBadge');
+  badge.textContent = CERTUS.tierLabel(certus.tier);
+  badge.className = `dci-tier-badge ${certus.tier}`;
+}
+
+function resetReport() {
+  STATE.photo = null;
+  STATE.photoAiScore = null;
+  STATE.photoAiConf  = null;
+  STATE.damageTier = null;
+  STATE.infraType  = null;
+  STATE.coords     = null;
+  STATE.locMode    = 'precise';
+  STATE.reportMap  = null;
+  STATE.reportMarker = null;
+
+  document.getElementById('confirmScreen').classList.remove('show');
+  document.getElementById('reportForm').style.display = '';
+  document.getElementById('photoPreview').classList.remove('show');
+  document.getElementById('photoRetake').classList.remove('show');
+  document.getElementById('photoZone').classList.remove('has-photo');
+  document.getElementById('photoAiStatus').classList.remove('show');
+  document.getElementById('photoInput').value = '';
+  document.getElementById('step1Next').disabled = true;
+  document.getElementById('step2Next').disabled = true;
+  document.getElementById('step3Next').disabled = true;
+  document.getElementById('submitBtn').disabled = false;
+  document.getElementById('submitBtn').textContent = 'SUBMIT REPORT';
+  document.querySelectorAll('.tier-btn, .infra-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('locPrecise').classList.add('selected');
+  document.getElementById('locFuzzy').classList.remove('selected');
+
+  // Reset step circles
+  for (let i = 1; i <= 4; i++) {
+    const sc = document.getElementById(`sc${i}`);
+    sc.classList.remove('active', 'done');
+    sc.textContent = i;
+    document.getElementById(`sl${i}`).classList.remove('active');
+    document.getElementById(`step${i}`).classList.remove('active');
+  }
+  for (let i = 1; i <= 3; i++) document.getElementById(`sline${i}`).classList.remove('done');
+  document.getElementById('step1').classList.add('active');
+  document.getElementById('sc1').classList.add('active');
+  document.getElementById('sl1').classList.add('active');
+}
+
+// ─────────────────────────────────────────────────────────────────
+// RESPOND VIEW
+// ─────────────────────────────────────────────────────────────────
+function checkAccess(e) {
+  if (e.key === 'Enter') checkAccessBtn();
+}
+
+function checkAccessBtn() {
+  const code = document.getElementById('accessInput').value.trim().toUpperCase();
+  if (code === CONFIG.ACCESS_CODE.toUpperCase()) {
+    STATE.respondAuth = true;
+    document.getElementById('accessGate').style.display  = 'none';
+    document.getElementById('respondDashboard').classList.add('show');
+    initRespondDashboard();
+  } else {
+    toast('Invalid access code');
+    document.getElementById('accessInput').value = '';
+  }
+}
+
+async function initRespondDashboard() {
+  const reports = await dbGetAll();
+  updateDashboardCounts(reports);
+  initRespondMap(reports);
+  updateReportCard(reports);
+  updateConflictFlags(reports);
+  updateExportPreview(reports);
+}
+
+function initRespondMap(reports) {
+  if (STATE.respondMap) return;
+  STATE.respondMap = L.map('respondMap', { zoomControl:true, attributionControl:false });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(STATE.respondMap);
+  STATE.respondMap.setView(CONFIG.MAP_CENTER, CONFIG.MAP_ZOOM);
+  plotReports(reports);
+}
+
+function plotReports(reports) {
+  if (!STATE.respondMap) return;
+  reports.forEach(r => {
+    if (!r.lat || !r.lng) return;
+    const color = CERTUS.tierColor(r.dciTier);
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="width:14px;height:14px;background:${color};border-radius:50%;border:2px solid rgba(0,0,0,0.5);box-shadow:0 0 8px ${color}55"></div>`,
+      iconSize: [14, 14], iconAnchor: [7, 7],
+    });
+    const popup = `<div class="dci-popup">
+      <b style="color:${color}">${r.tier}</b> · ${r.infraType}<br>
+      DCI: <b>${r.dci.toFixed(3)}</b> · ${CERTUS.tierLabel(r.dciTier)}<br>
+      <small>${new Date(r.timestamp).toLocaleString()}</small><br>
+      <small style="color:#666">DCI measures report trustworthiness — scored by CERTUS on photo evidence, corroboration, freshness, consistency</small>
+    </div>`;
+    L.marker([r.lat, r.lng], { icon }).bindPopup(popup).addTo(STATE.respondMap);
+  });
+
+  if (reports.length > 0) {
+    const group = L.featureGroup(
+      reports.map(r => L.marker([r.lat, r.lng]))
+    );
+    STATE.respondMap.fitBounds(group.getBounds().pad(0.1));
+  }
+}
+
+function updateDashboardCounts(reports) {
+  const high   = reports.filter(r => r.dciTier === 'high').length;
+  const watch  = reports.filter(r => r.dciTier === 'watch').length;
+  const review = reports.filter(r => r.dciTier === 'review').length;
+  document.getElementById('dashHigh').textContent   = high;
+  document.getElementById('dashWatch').textContent  = watch;
+  document.getElementById('dashReview').textContent = review;
+}
+
+function updateReportCard(reports) {
+  const total  = reports.length || 1;
+  const high   = reports.filter(r => r.dciTier === 'high').length;
+  const watch  = reports.filter(r => r.dciTier === 'watch').length;
+  const review = reports.filter(r => r.dciTier === 'review').length;
+
+  const hPct = Math.round((high   / total) * 100);
+  const wPct = Math.round((watch  / total) * 100);
+  const rPct = Math.round((review / total) * 100);
+
+  document.getElementById('rcHigh').style.width    = hPct + '%';
+  document.getElementById('rcWatch').style.width   = wPct + '%';
+  document.getElementById('rcReview').style.width  = rPct + '%';
+  document.getElementById('rcHighPct').textContent   = hPct + '%';
+  document.getElementById('rcWatchPct').textContent  = wPct + '%';
+  document.getElementById('rcReviewPct').textContent = rPct + '%';
+}
+
+function updateConflictFlags(reports) {
+  const conflicts = detectConflicts(reports);
+  const list = document.getElementById('conflictList');
+  if (conflicts.length === 0) {
+    list.innerHTML = '<div style="font-family:var(--mono);font-size:10px;color:var(--muted);padding:10px;text-align:center;">No conflicts detected</div>';
+    return;
+  }
+  list.innerHTML = conflicts.map(c => `
+    <div class="conflict-item">
+      ⚠ ${c.count} reports within 50m disagree on damage level<br>
+      Location: ${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}<br>
+      Tiers present: ${c.tiers.join(' · ')} — Human verification required
+    </div>
+  `).join('');
+}
+
+function detectConflicts(reports) {
+  const conflicts = [];
+  const checked = new Set();
+  reports.forEach((r, i) => {
+    if (checked.has(i)) return;
+    const group = reports.filter((r2, j) => {
+      if (j === i) return false;
+      return distanceM(r.lat, r.lng, r2.lat, r2.lng) < 50;
+    });
+    if (group.length > 0) {
+      const tiers = [...new Set([r.tier, ...group.map(g => g.tier)])];
+      if (tiers.length > 1) {
+        conflicts.push({ lat: r.lat, lng: r.lng, count: group.length + 1, tiers });
+        group.forEach((_, j) => checked.add(j));
+      }
+    }
+  });
+  return conflicts;
+}
+
+function updateTimeline(val) {
+  const allTime = document.getElementById('timelineTime');
+  if (val >= 100) {
+    allTime.textContent = 'Live — all reports';
+  } else {
+    const hours = Math.round((val / 100) * 48);
+    allTime.textContent = `First ${hours}h after event`;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// EXPORT + INTEGRITY HASH
+// ─────────────────────────────────────────────────────────────────
+async function exportData(format) {
+  const reports = await dbGetAll();
+  const clean = reports.map(r => ({
+    uuid:      r.uuid,
+    timestamp: r.timestamp,
+    lat:       r.lat,
+    lng:       r.lng,
+    tier:      r.tier,
+    infra:     r.infraType,
+    dci:       r.dci,
+    dci_tier:  r.dciTier,
+    dci_pes:   r.dciPES,
+    dci_cor:   r.dciCOR,
+    dci_tfr:   r.dciTFR,
+    dci_cci:   r.dciCCI,
+  }));
+
+  const hash = await computeHash(JSON.stringify(clean));
+  const header = buildIntegrityHeader(reports.length, hash);
+
+  let content, filename, mime;
+
+  if (format === 'json') {
+    const payload = { header: header.parsed, reports: clean };
+    content  = JSON.stringify(payload, null, 2);
+    filename = `veritas-export-${Date.now()}.json`;
+    mime     = 'application/json';
+  } else if (format === 'csv') {
+    const cols = ['uuid','timestamp','lat','lng','tier','infra','dci','dci_tier'];
+    content  = cols.join(',') + '\n' + clean.map(r => cols.map(c => r[c]).join(',')).join('\n');
+    filename = `veritas-export-${Date.now()}.csv`;
+    mime     = 'text/csv';
+  } else if (format === 'geojson') {
+    const features = clean.map(r => ({
+      type: 'Feature',
+      properties: { tier:r.tier, infra:r.infra, dci:r.dci, dci_tier:r.dci_tier, timestamp:r.timestamp },
+      geometry: { type:'Point', coordinates:[r.lng, r.lat] },
+    }));
+    content  = JSON.stringify({ type:'FeatureCollection', features, certus_integrity: hash }, null, 2);
+    filename = `veritas-export-${Date.now()}.geojson`;
+    mime     = 'application/geo+json';
+  }
+
+  download(content, filename, mime);
+  toast(`${format.toUpperCase()} export ready`);
+}
+
+async function updateExportPreview(reports) {
+  const hash = reports.length > 0
+    ? await computeHash(JSON.stringify(reports.map(r => r.uuid)))
+    : 'no-reports-yet';
+  const preview = buildIntegrityHeader(reports.length, hash);
+  document.getElementById('exportPreview').textContent = preview.text;
+}
+
+function buildIntegrityHeader(count, hash) {
+  const ts   = new Date().toISOString();
+  const text =
+`VERITAS INTEGRITY EXPORT
+Powered by: CERTUS Engine v1.0
+Generated:  ${ts}
+Reports:    ${count}
+SHA-256:    ${hash}
+
+Verify: hash(JSON payload) === SHA-256 above
+Decision-support only. REVIEW REQUIRED reports
+require human field verification before any
+resource deployment decision.`;
+  return { text, parsed: { generated: ts, reports: count, sha256: hash, certus: 'Engine v1.0' } };
+}
+
+async function computeHash(str) {
+  try {
+    const buf  = new TextEncoder().encode(str);
+    const hash = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
+  } catch { return 'hash-unavailable'; }
+}
+
+async function exportCachedSnapshot() {
+  const reports = await dbGetAll();
+  if (reports.length === 0) { toast('No cached reports'); return; }
+  const hash = await computeHash(JSON.stringify(reports));
+  const snap = { snapshot: true, cached_at: new Date().toISOString(), reports, sha256: hash };
+  download(JSON.stringify(snap, null, 2), `veritas-snapshot-${Date.now()}.json`, 'application/json');
+  toast('Cached snapshot downloaded');
+}
+
+function download(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SUPABASE SYNC — real sync when USE_SUPABASE = true
+// ─────────────────────────────────────────────────────────────────
+async function syncToSupabase(report) {
+  if (!CONFIG.USE_SUPABASE) return;
+  try {
+    const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/reports`, {
+      method: 'POST',
+      headers: {
+        'apikey':       CONFIG.SUPABASE_ANON,
+        'Authorization': `Bearer ${CONFIG.SUPABASE_ANON}`,
+        'Content-Type': 'application/json',
+        'Prefer':       'return=minimal',
+      },
+      // Strip photo from sync — too large, stored locally only
+      body: JSON.stringify({ ...report, photo: null }),
+    });
+    if (res.ok) await dbMarkSynced(report.uuid);
+  } catch { /* will retry on next connection */ }
+}
+
+async function syncPending() {
+  if (!STATE.isOnline || !CONFIG.USE_SUPABASE) return;
+  const unsynced = await dbGetUnsynced();
+  if (unsynced.length === 0) return;
+  showSyncQueue(unsynced.length);
+  for (const r of unsynced) await syncToSupabase(r);
+  hideSyncQueue();
+}
+
+function showSyncQueue(n) {
+  document.getElementById('syncQueueText').textContent = `Syncing ${n} queued report${n>1?'s':''}...`;
+  document.getElementById('syncQueue').classList.add('show');
+}
+function hideSyncQueue() {
+  document.getElementById('syncQueue').classList.remove('show');
+  toast('Reports synced');
+}
+
+// ─────────────────────────────────────────────────────────────────
+// UTILITY — Distance in metres (Haversine)
+// ─────────────────────────────────────────────────────────────────
+function distanceM(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function findNearby(reports, lat, lng, radiusM) {
+  return reports.filter(r => r.lat && r.lng && distanceM(lat, lng, r.lat, r.lng) <= radiusM);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// DEDUP CHECK
+// ─────────────────────────────────────────────────────────────────
+async function isDuplicate(lat, lng, tier) {
+  const all = await dbGetAll();
+  const recent = all.filter(r => {
+    const age = (Date.now() - new Date(r.timestamp).getTime()) / 1000;
+    return age < CONFIG.DEDUP_WINDOW
+      && r.tier === tier
+      && distanceM(lat, lng, r.lat, r.lng) < CONFIG.DEDUP_RADIUS;
+  });
+  return recent.length > 0;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// VIEW ROUTING
+// ─────────────────────────────────────────────────────────────────
+function switchView(view) {
+  STATE.currentView = view;
+  document.getElementById('viewReport').classList.toggle('active',  view === 'report');
+  document.getElementById('viewRespond').classList.toggle('active', view === 'respond');
+  document.getElementById('navReport').classList.toggle('active',   view === 'report');
+  document.getElementById('navRespond').classList.toggle('active',  view === 'respond');
+
+  if (view === 'respond' && STATE.respondAuth) initRespondDashboard();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────────────────────────
+function toast(msg, duration = 2500) {
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, duration);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ONLINE/OFFLINE EVENTS
+// ─────────────────────────────────────────────────────────────────
+window.addEventListener('online', () => {
+  STATE.isOnline = true;
+  document.getElementById('offlineBanner').classList.remove('show');
+  syncPending();
+  toast('Back online — syncing reports');
+});
+window.addEventListener('offline', () => {
+  STATE.isOnline = false;
+  document.getElementById('offlineBanner').classList.add('show');
+  toast('Offline — reports saved locally');
+});
+
+// ─────────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  await initDB();
+
+  if (!STATE.isOnline) {
+    document.getElementById('offlineBanner').classList.add('show');
+  }
+
+  // Load existing reports into memory
+  STATE.reports = await dbGetAll();
+
+  // Register Service Worker
+  if ('serviceWorker' in navigator) {
+    // SW would be a separate file in production — inline blob for demo
+    const swCode = `
+const CACHE = 'veritas-v1';
+const ASSETS = ['/'];
+self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))));
+self.addEventListener('fetch', e => e.respondWith(
+  caches.match(e.request).then(r => r || fetch(e.request).catch(() => caches.match('/')))
+));`;
+    const swBlob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl  = URL.createObjectURL(swBlob);
+    try { await navigator.serviceWorker.register(swUrl); } catch { /* SW optional */ }
+  }
+
+  // Try to sync any pending reports
+  if (STATE.isOnline) syncPending();
+});
+</script>
+</body>
+</html>
