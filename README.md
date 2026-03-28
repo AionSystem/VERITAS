@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/github/license/AionSystem/VERITAS?color=blue)](LICENSE)
 [![Version](https://img.shields.io/badge/version-v1.0.0-orange)](#)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](#)
-[![Feedback's Welcome](https://img.shields.io/badge/Feedback's-welcome-brightgreen)](FEEDBACK.md)
+[![Feedback Welcome](https://img.shields.io/badge/Feedback-welcome-brightgreen)](FEEDBACK.md)
 [![Made with JavaScript](https://img.shields.io/badge/Made%20with-JavaScript-yellow)](#)
 [![Made with HTML](https://img.shields.io/badge/Made%20with-HTML-red)](#)
 
