@@ -12,7 +12,6 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    /* ========== GLOBAL RESET & VARIABLES (unchanged) ========== */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
       --bg:#08090b;
@@ -41,9 +40,7 @@
       --font-size-h2: clamp(28px, 4vw + 8px, 44px);
       --mouse-x: 50%;
       --mouse-y: 50%;
-      --visit-count: 0;
     }
-
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     html{scroll-behavior:smooth;}
     body{
@@ -73,8 +70,6 @@
       pointer-events:none;
       z-index:0;
     }
-
-    /* Custom Cursor */
     .custom-cursor {
       width: 20px; height: 20px;
       border: 2px solid var(--amber);
@@ -91,8 +86,6 @@
       background: rgba(240,165,0,0.1);
       border-color: var(--gold);
     }
-
-    /* Background Canvas */
     #hero-canvas {
       position: fixed;
       top: 0;
@@ -103,8 +96,6 @@
       opacity: 0.35;
       pointer-events: none;
     }
-
-    /* Layout Wrapper */
     .wrapper {
       max-width: 1200px;
       margin: 0 auto;
@@ -112,8 +103,6 @@
       position: relative;
       z-index: 2;
     }
-
-    /* Navigation (same as main site) */
     nav {
       display: flex;
       justify-content: space-between;
@@ -207,8 +196,6 @@
     .mobile-nav a:last-child { border-bottom: none; }
     .mobile-nav a:hover { color: var(--amber); background: rgba(240,165,0,0.04); }
     .mobile-nav a::before { content: '—'; color: var(--amber); font-size: 10px; opacity: 0.6; }
-
-    /* Language selector */
     .lang-selector {
       display: flex;
       gap: 6px;
@@ -231,8 +218,6 @@
       color: var(--amber);
       background: rgba(240,165,0,0.1);
     }
-
-    /* Triple Time (displayed in footer) */
     .triple-time {
       display: grid;
       grid-template-columns: repeat(3,1fr);
@@ -266,8 +251,6 @@
       align-items: center;
     }
     .time-val.loading { color: var(--dim); font-size: 11px; }
-
-    /* VERITAS Custom Styles (adapted to main site) */
     .veritas-tabs {
       display: flex;
       border-bottom: 1px solid var(--border);
@@ -297,8 +280,6 @@
     .veritas-view.active {
       display: block;
     }
-
-    /* Step Progress – now 5 steps */
     .step-progress { display: flex; align-items: center; margin-bottom: 28px; gap: 0; }
     .step-node { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
     .step-circle {
@@ -321,8 +302,6 @@
     @keyframes stepIn { from{opacity:0;transform:translateX(10px)} to{opacity:1;transform:translateX(0)} }
     .step-title { font-family: var(--sans); font-size: 28px; letter-spacing: 2px; color: var(--text); margin-bottom: 4px; }
     .step-subtitle { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 24px; }
-
-    /* Photo zone, etc. unchanged */
     .photo-zone { border: 2px dashed var(--border); border-radius: 4px; background: var(--surface); aspect-ratio: 4/3; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; overflow: hidden; position: relative; }
     .photo-zone:hover { border-color: var(--amber); background: rgba(240,165,0,0.05); }
     .photo-zone.has-photo { border-style: solid; border-color: var(--amber); }
@@ -335,8 +314,6 @@
     #photoInput { display: none; }
     .photo-ai-status { margin-top: 12px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-family: var(--mono); font-size: 10px; color: var(--muted); display: none; }
     .photo-ai-status.show { display: flex; align-items: center; gap: 8px; }
-
-    /* UNDP 3‑tier damage */
     .damage-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -371,8 +348,6 @@
       font-size: 11px;
       color: var(--muted);
     }
-
-    /* Infrastructure type unchanged */
     .infra-grid {
       display: grid;
       grid-template-columns: repeat(3,1fr);
@@ -404,11 +379,7 @@
       text-transform: uppercase;
       color: var(--muted);
     }
-
-    /* Additional form fields */
-    .form-group {
-      margin-bottom: 20px;
-    }
+    .form-group { margin-bottom: 20px; }
     .form-label {
       font-family: var(--mono);
       font-size: 10px;
@@ -440,8 +411,6 @@
       font-size: 13px;
       color: var(--text);
     }
-
-    /* Location step with text fallback */
     .location-options { display: flex; gap: 8px; margin-bottom: 16px; }
     .loc-opt {
       flex: 1; padding: 12px; border: 2px solid var(--border); background: var(--surface); border-radius: 4px; cursor: pointer; text-align: center; transition: all 0.15s;
@@ -455,8 +424,6 @@
     #locationMap { height: 180px; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 12px; overflow: hidden; }
     .gps-coords { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.5px; padding: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; margin-bottom: 12px; }
     .text-location { margin-top: 12px; }
-
-    /* Review summary, buttons, etc. unchanged */
     .submit-summary { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 16px; margin-bottom: 20px; }
     .summary-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--dim); }
     .summary-row:last-child { border-bottom: none; }
@@ -471,7 +438,6 @@
     .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); margin-top: 10px; }
     .btn-secondary:hover { border-color: var(--amber); color: var(--amber); }
     .btn-sm { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; width: auto; }
-
     .confirm-screen { text-align: center; padding: 32px 20px; display: none; }
     .confirm-screen.show { display: block; }
     .confirm-check { width: 72px; height: 72px; border-radius: 50%; background: rgba(74,222,128,0.1); border: 2px solid var(--edu); display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 20px; animation: popIn 0.4s var(--ease); }
@@ -544,7 +510,6 @@
     @keyframes toastIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
     .leaflet-container { background: #0a0c0f !important; font-family: var(--mono) !important; }
     .dci-popup { font-family: var(--mono); font-size: 10px; line-height: 1.6; }
-
     footer {
       border-top: 1px solid var(--border);
       padding: 40px 0;
@@ -567,7 +532,6 @@
       transition: color 0.2s;
     }
     .footer-links a:hover { color: var(--amber); }
-
     @media (max-width: 800px) {
       .nav-links { display: none; }
       .nav-hamburger { display: flex; }
@@ -582,7 +546,6 @@
 <body>
 <canvas id="hero-canvas"></canvas>
 <div class="custom-cursor" id="custom-cursor"></div>
-
 <div class="wrapper">
   <nav>
     <a href="/" class="logo">AION<span>system</span></a>
@@ -605,27 +568,20 @@
     <a href="/certify/">Certify</a>
     <a href="https://aionsystem.github.io/VERITAS-PAGE">VERITAS</a>
   </div>
-
-  <!-- OFFLINE BANNERS -->
   <div class="offline-banner" id="offlineBanner"><span>📡</span> <span data-i18n="offline">Offline — reports saved locally and will sync when connected</span></div>
   <div class="sync-queue" id="syncQueue"><span class="spinner"></span><span id="syncQueueText" data-i18n="syncing">Syncing queued reports...</span></div>
-
-  <!-- VERITAS ECOSYSTEM BUTTONS -->
-<div class="ecosystem-buttons" style="display: flex; gap: 16px; justify-content: center; margin: 16px 0 24px;">
-  <a href="https://aionsystem.github.io/VERITAS/CERTUS.AI" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; width: auto; background: var(--panel);">
-    <span>⚙️</span> CERTUS.AI – Resource Simulator
-  </a>
-  <a href="https://aionsystem.github.io/VERITAS/AION-CERTIFY" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; width: auto; background: var(--panel);">
-    <span>🔒</span> AION.CERTIFY – Integrity Seals
-  </a>
-</div>
-  
-  <!-- VERITAS TABS -->
+  <div class="ecosystem-buttons" style="display: flex; gap: 16px; justify-content: center; margin: 16px 0 24px;">
+    <a href="https://aionsystem.github.io/VERITAS/CERTUS.AI" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; width: auto; background: var(--panel);">
+      <span>⚙️</span> CERTUS.AI – Resource Simulator
+    </a>
+    <a href="https://aionsystem.github.io/VERITAS/AION-CERTIFY" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; width: auto; background: var(--panel);">
+      <span>🔒</span> AION.CERTIFY – Integrity Seals
+    </a>
+  </div>
   <div class="veritas-tabs">
     <button class="veritas-tab active" id="navReport" onclick="switchView('report')" data-i18n="report_tab">📍 Report</button>
     <button class="veritas-tab" id="navRespond" onclick="switchView('respond')" data-i18n="respond_tab">🗺 Respond</button>
   </div>
-
   <!-- REPORT VIEW -->
   <div class="veritas-view active" id="viewReport">
     <div class="confirm-screen" id="confirmScreen">
@@ -642,9 +598,7 @@
       <button class="btn btn-primary" onclick="resetReport()" data-i18n="submit_another">Submit Another Report</button>
       <button class="btn btn-secondary" onclick="switchView('respond')" data-i18n="view_map">View Responder Map</button>
     </div>
-
     <div id="reportForm">
-      <!-- Step progress (5 steps) -->
       <div class="step-progress">
         <div class="step-node"><div class="step-circle active" id="sc1">1</div><div class="step-label active" id="sl1" data-i18n="step_photo">Photo</div></div>
         <div class="step-line" id="sline1"></div>
@@ -656,8 +610,6 @@
         <div class="step-line" id="sline4"></div>
         <div class="step-node"><div class="step-circle" id="sc5">5</div><div class="step-label" id="sl5" data-i18n="step_review">Review</div></div>
       </div>
-
-      <!-- STEP 1: PHOTO -->
       <div class="step-panel active" id="step1">
         <div class="step-title" data-i18n="photo_title">PHOTOGRAPH</div>
         <div class="step-subtitle" data-i18n="photo_sub">Capture visible damage clearly</div>
@@ -671,8 +623,6 @@
         <div class="photo-ai-status" id="photoAiStatus"><span class="spinner"></span><span id="aiStatusText" data-i18n="analyzing">CERTUS analyzing image...</span></div>
         <button class="btn btn-primary mt-16" id="step1Next" onclick="goStep(2)" disabled data-i18n="next">NEXT</button>
       </div>
-
-      <!-- STEP 2: DAMAGE (UNDP 3 tiers) + INFRASTRUCTURE -->
       <div class="step-panel" id="step2">
         <div class="step-title" data-i18n="damage_title">DAMAGE LEVEL</div>
         <div class="step-subtitle" data-i18n="damage_sub">Select the damage level (UNDP required)</div>
@@ -701,95 +651,27 @@
         </div>
         <div style="display:flex;gap:8px;margin-top:16px;"><button class="btn btn-secondary" style="flex:0 0 80px" onclick="goStep(1)" data-i18n="back">← BACK</button><button class="btn btn-primary" id="step2Next" onclick="goStep(3)" disabled data-i18n="next">NEXT</button></div>
       </div>
-
-      <!-- STEP 3: ADDITIONAL DETAILS -->
       <div class="step-panel" id="step3">
         <div class="step-title" data-i18n="details_title">DETAILS</div>
         <div class="step-subtitle" data-i18n="details_sub">Help responders understand the situation</div>
-
-        <div class="form-group">
-          <label class="form-label" data-i18n="infra_name_label">Infrastructure name (optional)</label>
-          <input type="text" id="infraName" class="form-input" placeholder="e.g., Central Bridge, Al-Noor Hospital">
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" data-i18n="crisis_type_label">Nature of crisis</label>
-          <div class="radio-group" id="crisisTypeGroup">
-            <label><input type="radio" name="crisisType" value="Natural"> <span data-i18n="crisis_natural">Natural</span></label>
-            <label><input type="radio" name="crisisType" value="Technological"> <span data-i18n="crisis_tech">Technological</span></label>
-            <label><input type="radio" name="crisisType" value="Human-made"> <span data-i18n="crisis_human">Human‑made</span></label>
-          </div>
-          <div id="crisisSubtypeContainer" style="margin-top: 12px;"></div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" data-i18n="debris_label">Is there debris requiring clearing?</label>
-          <div class="radio-group">
-            <label><input type="radio" name="debris" value="yes"> <span data-i18n="yes">Yes</span></label>
-            <label><input type="radio" name="debris" value="no"> <span data-i18n="no">No</span></label>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" data-i18n="electricity_label">Electricity infrastructure condition</label>
-          <div class="radio-group" id="electricityGroup">
-            <label><input type="radio" name="electricity" value="Fully functioning"> <span data-i18n="elec_fully">Fully functioning</span></label>
-            <label><input type="radio" name="electricity" value="Partially functioning"> <span data-i18n="elec_partial">Partially functioning</span></label>
-            <label><input type="radio" name="electricity" value="Limited"> <span data-i18n="elec_limited">Limited</span></label>
-            <label><input type="radio" name="electricity" value="Non‑functioning"> <span data-i18n="elec_none">Non‑functioning</span></label>
-            <label><input type="radio" name="electricity" value="Unknown"> <span data-i18n="unknown">Unknown</span></label>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" data-i18n="health_label">Overall health services functioning</label>
-          <div class="radio-group" id="healthGroup">
-            <label><input type="radio" name="health" value="Fully functioning"> <span data-i18n="health_fully">Fully functioning</span></label>
-            <label><input type="radio" name="health" value="Partially functioning"> <span data-i18n="health_partial">Partially functioning</span></label>
-            <label><input type="radio" name="health" value="Limited"> <span data-i18n="health_limited">Limited</span></label>
-            <label><input type="radio" name="health" value="Non‑functioning"> <span data-i18n="health_none">Non‑functioning</span></label>
-            <label><input type="radio" name="health" value="Unknown"> <span data-i18n="unknown">Unknown</span></label>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" data-i18n="needs_label">Most pressing needs (select all that apply)</label>
-          <div class="checkbox-group" id="needsGroup">
-            <label><input type="checkbox" value="Water"> <span data-i18n="need_water">Water</span></label>
-            <label><input type="checkbox" value="Food"> <span data-i18n="need_food">Food</span></label>
-            <label><input type="checkbox" value="Shelter"> <span data-i18n="need_shelter">Shelter</span></label>
-            <label><input type="checkbox" value="Medical care"> <span data-i18n="need_medical">Medical care</span></label>
-            <label><input type="checkbox" value="Electricity"> <span data-i18n="need_electricity">Electricity</span></label>
-            <label><input type="checkbox" value="Fuel"> <span data-i18n="need_fuel">Fuel</span></label>
-            <label><input type="checkbox" value="Communication"> <span data-i18n="need_comm">Communication</span></label>
-            <label><input type="checkbox" value="Transport"> <span data-i18n="need_transport">Transport</span></label>
-            <label><input type="checkbox" value="Security"> <span data-i18n="need_security">Security</span></label>
-            <label><input type="checkbox" value="Other"> <span data-i18n="need_other">Other</span></label>
-          </div>
-        </div>
-
+        <div class="form-group"><label class="form-label" data-i18n="infra_name_label">Infrastructure name (optional)</label><input type="text" id="infraName" class="form-input" placeholder="e.g., Central Bridge, Al-Noor Hospital"></div>
+        <div class="form-group"><label class="form-label" data-i18n="crisis_type_label">Nature of crisis</label><div class="radio-group" id="crisisTypeGroup"><label><input type="radio" name="crisisType" value="Natural"> <span data-i18n="crisis_natural">Natural</span></label><label><input type="radio" name="crisisType" value="Technological"> <span data-i18n="crisis_tech">Technological</span></label><label><input type="radio" name="crisisType" value="Human-made"> <span data-i18n="crisis_human">Human‑made</span></label></div><div id="crisisSubtypeContainer" style="margin-top: 12px;"></div></div>
+        <div class="form-group"><label class="form-label" data-i18n="debris_label">Is there debris requiring clearing?</label><div class="radio-group"><label><input type="radio" name="debris" value="yes"> <span data-i18n="yes">Yes</span></label><label><input type="radio" name="debris" value="no"> <span data-i18n="no">No</span></label></div></div>
+        <div class="form-group"><label class="form-label" data-i18n="electricity_label">Electricity infrastructure condition</label><div class="radio-group" id="electricityGroup"><label><input type="radio" name="electricity" value="Fully functioning"> <span data-i18n="elec_fully">Fully functioning</span></label><label><input type="radio" name="electricity" value="Partially functioning"> <span data-i18n="elec_partial">Partially functioning</span></label><label><input type="radio" name="electricity" value="Limited"> <span data-i18n="elec_limited">Limited</span></label><label><input type="radio" name="electricity" value="Non‑functioning"> <span data-i18n="elec_none">Non‑functioning</span></label><label><input type="radio" name="electricity" value="Unknown"> <span data-i18n="unknown">Unknown</span></label></div></div>
+        <div class="form-group"><label class="form-label" data-i18n="health_label">Overall health services functioning</label><div class="radio-group" id="healthGroup"><label><input type="radio" name="health" value="Fully functioning"> <span data-i18n="health_fully">Fully functioning</span></label><label><input type="radio" name="health" value="Partially functioning"> <span data-i18n="health_partial">Partially functioning</span></label><label><input type="radio" name="health" value="Limited"> <span data-i18n="health_limited">Limited</span></label><label><input type="radio" name="health" value="Non‑functioning"> <span data-i18n="health_none">Non‑functioning</span></label><label><input type="radio" name="health" value="Unknown"> <span data-i18n="unknown">Unknown</span></label></div></div>
+        <div class="form-group"><label class="form-label" data-i18n="needs_label">Most pressing needs (select all that apply)</label><div class="checkbox-group" id="needsGroup"><label><input type="checkbox" value="Water"> <span data-i18n="need_water">Water</span></label><label><input type="checkbox" value="Food"> <span data-i18n="need_food">Food</span></label><label><input type="checkbox" value="Shelter"> <span data-i18n="need_shelter">Shelter</span></label><label><input type="checkbox" value="Medical care"> <span data-i18n="need_medical">Medical care</span></label><label><input type="checkbox" value="Electricity"> <span data-i18n="need_electricity">Electricity</span></label><label><input type="checkbox" value="Fuel"> <span data-i18n="need_fuel">Fuel</span></label><label><input type="checkbox" value="Communication"> <span data-i18n="need_comm">Communication</span></label><label><input type="checkbox" value="Transport"> <span data-i18n="need_transport">Transport</span></label><label><input type="checkbox" value="Security"> <span data-i18n="need_security">Security</span></label><label><input type="checkbox" value="Other"> <span data-i18n="need_other">Other</span></label></div></div>
         <div style="display:flex;gap:8px;margin-top:16px;"><button class="btn btn-secondary" style="flex:0 0 80px" onclick="goStep(2)" data-i18n="back">← BACK</button><button class="btn btn-primary" id="step3Next" onclick="goStep(4)" data-i18n="next">NEXT</button></div>
       </div>
-
-      <!-- STEP 4: LOCATION (GPS + text fallback) -->
       <div class="step-panel" id="step4">
         <div class="step-title" data-i18n="location_title">LOCATION</div>
         <div class="step-subtitle" data-i18n="location_sub">Pin the damage location</div>
-        <div class="location-options">
-          <div class="loc-opt selected" id="locPrecise" onclick="selectLocMode('precise')"><div class="loc-opt-label" data-i18n="precise">📍 Precise</div><div class="loc-opt-desc" data-i18n="precise_desc">Exact GPS pin</div></div>
-          <div class="loc-opt" id="locFuzzy" onclick="selectLocMode('fuzzy')"><div class="loc-opt-label" data-i18n="area">🔵 Area</div><div class="loc-opt-desc" data-i18n="area_desc">±100m radius</div></div>
-        </div>
+        <div class="location-options"><div class="loc-opt selected" id="locPrecise" onclick="selectLocMode('precise')"><div class="loc-opt-label" data-i18n="precise">📍 Precise</div><div class="loc-opt-desc" data-i18n="precise_desc">Exact GPS pin</div></div><div class="loc-opt" id="locFuzzy" onclick="selectLocMode('fuzzy')"><div class="loc-opt-label" data-i18n="area">🔵 Area</div><div class="loc-opt-desc" data-i18n="area_desc">±100m radius</div></div></div>
         <div class="fuzzy-notice" id="fuzzyNotice" style="display:none" data-i18n="fuzzy_notice">Area mode selected — your precise location is protected. Report is accurate to ±100 meters. Suitable for conflict-affected areas.</div>
         <div id="locationMap"></div>
         <div class="gps-coords" id="gpsCoords"><span style="color:var(--muted)" data-i18n="acquiring">Acquiring GPS coordinates...</span></div>
-        <div class="form-group text-location">
-          <label class="form-label" data-i18n="text_location_label">Describe location (if GPS unavailable, e.g., "near the central market")</label>
-          <input type="text" id="textLocation" class="form-input" placeholder="Optional text description">
-        </div>
+        <div class="form-group text-location"><label class="form-label" data-i18n="text_location_label">Describe location (if GPS unavailable, e.g., "near the central market")</label><input type="text" id="textLocation" class="form-input" placeholder="Optional text description"></div>
         <div style="display:flex;gap:8px;margin-top:16px;"><button class="btn btn-secondary" style="flex:0 0 80px" onclick="goStep(3)" data-i18n="back">← BACK</button><button class="btn btn-primary" id="step4Next" onclick="goStep(5)" disabled data-i18n="next">NEXT</button></div>
       </div>
-
-      <!-- STEP 5: REVIEW & SUBMIT -->
       <div class="step-panel" id="step5">
         <div class="step-title" data-i18n="review_title">REVIEW</div>
         <div class="step-subtitle" data-i18n="review_sub">Confirm and submit your report</div>
@@ -799,8 +681,7 @@
       </div>
     </div>
   </div>
-
-  <!-- RESPOND VIEW (unchanged) -->
+  <!-- RESPOND VIEW -->
   <div class="veritas-view" id="viewRespond">
     <div id="accessGate" class="access-gate"><div class="access-gate-title" data-i18n="restricted">RESTRICTED</div><div class="access-gate-sub" data-i18n="access_sub">Responder Access Required</div><input class="access-input" id="accessInput" type="text" placeholder="ACCESS CODE" maxlength="8" onkeyup="checkAccess(event)"><button class="btn btn-primary" onclick="checkAccessBtn()" data-i18n="enter">ENTER</button><div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:16px;letter-spacing:0.5px;" data-i18n="access_note">Access code distributed to authorized UNDP response partners only.</div></div>
     <div class="respond-dashboard" id="respondDashboard">
@@ -816,6 +697,7 @@
         <div style="margin-top:12px;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.5px;" data-i18n="powered">Powered by CERTUS Engine v1.0 — DCI scored on photo evidence, corroboration, freshness, and consistency</div>
       </div>
       <div class="export-section"><div class="section-label" data-i18n="export">Export Dataset</div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;"><span class="stp-badge" style="background: rgba(46,125,50,0.1); border: 1px solid #2E7D32; border-radius: 20px; padding: 4px 10px; font-family: var(--mono); font-size: 9px; color: #2E7D32;">🔒 STP INTEGRATED</span><span style="font-size: 11px; color: var(--muted);">Exports can be permanently sealed with triple‑time proof</span></div>
         <div class="export-btns"><button class="export-btn" onclick="exportData('json')">JSON + DCI</button><button class="export-btn" onclick="exportData('csv')">CSV</button><button class="export-btn" onclick="exportData('geojson')">GeoJSON</button><button class="export-btn" id="stpSealBtn" onclick="stampWithSTP()" style="border-color:var(--amber);">🔒 STP Seal</button></div>
         <div class="export-header-preview" id="exportPreview">VERITAS INTEGRITY EXPORT\nPowered by CERTUS Engine v1.0\nReports: —\nGenerated: —\nSHA-256: computing...\nDecision-support only. Review Required reports require human field verification.</div>
         <div id="stpSealDisplay" style="display:none; margin-top:16px; padding:12px; background:var(--surface); border:1px solid var(--amber); border-radius:4px; font-family:var(--mono); font-size:10px;"><div style="display:flex; justify-content:space-between; align-items:center;"><span style="color:var(--amber); font-weight:bold;">SOVEREIGN TRACE SEAL</span><button class="btn-sm" onclick="downloadSTPSeal()" style="background:var(--panel);">📥 Download STP File</button></div><div id="stpSealContent" style="margin-top:8px; color:var(--muted); line-height:1.6;"></div></div>
@@ -824,31 +706,19 @@
       <div class="law6-footer"><strong data-i18n="decision_support">⚠ DECISION-SUPPORT INSTRUMENT ONLY</strong><br data-i18n="law6_line1">VERITAS DCI scores assist human judgment — they do not replace it.<br><strong data-i18n="review_required_human">Review Required</strong> reports must receive human field verification before informing any resource deployment decision.</div>
     </div>
   </div>
-
   <div class="triple-time">
     <div class="time-cell"><div class="time-sys">Gregorian</div><div class="time-val loading" id="tt-gregorian">· · ·</div></div>
     <div class="time-cell"><div class="time-sys">13 Moon · Dreamspell</div><div class="time-val loading" id="tt-dreamspell">· · ·</div></div>
     <div class="time-cell"><div class="time-sys">Hebrew Calendar</div><div class="time-val loading" id="tt-hebrew">· · ·</div></div>
   </div>
-
   <footer>
     <div class="footer-id"><strong>AionSystem</strong> · Sheldon K. Salmon · AI Reliability Architect<br>Evans Mills, New York · March 2026<br>VERITAS v1.0 · CERTUS Engine · STP Integration</div>
     <ul class="footer-links"><li><a href="/">Home</a></li><li><a href="/simulators/">Simulators</a></li><li><a href="/services/">Services</a></li><li><a href="/stack/">Stack</a></li><li><a href="/ksc/">KSC</a></li><li><a href="/certify/">Certify</a></li><li><a href="https://github.com/AionSystem/VERITAS" target="_blank">GitHub</a></li></ul>
   </footer>
 </div>
-
 <div class="toast-container" id="toastContainer"></div>
-
 <script>
-// ==================== FULL VERITAS APPLICATION WITH ALL FIXES ====================
-// This includes all the original functionality plus:
-// - 5-step flow with UNDP 3-tier damage, additional fields, text location fallback
-// - Engagement incentives (corroboration message, community count)
-// - Export mapping to UNDP tiers
-// - Complete six‑language support (English, Arabic, Chinese, French, Russian, Spanish)
-// - Crisis subtype selector (Natural: Earthquake, Flood, Tsunami, Hurricane, Wildfire;
-//   Technological: Explosion, Chemical incident; Human-made: Conflict, Civil unrest)
-
+// ==================== FULL VERITAS APPLICATION ====================
 const CONFIG = {
   SUPABASE_URL:    'https://spqqhvaqjwxcrdbujwna.supabase.co',
   SUPABASE_ANON:   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwcXFodmFxand4Y3JkYnVqd25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MTY2NDIsImV4cCI6MjA5MDI5MjY0Mn0.1ibM3TwGS82NOAhpzZFbvdCzdveReqaM9sMIVDTO3Tg',
@@ -861,15 +731,14 @@ const CONFIG = {
   DEDUP_RADIUS:    10,
   DEDUP_WINDOW:    120,
 };
-
 const STATE = {
   currentStep:    1,
   currentView:    'report',
   photo:          null,
   photoAiScore:   null,
   photoAiConf:    null,
-  undpTier:       null,      // minimal, partial, complete
-  internalTier:   null,      // mapped to None, Moderate, TotalCollapse (for CERTUS)
+  undpTier:       null,
+  internalTier:   null,
   infraType:      null,
   locMode:        'precise',
   coords:         null,
@@ -881,32 +750,14 @@ const STATE = {
   respondMap:     null,
   reportMap:      null,
   reportMarker:   null,
-  additionalFields: {
-    infraName: '',
-    crisisType: '',
-    crisisSubtype: '',
-    debris: '',
-    electricity: '',
-    health: '',
-    needs: []
-  }
+  additionalFields: { infraName: '', crisisType: '', crisisSubtype: '', debris: '', electricity: '', health: '', needs: [] }
 };
-
-// Mapping from UNDP 3-tier to internal 5-tier (for CERTUS)
-const tierMap = {
-  minimal: 'None',
-  partial: 'Moderate',
-  complete: 'Total Collapse'
-};
-
-// Crisis subtype options
+const tierMap = { minimal: 'None', partial: 'Moderate', complete: 'Total Collapse' };
 const crisisSubtypes = {
   Natural: ['Earthquake', 'Flood', 'Tsunami', 'Hurricane', 'Wildfire'],
   Technological: ['Explosion', 'Chemical incident'],
   'Human-made': ['Conflict', 'Civil unrest']
 };
-
-// ==================== SIX‑LANGUAGE TRANSLATIONS ====================
 const translations = {
   en: {
     offline: "Offline — reports saved locally and will sync when connected",
@@ -1557,7 +1408,6 @@ const translations = {
     review_required_human: "Revisión requerida"
   }
 };
-
 let currentLang = 'en';
 function setLanguage(lang) {
   currentLang = lang;
@@ -1576,8 +1426,6 @@ function setLanguage(lang) {
     btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
   });
 }
-
-// Populate language buttons
 const langSelector = document.getElementById('langSelector');
 if (langSelector) {
   const langs = ['en', 'ar', 'zh', 'fr', 'ru', 'es'];
@@ -1591,12 +1439,10 @@ if (langSelector) {
   });
   setLanguage('en');
 }
-
-// ==================== INDEXEDDB (unchanged) ====================
+// ==================== INDEXEDDB ====================
 const DB_NAME = 'veritas-db';
 const DB_VER  = 1;
 let db = null;
-
 function initDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VER);
@@ -1616,8 +1462,7 @@ function dbPut(report) { return new Promise((resolve, reject) => { const tx = db
 function dbGetAll() { return new Promise((resolve, reject) => { const tx = db.transaction('reports', 'readonly'); tx.objectStore('reports').getAll().onsuccess = e => resolve(e.target.result); tx.onerror = reject; }); }
 function dbGetUnsynced() { return new Promise((resolve, reject) => { const tx = db.transaction('reports', 'readonly'); const idx = tx.objectStore('reports').index('synced'); idx.getAll(IDBKeyRange.only(false)).onsuccess = e => resolve(e.target.result); tx.onerror = reject; }); }
 function dbMarkSynced(uuid) { return new Promise((resolve, reject) => { const tx = db.transaction('reports', 'readwrite'); const store = tx.objectStore('reports'); const req = store.get(uuid); req.onsuccess = e => { const r = e.target.result; if (r) { r.synced = true; store.put(r).onsuccess = resolve; } else resolve(); }; tx.onerror = reject; }); }
-
-// ==================== CERTUS ENGINE (unchanged) ====================
+// ==================== CERTUS ENGINE ====================
 const CERTUS = {
   W: { PES: 0.35, COR: 0.30, TFR: 0.20, CCI: 0.15 },
   PES_effective(rawScore, modelConf) { if (!rawScore || modelConf === null || modelConf < 0.60) return 0.50; return Math.max(0, Math.min(1, rawScore)); },
@@ -1628,10 +1473,8 @@ const CERTUS = {
   tierLabel(tier) { return { high: 'HIGH CONFIDENCE', watch: 'WATCH', review: 'REVIEW REQUIRED' }[tier]; },
   tierColor(tier) { return { high: '#f0a500', watch: '#e87c1e', review: '#e84040' }[tier]; },
 };
-
 function generateUUID() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); }); }
-
-// ==================== PHOTO HANDLING (unchanged) ====================
+// ==================== PHOTO HANDLING ====================
 function triggerPhotoCapture() { document.getElementById('photoInput').click(); }
 function handlePhoto(input) {
   const file = input.files[0]; if (!file) return;
@@ -1664,8 +1507,7 @@ function runAiAnalysis() {
     document.getElementById('step1Next').disabled = false;
   }, 1200);
 }
-
-// ==================== STEP NAVIGATION (5 steps) ====================
+// ==================== STEP NAVIGATION ====================
 function goStep(step) {
   if (step === 2 && !STATE.photo) { toast('Add a photo first'); return; }
   if (step === 3 && (!STATE.undpTier || !STATE.infraType)) { toast('Select damage level and structure type'); return; }
@@ -1678,7 +1520,6 @@ function goStep(step) {
   if (step === 5) populateSummary();
   window.scrollTo(0, 0);
 }
-
 function selectDamage(undpTier) {
   STATE.undpTier = undpTier;
   STATE.internalTier = tierMap[undpTier];
@@ -1688,38 +1529,42 @@ function selectDamage(undpTier) {
 }
 function selectInfra(type) { STATE.infraType = type; document.querySelectorAll('.infra-btn').forEach(b => b.classList.remove('selected')); document.getElementById(`infra-${type}`).classList.add('selected'); checkStep2(); }
 function checkStep2() { document.getElementById('step2Next').disabled = !(STATE.undpTier && STATE.infraType); }
-
 function selectLocMode(mode) { STATE.locMode = mode; document.getElementById('locPrecise').classList.toggle('selected', mode === 'precise'); document.getElementById('locFuzzy').classList.toggle('selected', mode === 'fuzzy'); document.getElementById('fuzzyNotice').style.display = mode === 'fuzzy' ? 'block' : 'none'; if (STATE.coords && STATE.reportMap) updateLocationPin(); }
 function initLocationStep() {
-  if (!STATE.reportMap) { STATE.reportMap = L.map('locationMap', { zoomControl:true, attributionControl:false }); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(STATE.reportMap); STATE.reportMap.setView(CONFIG.MAP_CENTER, 4); }
+  if (!STATE.reportMap) {
+    STATE.reportMap = L.map('locationMap', { zoomControl:true, attributionControl:false });
+    const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' });
+    const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+      maxZoom: 18
+    });
+    street.addTo(STATE.reportMap);
+    L.control.layers({ 'Street': street, 'Satellite': satellite }).addTo(STATE.reportMap);
+    STATE.reportMap.setView(CONFIG.MAP_CENTER, 4);
+  }
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(pos => { STATE.coords = { lat: pos.coords.latitude, lng: pos.coords.longitude }; updateLocationPin(); document.getElementById('step4Next').disabled = false; document.getElementById('gpsCoords').innerHTML = `<span style="color:var(--amber)">✓</span> ${STATE.coords.lat.toFixed(6)}, ${STATE.coords.lng.toFixed(6)}`; }, err => { document.getElementById('gpsCoords').innerHTML = '<span style="color:var(--watch)">GPS unavailable — tap map to pin location</span>'; STATE.reportMap.on('click', e => { STATE.coords = { lat: e.latlng.lat, lng: e.latlng.lng }; updateLocationPin(); document.getElementById('step4Next').disabled = false; document.getElementById('gpsCoords').innerHTML = `<span style="color:var(--amber)">✓ Manual pin:</span> ${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}`; }); });
   }
 }
 function updateLocationPin() {
-  if (!STATE.coords || !STATE.reportMap) return; const { lat, lng } = STATE.coords;
+  if (!STATE.coords || !STATE.reportMap) return;
+  const { lat, lng } = STATE.coords;
   if (STATE.reportMarker) STATE.reportMap.removeLayer(STATE.reportMarker);
-  const icon = L.divIcon({ className: '', html: `<div style="width:16px;height:16px;background:var(--amber);border-radius:50%;border:2px solid #000;box-shadow:0 0 12px rgba(240,165,0,0.6)"></div>`, iconSize: [16, 16], iconAnchor: [8, 8] });
-  STATE.reportMarker = L.marker([lat, lng], { icon }).addTo(STATE.reportMap); STATE.reportMap.setView([lat, lng], 16);
+  const icon = L.divIcon({ className: '', html: `<div style="width:16px;height:16px;background:var(--amber);border-radius:50%;border:2px solid #000;box-shadow:0 0 12px rgba(240,165,0,0.6)"></div>`, iconSize: [16,16], iconAnchor:[8,8] });
+  STATE.reportMarker = L.marker([lat, lng], { icon }).addTo(STATE.reportMap);
+  STATE.reportMap.setView([lat, lng], 16);
   if (STATE.locMode === 'fuzzy') L.circle([lat, lng], { radius: CONFIG.FUZZY_RADIUS, color: '#f0a500', fillOpacity: 0.1, weight: 1 }).addTo(STATE.reportMap);
 }
-
 function updateCrisisSubtype() {
   const container = document.getElementById('crisisSubtypeContainer');
   const selectedCrisis = document.querySelector('input[name="crisisType"]:checked')?.value;
-  if (!selectedCrisis || !crisisSubtypes[selectedCrisis]) {
-    container.innerHTML = '';
-    return;
-  }
+  if (!selectedCrisis || !crisisSubtypes[selectedCrisis]) { container.innerHTML = ''; return; }
   const subtypes = crisisSubtypes[selectedCrisis];
   let html = '<div class="radio-group" id="crisisSubtypeGroup">';
-  subtypes.forEach(sub => {
-    html += `<label><input type="radio" name="crisisSubtype" value="${sub}"> ${sub}</label>`;
-  });
+  subtypes.forEach(sub => { html += `<label><input type="radio" name="crisisSubtype" value="${sub}"> ${sub}</label>`; });
   html += '</div>';
   container.innerHTML = html;
 }
-
 function collectAdditionalFields() {
   STATE.additionalFields = {
     infraName: document.getElementById('infraName').value,
@@ -1750,8 +1595,6 @@ function populateSummary() {
     <div class="summary-row"><span class="summary-key">Photo</span><span class="summary-val">${STATE.photo ? 'Captured (EXIF stripped)' : '—'}</span></div>
   `;
 }
-
-// ==================== SUBMIT REPORT ====================
 async function submitReport() {
   const btn = document.getElementById('submitBtn'); btn.disabled = true; btn.textContent = 'SUBMITTING...';
   let lat = STATE.coords.lat, lng = STATE.coords.lng;
@@ -1786,23 +1629,16 @@ function showConfirmation(report, certus) {
   const badge = document.getElementById('confirmDciBadge');
   badge.textContent = CERTUS.tierLabel(certus.tier);
   badge.className = `dci-tier-badge ${certus.tier}`;
-
-  // Engagement incentives
   const nearbyCount = findNearby(STATE.reports, report.lat, report.lng, 50).length;
   const msgDiv = document.getElementById('engagementMessage');
-  if (nearbyCount > 0) {
-    msgDiv.innerHTML = `✅ Your report is corroborated by ${nearbyCount} other report${nearbyCount !== 1 ? 's' : ''} in this area. This helps prioritize resources.`;
-  } else {
-    msgDiv.innerHTML = `📢 You are the first report in this area. Your observation is critical — share the app so others can add their reports.`;
-  }
+  msgDiv.innerHTML = nearbyCount > 0 ? `✅ Your report is corroborated by ${nearbyCount} other report${nearbyCount !== 1 ? 's' : ''} in this area. This helps prioritize resources.` : `📢 You are the first report in this area. Your observation is critical — share the app so others can add their reports.`;
 }
 function resetReport() {
   STATE.photo = null; STATE.photoAiScore = null; STATE.photoAiConf = null; STATE.undpTier = null; STATE.internalTier = null; STATE.infraType = null; STATE.coords = null; STATE.locMode = 'precise'; STATE.reportMap = null; STATE.reportMarker = null;
   document.getElementById('confirmScreen').classList.remove('show'); document.getElementById('reportForm').style.display = ''; document.getElementById('photoPreview').classList.remove('show'); document.getElementById('photoRetake').classList.remove('show'); document.getElementById('photoZone').classList.remove('has-photo'); document.getElementById('photoAiStatus').classList.remove('show'); document.getElementById('photoInput').value = ''; document.getElementById('step1Next').disabled = true; document.getElementById('step2Next').disabled = true; document.getElementById('step4Next').disabled = true; document.getElementById('submitBtn').disabled = false; document.getElementById('submitBtn').textContent = 'SUBMIT REPORT';
   document.querySelectorAll('.damage-btn, .infra-btn').forEach(b => b.classList.remove('selected'));
   document.getElementById('locPrecise').classList.add('selected'); document.getElementById('locFuzzy').classList.remove('selected');
-  document.getElementById('textLocation').value = '';
-  document.getElementById('infraName').value = '';
+  document.getElementById('textLocation').value = ''; document.getElementById('infraName').value = '';
   document.querySelectorAll('input[name="crisisType"], input[name="debris"], input[name="electricity"], input[name="health"]').forEach(r => r.checked = false);
   document.querySelectorAll('#needsGroup input').forEach(cb => cb.checked = false);
   document.getElementById('crisisSubtypeContainer').innerHTML = '';
@@ -1810,19 +1646,30 @@ function resetReport() {
   for (let i = 1; i <= 4; i++) document.getElementById(`sline${i}`).classList.remove('done');
   document.getElementById('step1').classList.add('active'); document.getElementById('sc1').classList.add('active'); document.getElementById('sl1').classList.add('active');
 }
-
-// ==================== RESPOND VIEW FUNCTIONS (unchanged) ====================
+// ==================== RESPOND VIEW FUNCTIONS ====================
 function checkAccess(e) { if (e.key === 'Enter') checkAccessBtn(); }
 function checkAccessBtn() { const code = document.getElementById('accessInput').value.trim().toUpperCase(); if (code === CONFIG.ACCESS_CODE.toUpperCase()) { STATE.respondAuth = true; document.getElementById('accessGate').style.display = 'none'; document.getElementById('respondDashboard').classList.add('show'); initRespondDashboard(); } else { toast('Invalid access code'); document.getElementById('accessInput').value = ''; } }
 async function initRespondDashboard() { const reports = await dbGetAll(); updateDashboardCounts(reports); initRespondMap(reports); updateReportCard(reports); updateConflictFlags(reports); updateExportPreview(reports); }
-function initRespondMap(reports) { if (STATE.respondMap) return; STATE.respondMap = L.map('respondMap', { zoomControl:true, attributionControl:false }); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(STATE.respondMap); STATE.respondMap.setView(CONFIG.MAP_CENTER, CONFIG.MAP_ZOOM); plotReports(reports); }
-function plotReports(reports) { if (!STATE.respondMap) return; reports.forEach(r => { if (!r.lat || !r.lng) return; const color = CERTUS.tierColor(r.dciTier); const icon = L.divIcon({ className: '', html: `<div style="width:14px;height:14px;background:${color};border-radius:50%;border:2px solid rgba(0,0,0,0.5);box-shadow:0 0 8px ${color}55"></div>`, iconSize: [14, 14], iconAnchor: [7, 7] }); const popup = `<div class="dci-popup"><b style="color:${color}">${r.undpTier || r.internalTier}</b> · ${r.infraType}<br>DCI: <b>${r.dci.toFixed(3)}</b> · ${CERTUS.tierLabel(r.dciTier)}<br><small>${new Date(r.timestamp).toLocaleString()}</small><br><small style="color:#666">DCI measures report trustworthiness — scored by CERTUS on photo evidence, corroboration, freshness, consistency</small></div>`; L.marker([r.lat, r.lng], { icon }).bindPopup(popup).addTo(STATE.respondMap); }); if (reports.length > 0) { const group = L.featureGroup(reports.map(r => L.marker([r.lat, r.lng]))); STATE.respondMap.fitBounds(group.getBounds().pad(0.1)); } }
-function updateDashboardCounts(reports) { const high = reports.filter(r => r.dciTier === 'high').length; const watch = reports.filter(r => r.dciTier === 'watch').length; const review = reports.filter(r => r.dciTier === 'review').length; document.getElementById('dashHigh').textContent = high; document.getElementById('dashWatch').textContent = watch; document.getElementById('dashReview').textContent = review; }
+function initRespondMap(reports) {
+  if (STATE.respondMap) return;
+  STATE.respondMap = L.map('respondMap', { zoomControl:true, attributionControl:false });
+  const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' });
+  const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+    maxZoom: 18
+  });
+  street.addTo(STATE.respondMap);
+  L.control.layers({ 'Street': street, 'Satellite': satellite }).addTo(STATE.respondMap);
+  STATE.respondMap.setView(CONFIG.MAP_CENTER, CONFIG.MAP_ZOOM);
+  plotReports(reports);
+}
+function plotReports(reports) { if (!STATE.respondMap) return; reports.forEach(r => { if (!r.lat || !r.lng) return; const color = CERTUS.tierColor(r.dciTier); const icon = L.divIcon({ className: '', html: `<div style="width:14px;height:14px;background:${color};border-radius:50%;border:2px solid rgba(0,0,0,0.5);box-shadow:0 0 8px ${color}55"></div>`, iconSize: [14,14], iconAnchor:[7,7] }); const popup = `<div class="dci-popup"><b style="color:${color}">${r.undpTier || r.internalTier}</b> · ${r.infraType}<br>DCI: <b>${r.dci.toFixed(3)}</b> · ${CERTUS.tierLabel(r.dciTier)}<br><small>${new Date(r.timestamp).toLocaleString()}</small><br><small style="color:#666">DCI measures report trustworthiness — scored by CERTUS on photo evidence, corroboration, freshness, consistency</small></div>`; L.marker([r.lat, r.lng], { icon }).bindPopup(popup).addTo(STATE.respondMap); }); if (reports.length > 0) { const group = L.featureGroup(reports.map(r => L.marker([r.lat, r.lng]))); STATE.respondMap.fitBounds(group.getBounds().pad(0.1)); } }
+function updateDashboardCounts(reports) { document.getElementById('dashHigh').textContent = reports.filter(r => r.dciTier === 'high').length; document.getElementById('dashWatch').textContent = reports.filter(r => r.dciTier === 'watch').length; document.getElementById('dashReview').textContent = reports.filter(r => r.dciTier === 'review').length; }
 function updateReportCard(reports) { const total = reports.length || 1; const high = reports.filter(r => r.dciTier === 'high').length; const watch = reports.filter(r => r.dciTier === 'watch').length; const review = reports.filter(r => r.dciTier === 'review').length; const hPct = Math.round((high/total)*100); const wPct = Math.round((watch/total)*100); const rPct = Math.round((review/total)*100); document.getElementById('rcHigh').style.width = hPct + '%'; document.getElementById('rcWatch').style.width = wPct + '%'; document.getElementById('rcReview').style.width = rPct + '%'; document.getElementById('rcHighPct').textContent = hPct + '%'; document.getElementById('rcWatchPct').textContent = wPct + '%'; document.getElementById('rcReviewPct').textContent = rPct + '%'; }
 function updateConflictFlags(reports) { const conflicts = detectConflicts(reports); const list = document.getElementById('conflictList'); if (conflicts.length === 0) { list.innerHTML = '<div style="font-family:var(--mono);font-size:10px;color:var(--muted);padding:10px;text-align:center;">No conflicts detected</div>'; return; } list.innerHTML = conflicts.map(c => `<div class="conflict-item">⚠ ${c.count} reports within 50m disagree on damage level<br>Location: ${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}<br>Tiers present: ${c.tiers.join(' · ')} — Human verification required</div>`).join(''); }
-function detectConflicts(reports) { const conflicts = []; const checked = new Set(); reports.forEach((r, i) => { if (checked.has(i)) return; const group = reports.filter((r2, j) => { if (j === i) return false; return distanceM(r.lat, r.lng, r2.lat, r2.lng) < 50; }); if (group.length > 0) { const tiers = [...new Set([r.undpTier || r.internalTier, ...group.map(g => g.undpTier || g.internalTier)])]; if (tiers.length > 1) { conflicts.push({ lat: r.lat, lng: r.lng, count: group.length + 1, tiers }); group.forEach((_, j) => checked.add(j)); } } }); return conflicts; }
+function detectConflicts(reports) { const conflicts = [], checked = new Set(); reports.forEach((r, i) => { if (checked.has(i)) return; const group = reports.filter((r2, j) => { if (j === i) return false; return distanceM(r.lat, r.lng, r2.lat, r2.lng) < 50; }); if (group.length > 0) { const tiers = [...new Set([r.undpTier || r.internalTier, ...group.map(g => g.undpTier || g.internalTier)])]; if (tiers.length > 1) { conflicts.push({ lat: r.lat, lng: r.lng, count: group.length + 1, tiers }); group.forEach((_, j) => checked.add(j)); } } }); return conflicts; }
 function updateTimeline(val) { const allTime = document.getElementById('timelineTime'); if (val >= 100) allTime.textContent = 'Live — all reports'; else { const hours = Math.round((val / 100) * 48); allTime.textContent = `First ${hours}h after event`; } }
-async function exportData(format) { const reports = await dbGetAll(); const clean = reports.map(r => ({ uuid: r.uuid, timestamp: r.timestamp, lat: r.lat, lng: r.lng, undp_damage: r.undpTier, internal_damage: r.internalTier, infrastructure: r.infraType, dci: r.dci, dci_tier: r.dciTier, ...r.additionalFields })); const hash = await computeHash(JSON.stringify(clean)); const header = buildIntegrityHeader(reports.length, hash); let content, filename, mime; if (format === 'json') { const payload = { header: header.parsed, reports: clean }; content = JSON.stringify(payload, null, 2); filename = `veritas-export-${Date.now()}.json`; mime = 'application/json'; } else if (format === 'csv') { const cols = ['uuid','timestamp','lat','lng','undp_damage','infrastructure','dci','dci_tier']; content = cols.join(',') + '\n' + clean.map(r => cols.map(c => r[c]).join(',')).join('\n'); filename = `veritas-export-${Date.now()}.csv`; mime = 'text/csv'; } else if (format === 'geojson') { const features = clean.map(r => ({ type: 'Feature', properties: { undp_damage: r.undp_damage, infrastructure: r.infrastructure, dci: r.dci, dci_tier: r.dci_tier, timestamp: r.timestamp }, geometry: { type:'Point', coordinates:[r.lng, r.lat] } })); content = JSON.stringify({ type:'FeatureCollection', features, certus_integrity: hash }, null, 2); filename = `veritas-export-${Date.now()}.geojson`; mime = 'application/geo+json'; } download(content, filename, mime); toast(`${format.toUpperCase()} export ready`); }
+async function exportData(format) { const reports = await dbGetAll(); const clean = reports.map(r => ({ uuid: r.uuid, timestamp: r.timestamp, lat: r.lat, lng: r.lng, undp_damage: r.undpTier, internal_damage: r.internalTier, infrastructure: r.infraType, dci: r.dci, dci_tier: r.dciTier, ...r.additionalFields })); const hash = await computeHash(JSON.stringify(clean)); const header = buildIntegrityHeader(reports.length, hash); let content, filename, mime; if (format === 'json') { content = JSON.stringify({ header: header.parsed, reports: clean }, null, 2); filename = `veritas-export-${Date.now()}.json`; mime = 'application/json'; } else if (format === 'csv') { const cols = ['uuid','timestamp','lat','lng','undp_damage','infrastructure','dci','dci_tier']; content = cols.join(',') + '\n' + clean.map(r => cols.map(c => r[c]).join(',')).join('\n'); filename = `veritas-export-${Date.now()}.csv`; mime = 'text/csv'; } else if (format === 'geojson') { const features = clean.map(r => ({ type: 'Feature', properties: { undp_damage: r.undp_damage, infrastructure: r.infrastructure, dci: r.dci, dci_tier: r.dci_tier, timestamp: r.timestamp }, geometry: { type:'Point', coordinates:[r.lng, r.lat] } })); content = JSON.stringify({ type:'FeatureCollection', features, certus_integrity: hash }, null, 2); filename = `veritas-export-${Date.now()}.geojson`; mime = 'application/geo+json'; } download(content, filename, mime); toast(`${format.toUpperCase()} export ready`); }
 async function updateExportPreview(reports) { const hash = reports.length > 0 ? await computeHash(JSON.stringify(reports.map(r => r.uuid))) : 'no-reports-yet'; const preview = buildIntegrityHeader(reports.length, hash); document.getElementById('exportPreview').textContent = preview.text; }
 function buildIntegrityHeader(count, hash) { const ts = new Date().toISOString(); const text = `VERITAS INTEGRITY EXPORT\nPowered by: CERTUS Engine v1.0\nGenerated:  ${ts}\nReports:    ${count}\nSHA-256:    ${hash}\n\nVerify: hash(JSON payload) === SHA-256 above\nDecision-support only. REVIEW REQUIRED reports\nrequire human field verification before any\nresource deployment decision.`; return { text, parsed: { generated: ts, reports: count, sha256: hash, certus: 'Engine v1.0' } }; }
 async function computeHash(str) { try { const buf = new TextEncoder().encode(str); const hash = await crypto.subtle.digest('SHA-256', buf); return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join(''); } catch { return 'hash-unavailable'; } }
@@ -1838,8 +1685,7 @@ function switchView(view) { STATE.currentView = view; document.getElementById('v
 function toast(msg, duration = 2500) { const container = document.getElementById('toastContainer'); const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; container.appendChild(el); setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, duration); }
 window.addEventListener('online', () => { STATE.isOnline = true; document.getElementById('offlineBanner').classList.remove('show'); syncPending(); toast('Back online — syncing reports'); });
 window.addEventListener('offline', () => { STATE.isOnline = false; document.getElementById('offlineBanner').classList.add('show'); toast('Offline — reports saved locally'); });
-
-// ==================== STP INTEGRATION (unchanged) ====================
+// ==================== STP INTEGRATION ====================
 let currentSTPSeal = null;
 async function stampWithSTP() {
   const reports = await dbGetAll();
@@ -1876,7 +1722,6 @@ function downloadSTPSeal() {
   download(content, filename, 'application/json');
   toast('STP seal file downloaded');
 }
-
 // ==================== TRIPLE-TIME DISPLAY ====================
 const GREGORIAN_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 function gregorianString(d) { return `${GREGORIAN_MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`; }
@@ -1894,7 +1739,6 @@ const now = new Date();
 const gel = document.getElementById('tt-gregorian'); if(gel) { gel.classList.remove('loading'); gel.textContent = gregorianString(now); }
 const del = document.getElementById('tt-dreamspell'); if(del) { del.classList.remove('loading'); del.textContent = dreamspellString(now); }
 const hel = document.getElementById('tt-hebrew'); if(hel) { hel.classList.remove('loading'); hel.textContent = hebrewString(now); }
-
 // ==================== BACKGROUND CANVAS ====================
 const canvas = document.getElementById('hero-canvas');
 const ctxCanvas = canvas.getContext('2d');
@@ -1904,14 +1748,12 @@ function resizeCanvas() { widthCanvas = window.innerWidth; heightCanvas = window
 function initParticles() { particlesCanvas = []; for (let i = 0; i < 120; i++) { particlesCanvas.push({ x: Math.random() * widthCanvas, y: Math.random() * heightCanvas, radius: 1 + Math.random() * 2, alpha: 0.3 + Math.random() * 0.5, speed: 0.2 + Math.random() * 0.8 }); } }
 function drawCanvas() { ctxCanvas.clearRect(0, 0, widthCanvas, heightCanvas); ctxCanvas.fillStyle = '#050508'; ctxCanvas.fillRect(0, 0, widthCanvas, heightCanvas); for (let p of particlesCanvas) { ctxCanvas.beginPath(); ctxCanvas.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctxCanvas.fillStyle = `rgba(201, 160, 40, ${p.alpha})`; ctxCanvas.fill(); p.y += p.speed; if (p.y > heightCanvas) p.y = 0; } animFrameCanvas = requestAnimationFrame(drawCanvas); }
 resizeCanvas(); initParticles(); drawCanvas(); window.addEventListener('resize', () => { resizeCanvas(); initParticles(); });
-
 // ==================== CURSOR ====================
 const cursor = document.getElementById('custom-cursor');
 if (cursor) {
   document.addEventListener('mousemove', (e) => { cursor.style.left = e.clientX + 'px'; cursor.style.top = e.clientY + 'px'; });
   document.querySelectorAll('a, button, .veritas-tab, .photo-zone, .damage-btn, .infra-btn, .loc-opt, .export-btn, .glitch-button, .cta').forEach(el => { el.addEventListener('mouseenter', () => cursor.classList.add('hover')); el.addEventListener('mouseleave', () => cursor.classList.remove('hover')); });
 }
-
 // ==================== MOBILE MENU ====================
 const hamburger = document.getElementById('nav-hamburger');
 const mobileNav = document.getElementById('mobile-nav');
@@ -1919,15 +1761,24 @@ if (hamburger && mobileNav) {
   hamburger.addEventListener('click', () => { hamburger.classList.toggle('open'); mobileNav.classList.toggle('open'); });
   mobileNav.querySelectorAll('a').forEach(link => { link.addEventListener('click', () => { hamburger.classList.remove('open'); mobileNav.classList.remove('open'); }); });
 }
-
+// ==================== SERVICE WORKER ====================
+if ('serviceWorker' in navigator) {
+  const swCode = `
+    const CACHE_NAME = 'veritas-v1';
+    const ASSETS = ['/','/index.html','/manifest.json','https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:ital,wght@0,300;0,400;0,600;0,700;0,900;1,300&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400;500;700&display=swap','https://unpkg.com/leaflet@1.9.4/dist/leaflet.css','https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'];
+    self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())));
+    self.addEventListener('fetch', e => { const url = new URL(e.request.url); if (url.origin === location.origin || ASSETS.some(a => e.request.url.includes(a))) { e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))); } });
+  `;
+  const swBlob = new Blob([swCode], { type: 'application/javascript' });
+  const swUrl = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swUrl).catch(console.error);
+}
 // ==================== INITIALISATION ====================
 window.addEventListener('DOMContentLoaded', async () => {
   await initDB();
   if (!STATE.isOnline) document.getElementById('offlineBanner').classList.add('show');
   STATE.reports = await dbGetAll();
-  if ('serviceWorker' in navigator) { /* optional */ }
   if (STATE.isOnline) syncPending();
-  // Attach crisis subtype listener
   document.querySelectorAll('input[name="crisisType"]').forEach(radio => {
     radio.addEventListener('change', updateCrisisSubtype);
   });
