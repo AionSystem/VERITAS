@@ -9,9 +9,9 @@
 [![License](https://img.shields.io/github/license/AionSystem/VERITAS?color=blue)](LICENSE)
 [![Version](https://img.shields.io/badge/version-v1.0.0-orange)](#)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](#)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
+[![Feedback's Welcome](https://img.shields.io/badge/Feedback's-welcome-brightgreen)](FEEDBACK.md)
 [![Made with JavaScript](https://img.shields.io/badge/Made%20with-JavaScript-yellow)](#)
-
+[![Made with HTML](https://img.shields.io/badge/Made%20with-HTML-PURPLE)](#)
 
 > **Certainty engineering dressed as a crisis tool**
 > UNDP Accelerator Lab Prize — April 8 Webinar
