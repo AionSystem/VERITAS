@@ -11,7 +11,7 @@
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](#)
 [![Feedback's Welcome](https://img.shields.io/badge/Feedback's-welcome-brightgreen)](FEEDBACK.md)
 [![Made with JavaScript](https://img.shields.io/badge/Made%20with-JavaScript-yellow)](#)
-[![Made with HTML](https://img.shields.io/badge/Made%20with-HTML-PURPLE)](#)
+[![Made with HTML](https://img.shields.io/badge/Made%20with-HTML-red)](#)
 
 > **Certainty engineering dressed as a crisis tool**
 > UNDP Accelerator Lab Prize — April 8 Webinar
