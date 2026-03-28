@@ -119,6 +119,23 @@ Every VERITAS dataset can be optionally sealed with the **Sovereign Trace Protoc
 
 ---
 
+## AI Photo Analysis
+
+VERITAS includes a simulation of the photo evidence scoring system. 
+The actual implementation would use TensorFlow.js with a model trained on 
+the open‑source xBD dataset (850,000 building polygons across 19 disaster types). 
+The model would run entirely client-side, offline-capable, with a confidence gate 
+(≥0.60) to prevent unreliable predictions from affecting DCI scores.
+
+**Why simulation?** The prototype demonstrates the architecture, formula, 
+and confidence gate logic. The model itself is a plug‑and‑play component — 
+any trained TensorFlow.js model can replace the simulation by updating 
+the `runAiAnalysis()` function. This keeps the prototype lightweight 
+and focused on the core innovation: the CERTUS Engine.
+
+
+---
+
 ## Technical Stack
 
 | Layer | Technology | Why |
