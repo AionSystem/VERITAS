@@ -1666,7 +1666,15 @@ function resetReport() {
 // ==================== RESPOND VIEW FUNCTIONS ====================
 function checkAccess(e) { if (e.key === 'Enter') checkAccessBtn(); }
 function checkAccessBtn() { const code = document.getElementById('accessInput').value.trim().toUpperCase(); if (code === CONFIG.ACCESS_CODE.toUpperCase()) { STATE.respondAuth = true; document.getElementById('accessGate').style.display = 'none'; document.getElementById('respondDashboard').classList.add('show'); initRespondDashboard(); } else { toast('Invalid access code'); document.getElementById('accessInput').value = ''; } }
-async function initRespondDashboard() { const reports = await dbGetAll(); updateDashboardCounts(reports); initRespondMap(reports); updateReportCard(reports); updateConflictFlags(reports); updateExportPreview(reports); }
+async function initRespondDashboard() { 
+  const reports = await dbGetAll(); 
+  const versioned = versionedReports(reports);
+  updateDashboardCounts(versioned); 
+  initRespondMap(versioned); 
+  updateReportCard(versioned); 
+  updateConflictFlags(versioned); 
+  updateExportPreview(versioned); 
+}
 function initRespondMap(reports) {
   if (STATE.respondMap) return;
   STATE.respondMap = L.map('respondMap', { zoomControl:true, attributionControl:false });
