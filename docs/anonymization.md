@@ -1,4 +1,3 @@
-
 # Anonymization & Privacy Protocol
 
 VERITAS is designed from the ground up to protect community reporters, especially in conflict‑sensitive areas. No personal data is ever collected or stored.
@@ -18,24 +17,31 @@ For each report, the following is saved locally (IndexedDB) and synced to Supaba
 | Field | Stored? | Notes |
 |-------|---------|-------|
 | UUID | Yes | Random, client‑generated |
-| Damage tier | Yes | None / Minor / Moderate / Major / Total Collapse |
-| Infrastructure type | Yes | Residential / Road / Bridge / Utility / Medical / School |
+| Damage tier | Yes | Minimal/No damage · Partially damaged · Completely damaged (exact UNDP 3-tier wording) |
+| Infrastructure type | Yes | All 8 UNDP categories: Residential · Commercial · Government · Utility · Transport & Communication · Community · Public Spaces/Recreation · Other |
+| Infrastructure name | Yes | Free-text field |
+| Nature of crisis | Yes | Natural · Technological · Human-made (with subtypes) |
+| Debris clearing | Yes | Yes / No |
+| Electricity condition | Yes | Exact UNDP wording (6 options) |
+| Health services status | Yes | Exact UNDP wording (5 options) |
+| Most pressing needs | Yes | Multi-select, all UNDP options |
 | GPS coordinates | Yes | May be fuzzy if user selected area mode |
 | DCI score | Yes | 0.0–1.0 |
 | Timestamp | Yes | ISO 8601 |
-| Photo (base64) | Yes | EXIF stripped; stored only locally (not synced) |
+| Photo (base64) | Yes | EXIF stripped; stored locally in IndexedDB; synced to Supabase when online |
 | Photo AI score | Yes | Result from TensorFlow.js analysis |
 | Model confidence | Yes | 0.0–1.0 |
 
-**Never stored:**  
-- IP address  
-- Device ID  
-- Browser fingerprint  
+**Never stored:**
+- IP address
+- Device ID
+- Browser fingerprint
 - Any identifier that could link reports to the same user
 
 ## Implementation Details
 
 ### EXIF Stripping
+
 When a user selects a photo, it is loaded into an `<img>` element, then drawn onto a `<canvas>` at the desired resolution. The resulting data URL (`canvas.toDataURL('image/jpeg', 0.85)`) contains no EXIF metadata.
 
 ```javascript
@@ -46,9 +52,9 @@ canvas.getContext('2d').drawImage(img, 0, 0);
 const cleanBase64 = canvas.toDataURL('image/jpeg', 0.85);
 ```
 
-GPS Fuzzing
+### GPS Fuzzing
 
-When the user selects “Area Report (±100m)”, the exact coordinates are randomly offset within a 100‑meter radius before storage.
+When the user selects "Area Report (±100m)", the exact coordinates are randomly offset within a 100‑meter radius before storage.
 
 ```javascript
 const radius = 100; // meters
@@ -58,14 +64,14 @@ lat += offsetLat;
 lng += offsetLng;
 ```
 
-No IP Logging
+### No IP Logging
 
-Supabase is configured via an Edge Function that strips the x-forwarded-for header before the request reaches the reports table. The function also ensures that only necessary fields are inserted.
+Supabase is configured via an Edge Function that strips the `x-forwarded-for` header before the request reaches the reports table. The function also ensures that only necessary fields are inserted.
 
-Access Control
+### Access Control
 
-The responder dashboard is protected by a single access code (e.g., UNDP2026), distributed only to authorised partners. The code is hardcoded in the client‑side JavaScript and must be changed before deployment.
+The responder dashboard is protected by a single access code (e.g., `UNDP2026`), distributed only to authorised partners. The code is hardcoded in the client‑side JavaScript and must be changed before deployment.
 
 ---
 
-If you are a responder and need the access code, please contact the UNDP Accelerator Lab team.
+*If you are a responder and need the access code, please contact the UNDP Accelerator Lab team.*
