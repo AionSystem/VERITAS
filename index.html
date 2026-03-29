@@ -654,8 +654,9 @@
           <button class="infra-btn" onclick="selectInfra('Community Infrastructure')"><div class="infra-icon">🏘️</div><div class="infra-label">Community</div></button>
           <button class="infra-btn" onclick="selectInfra('Public spaces/Recreation')"><div class="infra-icon">⛲</div><div class="infra-label">Public Space</div></button>
           <button class="infra-btn" onclick="selectInfra('Other')"><div class="infra-icon">📝</div><div class="infra-label">Other</div></button>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:16px;"><button class="btn btn-secondary" style="flex:0 0 80px" onclick="goStep(1)" data-i18n="back">← BACK</button><button class="btn btn-primary" id="step2Next" onclick="goStep(3)" disabled data-i18n="next">NEXT</button></div>
+       </div>
+       <div id="otherInfraContainer" style="display:none; margin-top:8px;"><input type="text" id="otherInfra" class="form-input" placeholder="Please specify"></div>
+       <div style="display:flex;gap:8px;margin-top:16px;"><button class="btn btn-secondary" style="flex:0 0 80px" onclick="goStep(1)" data-i18n="back">← BACK</button><button class="btn btn-primary" id="step2Next" onclick="goStep(3)" disabled data-i18n="next">NEXT</button></div>
       </div>
       <div class="step-panel" id="step3">
         <div class="step-title" data-i18n="details_title">DETAILS</div>
