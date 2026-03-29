@@ -1687,6 +1687,21 @@ function updateConflictFlags(reports) { const conflicts = detectConflicts(report
 function detectConflicts(reports) { const conflicts = [], checked = new Set(); reports.forEach((r, i) => { if (checked.has(i)) return; const group = reports.filter((r2, j) => { if (j === i) return false; return distanceM(r.lat, r.lng, r2.lat, r2.lng) < 50; }); if (group.length > 0) { const tiers = [...new Set([r.undpTier || r.internalTier, ...group.map(g => g.undpTier || g.internalTier)])]; if (tiers.length > 1) { conflicts.push({ lat: r.lat, lng: r.lng, count: group.length + 1, tiers }); group.forEach((_, j) => checked.add(j)); } } }); return conflicts; }
 function updateTimeline(val) { const allTime = document.getElementById('timelineTime'); if (val >= 100) allTime.textContent = 'Live — all reports'; else { const hours = Math.round((val / 100) * 48); allTime.textContent = `First ${hours}h after event`; } }
 async function exportData(format) { const reports = await dbGetAll(); const clean = reports.map(r => ({ uuid: r.uuid, timestamp: r.timestamp, lat: r.lat, lng: r.lng, undp_damage: r.undpTier, internal_damage: r.internalTier, infrastructure: r.infraType, dci: r.dci, dci_tier: r.dciTier, ...r.additionalFields })); const hash = await computeHash(JSON.stringify(clean)); const header = buildIntegrityHeader(reports.length, hash); let content, filename, mime; if (format === 'json') { content = JSON.stringify({ header: header.parsed, reports: clean }, null, 2); filename = `veritas-export-${Date.now()}.json`; mime = 'application/json'; } else if (format === 'csv') { const cols = ['uuid','timestamp','lat','lng','undp_damage','infrastructure','dci','dci_tier']; content = cols.join(',') + '\n' + clean.map(r => cols.map(c => r[c]).join(',')).join('\n'); filename = `veritas-export-${Date.now()}.csv`; mime = 'text/csv'; } else if (format === 'geojson') { const features = clean.map(r => ({ type: 'Feature', properties: { undp_damage: r.undp_damage, infrastructure: r.infrastructure, dci: r.dci, dci_tier: r.dci_tier, timestamp: r.timestamp }, geometry: { type:'Point', coordinates:[r.lng, r.lat] } })); content = JSON.stringify({ type:'FeatureCollection', features, certus_integrity: hash }, null, 2); filename = `veritas-export-${Date.now()}.geojson`; mime = 'application/geo+json'; } download(content, filename, mime); toast(`${format.toUpperCase()} export ready`); }
+async function exportShapefile() {
+  if (typeof shpwrite === 'undefined') { toast('Shapefile library not loaded'); return; }
+  const reports = await dbGetAll();
+  const data = reports.map(r => ({ lat: r.lat, lng: r.lng, damage: r.undpTier, infra: r.infraType, dci: r.dci }));
+  const geojson = {
+    type: 'FeatureCollection',
+    features: data.map(d => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [d.lng, d.lat] },
+      properties: { damage: d.damage, infrastructure: d.infra, dci: d.dci }
+    }))
+  };
+  shpwrite.download(geojson, { outputType: 'blob', folder: 'veritas_shapefile' });
+  toast('Shapefile download started');
+}
 async function updateExportPreview(reports) { const hash = reports.length > 0 ? await computeHash(JSON.stringify(reports.map(r => r.uuid))) : 'no-reports-yet'; const preview = buildIntegrityHeader(reports.length, hash); document.getElementById('exportPreview').textContent = preview.text; }
 function buildIntegrityHeader(count, hash) { const ts = new Date().toISOString(); const text = `VERITAS INTEGRITY EXPORT\nPowered by: CERTUS Engine v1.0\nGenerated:  ${ts}\nReports:    ${count}\nSHA-256:    ${hash}\n\nVerify: hash(JSON payload) === SHA-256 above\nDecision-support only. REVIEW REQUIRED reports\nrequire human field verification before any\nresource deployment decision.`; return { text, parsed: { generated: ts, reports: count, sha256: hash, certus: 'Engine v1.0' } }; }
 async function computeHash(str) { try { const buf = new TextEncoder().encode(str); const hash = await crypto.subtle.digest('SHA-256', buf); return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join(''); } catch { return 'hash-unavailable'; } }
