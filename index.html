@@ -1769,16 +1769,20 @@ async function syncToSupabase(report) {
   } catch { }
 }
 async function initRealtimeSubscription() {
-  if (!CONFIG.USE_SUPABASE || !window.supabase) return;
-  const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON);
-  supabaseClient.channel('veritas-realtime')
+  if (!CONFIG.USE_SUPABASE || typeof window.supabase === 'undefined') return;
+  const client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON);
+  client.channel('veritas-realtime')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'reports' }, payload => {
       const newReport = payload.new;
       if (!STATE.reports.some(r => r.uuid === newReport.uuid)) {
         STATE.reports.push(newReport);
         if (STATE.respondAuth && STATE.respondMap) {
-          plotReports(versionedReports(STATE.reports));
-          updateDashboardCounts(STATE.reports);
+          const versioned = versionedReports(STATE.reports);
+          plotReports(versioned);
+          updateDashboardCounts(versioned);
+          updateReportCard(versioned);
+          updateConflictFlags(versioned);
+          toast('New report received — map updated');
         }
       }
     })
