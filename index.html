@@ -1534,7 +1534,14 @@ function selectDamage(undpTier) {
   document.getElementById(`damage-${undpTier}`).classList.add('selected');
   checkStep2();
 }
-function selectInfra(type) { STATE.infraType = type; document.querySelectorAll('.infra-btn').forEach(b => b.classList.remove('selected')); document.getElementById(`infra-${type}`).classList.add('selected'); checkStep2(); }
+function selectInfra(type) { 
+  STATE.infraType = type; 
+  if(type === "Other") document.getElementById('otherInfraContainer').style.display = 'block'; 
+  else document.getElementById('otherInfraContainer').style.display = 'none';
+  document.querySelectorAll('.infra-btn').forEach(b => b.classList.remove('selected')); 
+  document.querySelector(`.infra-btn[data-infra="${type}"]`).classList.add('selected'); 
+  checkStep2(); 
+}
 function checkStep2() { document.getElementById('step2Next').disabled = !(STATE.undpTier && STATE.infraType); }
 function selectLocMode(mode) { STATE.locMode = mode; document.getElementById('locPrecise').classList.toggle('selected', mode === 'precise'); document.getElementById('locFuzzy').classList.toggle('selected', mode === 'fuzzy'); document.getElementById('fuzzyNotice').style.display = mode === 'fuzzy' ? 'block' : 'none'; if (STATE.coords && STATE.reportMap) updateLocationPin(); }
 function initLocationStep() {
