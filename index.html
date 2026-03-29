@@ -1774,10 +1774,18 @@ function versionedReports(rawReports) {
   });
   return Array.from(map.values());
 }
-function switchView(view) if (view === 'respond' && !STATE.respondAuth) {
-  setTimeout(() => toast('Enter access code UNDP2026 to unlock dashboard'), 600);
+function switchView(view) {
+  if (view === 'respond' && !STATE.respondAuth) {
+    setTimeout(() => toast('Enter access code UNDP2026 to unlock dashboard'), 600);
+  }
+
+  STATE.currentView = view;
+  document.getElementById('viewReport').classList.toggle('active', view === 'report');
+  document.getElementById('viewRespond').classList.toggle('active', view === 'respond');
+  document.getElementById('navReport').classList.toggle('active', view === 'report');
+  document.getElementById('navRespond').classList.toggle('active', view === 'respond');
+  if (view === 'respond' && STATE.respondAuth) initRespondDashboard();
 }
- { STATE.currentView = view; document.getElementById('viewReport').classList.toggle('active', view === 'report'); document.getElementById('viewRespond').classList.toggle('active', view === 'respond'); document.getElementById('navReport').classList.toggle('active', view === 'report'); document.getElementById('navRespond').classList.toggle('active', view === 'respond'); if (view === 'respond' && STATE.respondAuth) initRespondDashboard(); }
 function toast(msg, duration = 2500) { const container = document.getElementById('toastContainer'); const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; container.appendChild(el); setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, duration); }
 window.addEventListener('online', () => { STATE.isOnline = true; document.getElementById('offlineBanner').classList.remove('show'); syncPending(); toast('Back online — syncing reports'); });
 window.addEventListener('offline', () => { STATE.isOnline = false; document.getElementById('offlineBanner').classList.add('show'); toast('Offline — reports saved locally'); });
