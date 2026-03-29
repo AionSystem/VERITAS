@@ -1805,10 +1805,11 @@ if ('serviceWorker' in navigator) {
 // ==================== INITIALISATION ====================
 window.addEventListener('DOMContentLoaded', async () => {
   await initDB();
-  if (!STATE.isOnline) document.getElementById('offlineBanner').classList.add('show');
-  STATE.reports = await dbGetAll();
-  if (STATE.isOnline) syncPending();
-  document.querySelectorAll('input[name="crisisType"]').forEach(radio => {
+if (!STATE.isOnline) document.getElementById('offlineBanner').classList.add('show');
+STATE.reports = await dbGetAll();
+if (STATE.isOnline) syncPending();
+initRealtimeSubscription(); // ADD THIS LINE
+   document.querySelectorAll('input[name="crisisType"]').forEach(radio => {
     radio.addEventListener('change', updateCrisisSubtype);
   });
 });
