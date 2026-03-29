@@ -1,3 +1,5 @@
+![1000008409](https://github.com/user-attachments/assets/38eb9c0c-4591-4d31-987e-db14f8dbfe51)
+
 # VERITAS — Community Damage Certification Platform
 
 [![ORCID — Sheldon K. Salmon](https://img.shields.io/badge/ORCID-0009--0005--8057--5115-a6ce39?style=flat&logo=orcid&logoColor=white)](https://orcid.org/0009-0005-8057-5115)
@@ -6,7 +8,7 @@
 [![Seal](https://img.shields.io/badge/Seal-SHA--256%20Bound-4527A0?style=flat-square&logo=hashnode&logoColor=white)](https://github.com/AionSystem/VERITAS)
 [![Status](https://img.shields.io/badge/STATUS-Production-1976D2?style=flat-square)](https://github.com/AionSystem/VERITAS)
 [![License](https://img.shields.io/github/license/AionSystem/VERITAS?color=blue)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v1.0.0-orange)](#)
+[![Version](https://img.shields.io/badge/version-v1.1.0-orange)](#)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](#)
 [![Feedback Welcome](https://img.shields.io/badge/Feedback-welcome-brightgreen)](https://github.com/AionSystem/VERITAS/issues/new/choose)
 [![Made with JavaScript](https://img.shields.io/badge/Made%20with-JavaScript-yellow)](#)
