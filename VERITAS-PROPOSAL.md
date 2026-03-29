@@ -2,13 +2,21 @@
 ## UNDP Innocentive Challenge: Community Damage Assessment App
 
 **Solver:** Sheldon K. Salmon
+
 **Organization:** AionSystem
+
 **Location:** Evans Mills, New York
+
 **ORCID:** [0009-0005-8057-5115](https://orcid.org/0009-0005-8057-5115)
+
 **DOI:** [10.5281/zenodo.19295266](https://doi.org/10.5281/zenodo.19295266)
+
 **Participation Type:** Individual Solver
+
 **Technology Readiness Level:** TRL 7 — System prototype demonstrated in operational environment
+
 **Partnering Interest:** Yes — open to collaboration agreement with UNDP for field deployment
+
 **How Did You Hear:** UNDP Innocentive Challenge listing
 
 ---
