@@ -1678,7 +1678,33 @@ function buildIntegrityHeader(count, hash) { const ts = new Date().toISOString()
 async function computeHash(str) { try { const buf = new TextEncoder().encode(str); const hash = await crypto.subtle.digest('SHA-256', buf); return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join(''); } catch { return 'hash-unavailable'; } }
 async function exportCachedSnapshot() { const reports = await dbGetAll(); if (reports.length === 0) { toast('No cached reports'); return; } const hash = await computeHash(JSON.stringify(reports)); const snap = { snapshot: true, cached_at: new Date().toISOString(), reports, sha256: hash }; download(JSON.stringify(snap, null, 2), `veritas-snapshot-${Date.now()}.json`, 'application/json'); toast('Cached snapshot downloaded'); }
 function download(content, filename, mime) { const blob = new Blob([content], { type: mime }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); }
-async function syncToSupabase(report) { if (!CONFIG.USE_SUPABASE) return; try { const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/reports`, { method: 'POST', headers: { 'apikey': CONFIG.SUPABASE_ANON, 'Authorization': `Bearer ${CONFIG.SUPABASE_ANON}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }, body: JSON.stringify({ ...report, photo: null }) }); if (res.ok) await dbMarkSynced(report.uuid); } catch { } }
+async function syncToSupabase(report) {
+  if (!CONFIG.USE_SUPABASE) return;
+  try {
+    const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/reports`, {
+      method: 'POST',
+      headers: { 'apikey': CONFIG.SUPABASE_ANON, 'Authorization': `Bearer ${CONFIG.SUPABASE_ANON}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...report, photo: null })
+    });
+    if (res.ok) await dbMarkSynced(report.uuid);
+  } catch { }
+}
+async function initRealtimeSubscription() {
+  if (!CONFIG.USE_SUPABASE || !window.supabase) return;
+  const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON);
+  supabaseClient.channel('veritas-realtime')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'reports' }, payload => {
+      const newReport = payload.new;
+      if (!STATE.reports.some(r => r.uuid === newReport.uuid)) {
+        STATE.reports.push(newReport);
+        if (STATE.respondAuth && STATE.respondMap) {
+          plotReports(versionedReports(STATE.reports));
+          updateDashboardCounts(STATE.reports);
+        }
+      }
+    })
+    .subscribe();
+}
 async function syncPending() { if (!STATE.isOnline || !CONFIG.USE_SUPABASE) return; const unsynced = await dbGetUnsynced(); if (unsynced.length === 0) return; showSyncQueue(unsynced.length); for (const r of unsynced) await syncToSupabase(r); hideSyncQueue(); }
 function showSyncQueue(n) { document.getElementById('syncQueueText').textContent = `Syncing ${n} queued report${n>1?'s':''}...`; document.getElementById('syncQueue').classList.add('show'); }
 function hideSyncQueue() { document.getElementById('syncQueue').classList.remove('show'); toast('Reports synced'); }
