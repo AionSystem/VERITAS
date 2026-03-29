@@ -753,18 +753,6 @@ const CONFIG = {
   DEDUP_RADIUS:    10,
   DEDUP_WINDOW:    120,
 };
-const FORM_CONFIG = {
-  steps: [
-    { id: 1, title: "PHOTOGRAPH", fields: [{ type: "photo" }] },
-    { id: 2, title: "DAMAGE LEVEL", fields: [
-      { type: "damage", options: [...] }, // copy from FIX 5 damage options
-      { type: "infrastructure", options: [...] } // copy from FIX 4 infrastructure options
-    ] },
-    { id: 3, title: "DETAILS", fields: [...] }, // copy from existing fields
-    { id: 4, title: "LOCATION", fields: [{ type: "location_mode" }, { type: "map" }] },
-    { id: 5, title: "REVIEW", fields: [] }
-  ]
-};  
 const STATE = {
   currentStep:    1,
   currentView:    'report',
