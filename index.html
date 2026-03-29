@@ -1906,7 +1906,9 @@ if (hamburger && mobileNav) {
 if ('serviceWorker' in navigator) {
   const swCode = `
     const CACHE_NAME = 'veritas-v1';
-    const ASSETS = ['/','/index.html','/manifest.json','https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:ital,wght@0,300;0,400;0,600;0,700;0,900;1,300&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400;500;700&display=swap','https://unpkg.com/leaflet@1.9.4/dist/leaflet.css','https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'];
+    const ASSETS = ['/','/index.html','/manifest.json','https://unpkg.com/leaflet@1.9.4/dist/leaflet.css','https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'];
+// Google Fonts excluded — opaque responses break cache.addAll()
+// System font fallback handles offline rendering;
     self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())));
     self.addEventListener('fetch', e => { const url = new URL(e.request.url); if (url.origin === location.origin || ASSETS.some(a => e.request.url.includes(a))) { e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))); } });
   `;
