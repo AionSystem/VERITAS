@@ -1791,6 +1791,14 @@ function switchView(view) {
 function toast(msg, duration = 2500) { const container = document.getElementById('toastContainer'); const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; container.appendChild(el); setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, duration); }
 window.addEventListener('online', () => { STATE.isOnline = true; document.getElementById('offlineBanner').classList.remove('show'); syncPending(); toast('Back online — syncing reports'); });
 window.addEventListener('offline', () => { STATE.isOnline = false; document.getElementById('offlineBanner').classList.add('show'); toast('Offline — reports saved locally'); });
+function copyRestEndpoint() {
+  const endpoint = `${CONFIG.SUPABASE_URL}/rest/v1/reports?select=uuid,timestamp,lat,lng,undpTier,infraType,dci,dciTier`;
+  navigator.clipboard.writeText(endpoint).then(() => toast('REST API endpoint copied to clipboard'));
+  // Also show it
+  const preview = document.getElementById('exportPreview');
+  const current = preview.textContent;
+  preview.textContent = `REST API ENDPOINT\n${endpoint}\n\nHeaders required:\n apikey: <SUPABASE_ANON_KEY>\n Authorization: Bearer <SUPABASE_ANON_KEY>\n\nFilter examples:\n ?dci=gte.0.70 → High confidence only\n ?dciTier=eq.review → Review required\n Accept: text/csv → CSV response\n\n` + current;
+}  
 // ==================== STP INTEGRATION ====================
 let currentSTPSeal = null;
 async function stampWithSTP() {
