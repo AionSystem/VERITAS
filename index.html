@@ -642,20 +642,20 @@
         </div>
         <div class="step-title" style="margin-top: 24px;" data-i18n="infra_title">INFRASTRUCTURE TYPE</div>
         <div class="infra-grid">
-          <button class="infra-btn" onclick="selectInfra('Residential')"><div class="infra-icon">🏠</div><div class="infra-label">Residential</div></button>
-          <button class="infra-btn" onclick="selectInfra('Road')"><div class="infra-icon">🛣️</div><div class="infra-label">Road</div></button>
-          <button class="infra-btn" onclick="selectInfra('Bridge')"><div class="infra-icon">🌉</div><div class="infra-label">Bridge</div></button>
-          <button class="infra-btn" onclick="selectInfra('Utility')"><div class="infra-icon">⚡</div><div class="infra-label">Utility</div></button>
-          <button class="infra-btn" onclick="selectInfra('Medical')"><div class="infra-icon">🏥</div><div class="infra-label">Medical</div></button>
-          <button class="infra-btn" onclick="selectInfra('School')"><div class="infra-icon">🏫</div><div class="infra-label">School</div></button>
-          <button class="infra-btn" onclick="selectInfra('Commercial Infrastructure')"><div class="infra-icon">🏪</div><div class="infra-label">Commercial</div></button>
-          <button class="infra-btn" onclick="selectInfra('Government Building')"><div class="infra-icon">🏛️</div><div class="infra-label">Government</div></button>
-          <button class="infra-btn" onclick="selectInfra('Transport and Communication')"><div class="infra-icon">📡</div><div class="infra-label">Transport/Comm</div></button>
-          <button class="infra-btn" onclick="selectInfra('Community Infrastructure')"><div class="infra-icon">🏘️</div><div class="infra-label">Community</div></button>
-          <button class="infra-btn" onclick="selectInfra('Public spaces/Recreation')"><div class="infra-icon">⛲</div><div class="infra-label">Public Space</div></button>
-          <button class="infra-btn" onclick="selectInfra('Other')"><div class="infra-icon">📝</div><div class="infra-label">Other</div></button>
-       </div>
-       <div id="otherInfraContainer" style="display:none; margin-top:8px;"><input type="text" id="otherInfra" class="form-input" placeholder="Please specify"></div>
+          <button class="infra-btn" data-infra="Residential" onclick="selectInfra('Residential')"><div class="infra-icon">🏠</div><div class="infra-label">Residential</div></button>
+          <button class="infra-btn" data-infra="Road" onclick="selectInfra('Road')"><div class="infra-icon">🛣️</div><div class="infra-label">Road</div></button>
+          <button class="infra-btn" data-infra="Bridge" onclick="selectInfra('Bridge')"><div class="infra-icon">🌉</div><div class="infra-label">Bridge</div></button>
+          <button class="infra-btn" data-infra="Utility" onclick="selectInfra('Utility')"><div class="infra-icon">⚡</div><div class="infra-label">Utility</div></button>
+          <button class="infra-btn" data-infra="Medical" onclick="selectInfra('Medical')"><div class="infra-icon">🏥</div><div class="infra-label">Medical</div></button>
+          <button class="infra-btn" data-infra="School" onclick="selectInfra('School')"><div class="infra-icon">🏫</div><div class="infra-label">School</div></button>
+          <button class="infra-btn" data-infra="Commercial Infrastructure" onclick="selectInfra('Commercial Infrastructure')"><div class="infra-icon">🏪</div><div class="infra-label">Commercial</div></button>
+          <button class="infra-btn" data-infra="Government Building" onclick="selectInfra('Government Building')"><div class="infra-icon">🏛️</div><div class="infra-label">Government</div></button>
+          <button class="infra-btn" data-infra="Transport and Communication" onclick="selectInfra('Transport and Communication')"><div class="infra-icon">📡</div><div class="infra-label">Transport/Comm</div></button>
+          <button class="infra-btn" data-infra="Community Infrastructure" onclick="selectInfra('Community Infrastructure')"><div class="infra-icon">🏘️</div><div class="infra-label">Community</div></button>
+          <button class="infra-btn" data-infra="Public spaces/Recreation" onclick="selectInfra('Public spaces/Recreation')"><div class="infra-icon">⛲</div><div class="infra-label">Public Space</div></button>
+          <button class="infra-btn" data-infra="Other" onclick="selectInfra('Other')"><div class="infra-icon">📝</div><div class="infra-label">Other</div></button>
+        </div>
+        <div id="otherInfraContainer" style="display:none; margin-top:8px;"><input type="text" id="otherInfra" class="form-input" placeholder="Please specify"></div>
        <div style="display:flex;gap:8px;margin-top:16px;"><button class="btn btn-secondary" style="flex:0 0 80px" onclick="goStep(1)" data-i18n="back">← BACK</button><button class="btn btn-primary" id="step2Next" onclick="goStep(3)" disabled data-i18n="next">NEXT</button></div>
       </div>
       <div class="step-panel" id="step3">
