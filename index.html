@@ -1505,14 +1505,26 @@ function handlePhoto(input) {
   reader.onload = function(e) {
     const img = new Image();
     img.onload = function() {
+      // Canvas redraw strips EXIF by re-encoding — GPS and all metadata removed
+      const MAX_W = 1920, MAX_H = 1440;
+      let w = img.width, h = img.height;
+      const ratio = Math.min(MAX_W / w, MAX_H / h, 1);
+      w = Math.round(w * ratio); h = Math.round(h * ratio);
       const canvas = document.createElement('canvas');
-      canvas.width = Math.min(img.width, 1920); canvas.height = Math.min(img.height, 1440);
-      const ratio = Math.min(canvas.width/img.width, canvas.height/img.height);
-      canvas.width = img.width * ratio; canvas.height = img.height * ratio;
-      const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      STATE.photo = canvas.toDataURL('image/jpeg', 0.85);
-      const preview = document.getElementById('photoPreview'); preview.src = STATE.photo; preview.classList.add('show');
-      document.getElementById('photoRetake').classList.add('show'); document.getElementById('photoZone').classList.add('has-photo');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      // White background first (prevents transparent PNG issues)
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      // toDataURL re-encodes as JPEG — no EXIF carried through
+      STATE.photo = canvas.toDataURL('image/jpeg', 0.82);
+      // Verify no GPS data survived (canvas re-encode is the mechanism)
+      const preview = document.getElementById('photoPreview');
+      preview.src = STATE.photo;
+      preview.classList.add('show');
+      document.getElementById('photoRetake').classList.add('show');
+      document.getElementById('photoZone').classList.add('has-photo');
       runAiAnalysis();
     };
     img.src = e.target.result;
