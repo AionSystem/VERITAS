@@ -1,0 +1,118 @@
+{
+  "id": "12",
+  "name": "auditor-application",
+  "label": "AUDITOR-APPLICATION",
+  "title": "[AUDITOR-APPLICATION] — [Your Full Name] — [Specialization]",
+  "labels": ["auditor-application", "pending-review"],
+  "assignees": [],
+  "requires_docusign": false,
+  "requires_identity": false,
+  "requires_phi_gate": false,
+  "requires_stripe": false,
+  "requires_prior_seal": false,
+  "requires_auditor_badge": false,
+  "triggers": ["apply auditor", "become auditor", "auditor application", "certification application"],
+  "legal_notice": {
+    "title": "Sovereign Trace Protocol — Auditor Certification Application",
+    "content": [
+      "This application is reviewed Monday and Tuesday only.",
+      "Review is skills-based. Credentials and degrees are not evaluated.",
+      "What is evaluated: your demonstrated ability to read AI outputs honestly.",
+      "",
+      "**Term:** 1 year from badge issuance. Renewable by reapplication.",
+      "**Annual cap:** 50 sealed audits per calendar year per badge.",
+      "**Badge is non-transferable.** It is bound to your name and LinkedIn permanently.",
+      "",
+      "Intake is reviewed by Sheldon K. Salmon personally.",
+      "Not every application is accepted. There is no appeal process."
+    ]
+  },
+  "fields": [
+    {
+      "type": "input",
+      "id": "full_name",
+      "label": "Full Legal Name",
+      "description": "This is what will appear on your badge if approved.",
+      "placeholder": "Jane Smith",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "linkedin",
+      "label": "LinkedIn Profile URL",
+      "description": "Must be a real, active LinkedIn profile. This is your identity anchor.",
+      "placeholder": "https://linkedin.com/in/yourprofile",
+      "required": true
+    },
+    {
+      "type": "dropdown",
+      "id": "specialization",
+      "label": "Primary Specialization",
+      "description": "Select the domain where your AI output review skills are strongest.",
+      "options": [
+        "AI Outputs — General",
+        "AI Outputs — Healthcare / Clinical",
+        "AI Outputs — Legal / Compliance",
+        "AI Outputs — Research / Scientific",
+        "AI Outputs — Financial",
+        "AI Outputs — Government / Defense",
+        "AI Outputs — Creative / Media"
+      ],
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "background",
+      "label": "Professional Background",
+      "description": "Describe your relevant experience. No degrees required. Describe what you have actually done.",
+      "placeholder": "3 years reviewing LLM outputs for a fintech company. Built internal red-teaming process. Identified 47 documented hallucination events.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "skills_sample",
+      "label": "Skills Sample — Upload or Describe",
+      "description": "Upload a sample AI output review you have conducted, OR describe a specific AI failure you identified and how you documented it. This is your skills demonstration.",
+      "required": true
+    },
+    {
+      "type": "upload",
+      "id": "file_upload",
+      "label": "Supporting Files",
+      "description": "Upload any supporting work samples. PDF preferred.",
+      "required": false
+    },
+    {
+      "type": "input",
+      "id": "referral",
+      "label": "Referral (Optional)",
+      "description": "If an existing STP Certified Auditor referred you, enter their badge number.",
+      "placeholder": "STP-AUDITOR-0001",
+      "required": false
+    },
+    {
+      "type": "checkboxes",
+      "id": "terms",
+      "label": "Auditor Terms Agreement",
+      "options": [
+        "I understand the badge is non-transferable and bound to my name and LinkedIn permanently.",
+        "I understand my badge term is 1 year and must be renewed by reapplication.",
+        "I understand I am capped at 50 sealed audits per calendar year.",
+        "I understand that bribery, coercion, or misuse of the badge will result in permanent revocation and a public ledger record.",
+        "I understand that disputes and revocation proceedings may be referred to a legal review process outside of STP.",
+        "I have read and agree to the Sovereign Trace Protocol Terms of Service."
+      ],
+      "required": true
+    }
+  ],
+  "after_submit": {
+    "steps": [
+      "Application review — Conducted Monday/Tuesday by Sheldon K. Salmon.",
+      "Skills assessment — Demonstrated ability to read AI outputs honestly.",
+      "Badge issuance — If approved, STP-AUDITOR-XXXX badge number assigned.",
+      "Notification — You receive your badge number and certification letter.",
+      "Term begins — 1 year from issuance date. Renewable by reapplication."
+    ],
+    "footer": "The badge is the authority. The seal is the certification.\n\nSovereign Trace Protocol | Sheldon K. Salmon | aionsystem2026@gmail.com"
+  }
+}
