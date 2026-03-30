@@ -1,0 +1,114 @@
+{
+  "id": "04",
+  "name": "creative-priority",
+  "label": "CREATIVE-PRIORITY",
+  "title": "[STP-CREATIVE] — [MEDIUM] — [DATE]",
+  "labels": ["creative-priority", "pending-seal"],
+  "assignees": [],
+  "requires_docusign": false,
+  "requires_identity": false,
+  "requires_phi_gate": false,
+  "requires_stripe": false,
+  "requires_prior_seal": false,
+  "requires_auditor_badge": false,
+  "triggers": ["creative", "music", "art", "design", "invention", "patent", "poem", "novel", "screenplay", "software", "code"],
+  "legal_notice": {
+    "title": "Creative Priority Seal",
+    "content": [
+      "This form seals your creative work at the moment you submit it.",
+      "",
+      "**This is not a copyright registration.** Copyright exists the moment you create something.",
+      "This seal gives you something copyright alone does not: cryptographic proof that this exact work",
+      "existed, in this exact form, on this exact date — verifiable by anyone, requiring no institution.",
+      "",
+      "You do not need to attach the full work. Seal a precise description, a title, a representative excerpt,",
+      "or a SHA-256 hash of the file. What matters is that the seal binds to something specific and unique."
+    ]
+  },
+  "fields": [
+    {
+      "type": "input",
+      "id": "submitter_name",
+      "label": "Your Name or Artist Name",
+      "description": "The name you want attached to this priority record.",
+      "placeholder": "Legal name or professional name",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "work_title",
+      "label": "Work Title",
+      "description": "The title of the work being sealed.",
+      "placeholder": "Title of the work",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "medium",
+      "label": "Medium / Format",
+      "description": "What kind of creative work is this?",
+      "placeholder": "Music / Novel / Screenplay / Visual art / Design / Software / Poem / Other",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "creation_date",
+      "label": "Date of Creation or Completion",
+      "description": "When was this work created or completed? Format: YYYY-MM-DD",
+      "placeholder": "2026-03-07",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "work_description",
+      "label": "Work Description",
+      "description": "Describe the work precisely. Include distinctive elements that uniquely identify it.",
+      "placeholder": "Describe the work with enough specificity to distinguish it from any other work.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "representative_content",
+      "label": "Excerpt or File Hash (Optional)",
+      "description": "Paste a short excerpt, key passage, or SHA-256 hash of the file. Binds the seal to specific content.",
+      "placeholder": "Excerpt, key passage, or SHA-256 hash of the file.",
+      "required": false
+    },
+    {
+      "type": "input",
+      "id": "publication_status",
+      "label": "Publication Status",
+      "description": "Is this work published, unpublished, or in progress?",
+      "placeholder": "Unpublished / Published [date] / In progress / Submitted for review",
+      "required": true
+    },
+    {
+      "type": "upload",
+      "id": "supporting_files",
+      "label": "Supporting Files (Optional)",
+      "description": "Upload a preview, excerpt, or representative file. Do not upload the full work if unpublished.",
+      "required": false
+    },
+    {
+      "type": "checkboxes",
+      "id": "declaration",
+      "label": "Declaration",
+      "options": [
+        "I affirm that I am the creator of this work or an authorized representative of the creator.",
+        "I affirm that the description accurately represents the work as it exists at the time of sealing.",
+        "I understand this submission is immutable — it cannot be altered after sealing.",
+        "I understand the protocol provides a tamper-evident timestamp of priority — not legal copyright registration."
+      ],
+      "required": true
+    }
+  ],
+  "after_submit": {
+    "steps": [
+      "Completeness check — Reviewed for completeness.",
+      "Sealing — Sealed with a FROZEN-2.0 triple-time cryptographic stamp. Permanent.",
+      "Ledger entry — Enters the Sovereign Trace ledger with your name, timestamp, and SHA-256 hash.",
+      "Notification — You receive your ledger entry ID and SHA-256 hash. Keep it. It is your proof."
+    ],
+    "footer": "The seal is permanent. The seal is the priority record.\n\nSovereign Trace Protocol | Sheldon K. Salmon | aionsystem2026@gmail.com"
+  }
+}
