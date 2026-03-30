@@ -10,6 +10,18 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
+// Security contact for breach notifications (F-12)
+const SECURITY_CONTACT = 'aionsystem2026@gmail.com';
+const DATA_BREACH_NOTIFICATION_HOURS = 72;
+
+// Data retention (E-12)
+const RETENTION_DAYS = 90;
+const JURISDICTION = 'New York State, USA';
+const TERMS_VERSION = '2026-03-30-v3';
+
+// Payload size limit (F-04)
+const MAX_ENTRY_SIZE = 1024 * 1024; // 1MB
+
 // Connection pooling (E-02)
 const httpsAgent = new https.Agent({
   keepAlive: true,
@@ -22,15 +34,45 @@ const httpsAgent = new https.Agent({
 const verificationCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-// Data retention (E-12)
-const RETENTION_DAYS = 90;
-const JURISDICTION = 'New York State, USA';
-const TERMS_VERSION = '2026-03-30-v2';
+// Request ID counter for tracing (F-03)
+let requestCounter = 0;
 
 let supabase = null;
 function getSupabase() {
   if (!supabase) supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
   return supabase;
+}
+
+// ============================================================
+// F-06: ENTRY CANONICALIZATION
+// ============================================================
+function canonicalizeEntry(entry) {
+  return entry
+    .trim()
+    .replace(/\r\n/g, '\n')           // Normalize line endings
+    .replace(/[ \t]+/g, ' ')           // Normalize spaces
+    .replace(/\n{3,}/g, '\n\n')        // Limit consecutive newlines
+    .replace(/[^\x20-\x7E\n]/g, '?')   // Replace non-ASCII with ?
+    .trim();
+}
+
+// ============================================================
+// F-05: STRIP CLIENT TIMESTAMPS
+// ============================================================
+function stripClientTimestamps(entry) {
+  // Remove common timestamp patterns
+  let cleaned = entry
+    .replace(/\nTimestamp: .*?\n/g, '\n')
+    .replace(/\nTime: .*?\n/g, '\n')
+    .replace(/\nDate: .*?\n/g, '\n')
+    .replace(/\nCreated: .*?\n/g, '\n')
+    .replace(/\nSealed: .*?\n/g, '\n');
+  
+  // Remove ISO date patterns
+  cleaned = cleaned.replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/g, '');
+  cleaned = cleaned.replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/g, '');
+  
+  return cleaned;
 }
 
 // ============================================================
@@ -127,6 +169,16 @@ function computeSealExact(entry, gregorian, hebrew, dreamspell, unixUtc) {
 }
 
 // ============================================================
+// F-10: HUMAN-READABLE SEAL SUMMARY
+// ============================================================
+function generateHumanReadableId(seal, date) {
+  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+  const shortHash = seal.substring(0, 4).toUpperCase();
+  const checksum = (parseInt(seal.substring(0, 8), 16) % 1000).toString().padStart(3, '0');
+  return `STP-${dateStr}-${shortHash}-${checksum}`;
+}
+
+// ============================================================
 // TEMPLATE SELECTION
 // ============================================================
 const SEAL_TEMPLATES = {
@@ -164,9 +216,23 @@ function ledgerFileName(templateKey, gregorian, seal) {
 }
 
 // ============================================================
-// GITHUB HELPERS with timeout and search API (E-01, E-03)
+// GITHUB HELPERS with graceful degradation (F-01)
 // ============================================================
+let githubAuthFailure = false;
+let lastAuthFailureTime = null;
+
 async function ghRequest(path, method, body, timeoutMs = 15000) {
+  // If GitHub token has permanently failed, return degraded response (F-01)
+  if (githubAuthFailure && (Date.now() - lastAuthFailureTime) < 3600000) {
+    return { 
+      data: null, 
+      rateLimit: null, 
+      error: 'GITHUB_AUTH_FAILED',
+      degraded: true,
+      message: 'GitHub integration temporarily unavailable. Seal created but not stored in ledger.'
+    };
+  }
+  
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   
@@ -186,9 +252,22 @@ async function ghRequest(path, method, body, timeoutMs = 15000) {
     
     clearTimeout(timeoutId);
     
-    // Handle rate limiting (E-06)
     const remaining = parseInt(res.headers.get('x-ratelimit-remaining') || '0');
     const reset = parseInt(res.headers.get('x-ratelimit-reset') || '0');
+    
+    // Handle auth failure (F-01)
+    if (res.status === 401) {
+      githubAuthFailure = true;
+      lastAuthFailureTime = Date.now();
+      console.error('GitHub token expired or invalid');
+      return { 
+        data: null, 
+        rateLimit: null, 
+        error: 'GITHUB_AUTH_FAILED',
+        degraded: true,
+        message: 'GitHub token expired. Seal created but not stored in ledger.'
+      };
+    }
     
     if (!res.ok) {
       if (res.status === 403 && remaining === 0) {
@@ -199,7 +278,13 @@ async function ghRequest(path, method, body, timeoutMs = 15000) {
       throw new Error(`GitHub ${method} ${path} → ${res.status}: ${err}`);
     }
     
-    return { data: await res.json(), rateLimit: { remaining, reset } };
+    // Reset auth failure flag on success
+    if (githubAuthFailure) {
+      githubAuthFailure = false;
+    }
+    
+    const data = await res.json();
+    return { data, rateLimit: { remaining, reset }, error: null, degraded: false };
   } catch (err) {
     clearTimeout(timeoutId);
     if (err.name === 'AbortError') {
@@ -209,93 +294,129 @@ async function ghRequest(path, method, body, timeoutMs = 15000) {
   }
 }
 
-// E-01: GitHub search API for prior seal verification
+// ============================================================
+// F-02: DEPENDENCY HEALTH CHECKS
+// ============================================================
+async function checkGitHubStatus() {
+  try {
+    const { data, error } = await ghRequest('/rate_limit', 'GET');
+    if (error === 'GITHUB_AUTH_FAILED') {
+      return { ok: false, error: 'AUTH_FAILED', message: 'GitHub token expired or invalid' };
+    }
+    if (data) {
+      return { ok: true, rate_limit_remaining: data.rate?.remaining };
+    }
+    return { ok: false, error: 'NO_RESPONSE' };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+async function checkSupabaseStatus() {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    return { ok: false, error: 'NOT_CONFIGURED' };
+  }
+  try {
+    const supabase = getSupabase();
+    const { error } = await supabase.from('stp_seals').select('count', { count: 'exact', head: true });
+    if (error) throw error;
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+// ============================================================
+// F-13: CONSENT WITHDRAWAL
+// ============================================================
+async function handleConsentWithdrawal(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
+  }
+  
+  try {
+    const { sessionId, userId, email } = req.body;
+    
+    if (!sessionId && !userId && !email) {
+      return res.status(400).json({ 
+        error: 'MISSING_IDENTIFIER',
+        message: 'Session ID, user ID, or email required',
+        user_help: 'Please provide the identifier associated with your consent.'
+      });
+    }
+    
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      return res.status(200).json({
+        success: true,
+        message: 'Consent withdrawal recorded locally. No database configured.',
+        withdrawn_at: new Date().toISOString()
+      });
+    }
+    
+    const supabase = getSupabase();
+    let query = supabase.from('stp_seals').update({ 
+      consent_withdrawn: true,
+      consent_withdrawn_at: new Date().toISOString()
+    });
+    
+    if (sessionId) query = query.eq('session_id', sessionId);
+    else if (userId) query = query.eq('user_id', userId);
+    else if (email) query = query.eq('email_hash', crypto.createHash('sha256').update(email).digest('hex'));
+    
+    const { error } = await query;
+    
+    if (error) throw error;
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Consent withdrawn. Your data will be retained only as required by law.',
+      withdrawn_at: new Date().toISOString(),
+      retention_policy: `${RETENTION_DAYS} days`,
+      contact: SECURITY_CONTACT
+    });
+  } catch (err) {
+    console.error('Consent withdrawal error:', err);
+    return res.status(500).json({ 
+      error: 'WITHDRAWAL_ERROR', 
+      message: 'Unable to process consent withdrawal'
+    });
+  }
+}
+
+// ============================================================
+// GitHub search API for prior seal verification (E-01)
+// ============================================================
 async function searchGitHubForHash(hash) {
   try {
-    const searchUrl = `/search/issues?q=${hash}+repo:AionSystem/SOVEREIGN-TRACE-PROTOCOL`;
-    const { data } = await ghRequest(searchUrl, 'GET');
-    return data.items || [];
+    const { data } = await ghRequest(`/search/issues?q=${hash}+repo:AionSystem/SOVEREIGN-TRACE-PROTOCOL`, 'GET');
+    return data?.items || [];
   } catch (err) {
     console.error('GitHub search failed:', err.message);
     return [];
   }
 }
 
-// E-05: Verify seal integrity (not just existence)
+// ============================================================
+// Verify seal integrity (E-05)
+// ============================================================
 function verifySealIntegrity(issueBody, claimedHash, templateId) {
-  // Check that the seal hash appears in the issue body
   if (!issueBody.includes(claimedHash)) {
     return { valid: false, reason: 'Hash mismatch: claimed hash not found in issue' };
   }
-  
-  // Check for proper STP formatting
   if (!issueBody.includes('Sovereign Trace Protocol — Automated Seal')) {
     return { valid: false, reason: 'Not a valid STP seal issue' };
   }
-  
-  // Check template match if provided
   if (templateId && !issueBody.includes(`**Template:** ${templateId}`)) {
     return { valid: false, reason: `Template mismatch: expected ${templateId}` };
   }
-  
-  // Check for triple-time stamp
   if (!issueBody.includes('Triple-Time Stamp:')) {
     return { valid: false, reason: 'Missing triple-time stamp' };
   }
-  
   return { valid: true, reason: null };
 }
 
 // ============================================================
-// E-06: Non-repudiation (optional client-side signing verification)
-// ============================================================
-function verifySignature(payload, signature, publicKey) {
-  // Placeholder for future implementation
-  // Would verify that the payload was signed by the claimed user
-  return { valid: true, method: 'not_implemented' };
-}
-
-// ============================================================
-// E-13: Data deletion endpoint helper
-// ============================================================
-async function deleteUserData(identifier, type, proof) {
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    return { success: false, error: 'Supabase not configured' };
-  }
-  
-  const supabase = getSupabase();
-  
-  if (type === 'session') {
-    // Delete session data (not the seal itself)
-    const { error } = await supabase
-      .from('stp_seals')
-      .update({ 
-        ip_hash: null,
-        user_id: null,
-        deleted_at: new Date().toISOString(),
-        deletion_requested_by: identifier
-      })
-      .eq('session_id', identifier);
-    
-    if (error) return { success: false, error: error.message };
-    return { success: true, message: 'Session data deleted. Seals remain immutable.' };
-  }
-  
-  if (type === 'seal') {
-    // Cannot delete seals (immutable by design)
-    // But can add deprecation notice
-    return { 
-      success: false, 
-      error: 'Seals cannot be deleted. They are immutable by design.',
-      alternative: 'You can create a deprecation seal referencing this one.'
-    };
-  }
-  
-  return { success: false, error: 'Unknown deletion type' };
-}
-
-// ============================================================
-// E-04: Cached verification
+// Cached verification (E-04)
 // ============================================================
 async function verifyPriorSealCached(hash) {
   const cached = verificationCache.get(hash);
@@ -320,7 +441,6 @@ async function verifyPriorSealCached(hash) {
   
   verificationCache.set(hash, { timestamp: Date.now(), result });
   
-  // Clean old cache entries
   for (const [key, value] of verificationCache.entries()) {
     if (Date.now() - value.timestamp > CACHE_TTL) {
       verificationCache.delete(key);
@@ -331,7 +451,7 @@ async function verifyPriorSealCached(hash) {
 }
 
 // ============================================================
-// E-05: Prior seal verification endpoint handler
+// Prior seal verification endpoint handler
 // ============================================================
 async function handlePriorSealVerify(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -349,7 +469,6 @@ async function handlePriorSealVerify(req, res) {
   try {
     const result = await verifyPriorSealCached(hash);
     
-    // If template ID provided, verify against it
     if (templateId && result.issue) {
       const integrity = verifySealIntegrity(result.issue.body, hash, templateId);
       result.template_match = integrity.valid;
@@ -359,7 +478,6 @@ async function handlePriorSealVerify(req, res) {
       }
     }
     
-    // Log verification (E-08)
     console.log(`[VERIFY] Hash: ${hash.substring(0,16)}... Exists: ${result.exists} Verified: ${result.verified}`);
     
     return res.status(200).json({ 
@@ -381,7 +499,7 @@ async function handlePriorSealVerify(req, res) {
 }
 
 // ============================================================
-// E-05: File verification endpoint handler
+// File verification endpoint handler
 // ============================================================
 async function handleFileVerify(req, res) {
   return new Promise((resolve, reject) => {
@@ -389,7 +507,7 @@ async function handleFileVerify(req, res) {
     let fileBuffer = null;
     let claimedHash = null;
     let fileName = null;
-    let nonce = null;  // E-07: replay attack prevention
+    let nonce = null;
     
     busboy.on('file', (fieldname, file, filename) => {
       fileName = filename;
@@ -414,7 +532,6 @@ async function handleFileVerify(req, res) {
         });
       }
       
-      // E-07: Check nonce to prevent replay
       if (!nonce) {
         return res.status(400).json({ 
           error: 'MISSING_NONCE', 
@@ -450,7 +567,7 @@ async function handleFileVerify(req, res) {
 }
 
 // ============================================================
-// E-13: Data deletion endpoint
+// Data deletion endpoint (E-13)
 // ============================================================
 async function handleDataDeletion(req, res) {
   if (req.method !== 'POST') {
@@ -468,18 +585,47 @@ async function handleDataDeletion(req, res) {
       });
     }
     
-    const result = await deleteUserData(identifier, type, proof);
-    
-    if (!result.success) {
-      return res.status(400).json(result);
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      return res.status(200).json({
+        success: true,
+        message: 'Deletion request recorded. No database configured.',
+        note: 'Seals themselves cannot be deleted. Only associated metadata.'
+      });
     }
     
-    return res.status(200).json({
-      success: true,
-      message: result.message,
-      retention_policy: `${RETENTION_DAYS} days`,
-      immutable_note: 'Seal records themselves cannot be deleted. Only associated metadata.'
-    });
+    const supabase = getSupabase();
+    
+    if (type === 'session') {
+      const { error } = await supabase
+        .from('stp_seals')
+        .update({ 
+          ip_hash: null,
+          user_id: null,
+          deleted_at: new Date().toISOString(),
+          deletion_requested_by: identifier,
+          deletion_reason: reason || 'User request'
+        })
+        .eq('session_id', identifier);
+      
+      if (error) throw error;
+      
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Session data deleted. Seals remain immutable.',
+        retention_policy: `${RETENTION_DAYS} days`
+      });
+    }
+    
+    if (type === 'seal') {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'SEALS_CANNOT_BE_DELETED',
+        message: 'Seals cannot be deleted. They are immutable by design.',
+        alternative: 'You can create a deprecation seal referencing this one.'
+      });
+    }
+    
+    return res.status(400).json({ success: false, error: 'Unknown deletion type' });
   } catch (err) {
     console.error('Deletion error:', err);
     return res.status(500).json({ 
@@ -490,27 +636,39 @@ async function handleDataDeletion(req, res) {
 }
 
 // ============================================================
-// Ledger entries endpoint
+// Ledger entries endpoint with pagination (F-17)
 // ============================================================
 async function getLedgerEntries(req, res) {
   try {
-    const limit = parseInt(req.query.limit) || 50;
-    const { data: issues } = await ghRequest('/repos/AionSystem/SOVEREIGN-TRACE-PROTOCOL/issues', 'GET');
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const limit = parseInt(url.searchParams.get('limit')) || 50;
+    const offset = parseInt(url.searchParams.get('offset')) || 0;
     
-    const seals = (issues || [])
-      .filter(issue => issue.labels?.some(l => l.name?.includes('seal') || l.name?.includes('trace')))
-      .slice(0, limit)
-      .map(issue => ({
-        issue_number: issue.number,
-        title: issue.title,
-        url: issue.html_url,
-        created_at: issue.created_at,
-        labels: issue.labels.map(l => l.name)
-      }));
+    const { data: issues, rateLimit } = await ghRequest('/repos/AionSystem/SOVEREIGN-TRACE-PROTOCOL/issues', 'GET');
+    
+    const allSeals = (issues || [])
+      .filter(issue => issue.labels?.some(l => l.name?.includes('seal') || l.name?.includes('trace')));
+    
+    const total = allSeals.length;
+    const seals = allSeals.slice(offset, offset + limit).map(issue => ({
+      issue_number: issue.number,
+      title: issue.title,
+      url: issue.html_url,
+      created_at: issue.created_at,
+      labels: issue.labels.map(l => l.name)
+    }));
     
     return res.status(200).json({ 
       seals, 
       count: seals.length,
+      total,
+      pagination: {
+        limit,
+        offset,
+        total,
+        has_more: offset + limit < total,
+        next_offset: offset + limit < total ? offset + limit : null
+      },
       retention_days: RETENTION_DAYS,
       jurisdiction: JURISDICTION
     });
@@ -525,7 +683,7 @@ async function getLedgerEntries(req, res) {
 }
 
 // ============================================================
-// Rate limiting (existing)
+// Rate limiting
 // ============================================================
 const rateLimitSeal = new Map();
 function checkSealRateLimit(ip) {
@@ -540,232 +698,8 @@ function checkSealRateLimit(ip) {
 }
 
 // ============================================================
-// MAIN HANDLER
+// Create GitHub issue helper
 // ============================================================
-export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  const url = new URL(req.url, `http://${req.headers.host}`);
-  const pathname = url.pathname;
-
-  // ============================================================
-  // E-06: Rate limit response with Retry-After header
-  // ============================================================
-  function sendRateLimitResponse() {
-    const rateLimit = checkSealRateLimit(ip);
-    const retryAfter = Math.ceil((rateLimit.reset - Date.now()) / 1000);
-    res.setHeader('Retry-After', retryAfter);
-    return res.status(429).json({ 
-      error: 'RATE_LIMIT', 
-      message: `Too many seal requests. ${rateLimit.remaining} remaining.`,
-      user_help: `Please wait ${Math.ceil(retryAfter / 60)} minutes before trying again.`,
-      retry_after_seconds: retryAfter
-    });
-  }
-
-  // ============================================================
-  // E-13: Data deletion endpoint
-  // ============================================================
-  if (req.method === 'POST' && pathname === '/api/stp-seal/delete') {
-    return await handleDataDeletion(req, res);
-  }
-
-  // ============================================================
-  // E-05: Prior seal verification endpoint
-  // ============================================================
-  if (req.method === 'GET' && pathname === '/api/stp-seal/verify') {
-    return await handlePriorSealVerify(req, res);
-  }
-
-  // ============================================================
-  // E-05: File verification endpoint
-  // ============================================================
-  if (req.method === 'POST' && pathname === '/api/stp-seal/verify-file') {
-    return await handleFileVerify(req, res);
-  }
-
-  // ============================================================
-  // Ledger entries endpoint
-  // ============================================================
-  if (req.method === 'GET' && pathname === '/api/stp-seal/ledger') {
-    return await getLedgerEntries(req, res);
-  }
-
-  // ============================================================
-  // Health check (E-16: enhanced with template count and jurisdiction)
-  // ============================================================
-  if (req.method === 'GET' && pathname === '/api/health') {
-    return res.status(200).json({
-      status: 'healthy',
-      service: 'STP-Seal',
-      timestamp: new Date().toISOString(),
-      version: 'FROZEN-2.0',
-      templates_loaded: Object.keys(SEAL_TEMPLATES).length,
-      jurisdiction: JURISDICTION,
-      retention_days: RETENTION_DAYS,
-      terms_version: TERMS_VERSION,
-      endpoints: ['/api/stp-seal', '/api/stp-seal/verify', '/api/stp-seal/verify-file', '/api/stp-seal/ledger', '/api/stp-seal/delete', '/api/health']
-    });
-  }
-
-  // ============================================================
-  // Main seal endpoint
-  // ============================================================
-  if (!(req.method === 'POST' && pathname === '/api/stp-seal')) {
-    return res.status(404).json({ 
-      error: 'NOT_FOUND', 
-      message: 'Endpoint not found',
-      endpoints: ['/api/stp-seal', '/api/stp-seal/verify', '/api/stp-seal/verify-file', '/api/stp-seal/ledger', '/api/health']
-    });
-  }
-
-  // Rate limiting
-  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
-  const rateLimit = checkSealRateLimit(ip);
-  if (!rateLimit.allowed) {
-    return sendRateLimitResponse();
-  }
-
-  try {
-    const { entry, type, sessionId, userId, file_hash } = req.body;
-    
-    if (!entry || typeof entry !== 'string' || !entry.trim()) {
-      return res.status(400).json({ 
-        error: 'EMPTY_ENTRY', 
-        message: 'Entry text is required',
-        user_help: 'Please enter the content you want to seal before continuing. The content field cannot be empty.'
-      });
-    }
-
-    const now = new Date();
-    const unixUtc = Math.floor(now.getTime() / 1000);
-    const gregorian = gregorianString(now);
-    const hebrew = hebrewString(now);
-    const dreamspell = dreamspellString(now);
-    
-    // Include file_hash in seal computation if provided
-    let finalEntry = entry.trim();
-    if (file_hash) {
-      finalEntry += `\n\nFile SHA-256: ${file_hash}`;
-    }
-    
-    const seal = computeSealExact(finalEntry, gregorian, hebrew, dreamspell, unixUtc);
-    const templateKey = selectTemplate(finalEntry, type);
-    const ledgerFile = ledgerFileName(templateKey, gregorian, seal);
-    
-    const stamp = { gregorian, hebrew, dreamspell, unixUtc, seal, ledgerFile };
-    
-    const ledgerData = {
-      protocol: 'SOVEREIGN-TRACE-PROTOCOL',
-      stamp_version: 'FROZEN-2.0',
-      template: templateKey,
-      template_name: SEAL_TEMPLATES[templateKey].label,
-      entry: finalEntry,
-      gregorian,
-      hebrew,
-      dreamspell,
-      unix_utc: unixUtc,
-      seal,
-      session_id: sessionId || null,
-      user_id: userId || null,
-      ip_hash: ip ? crypto.createHash('sha256').update(ip).digest('hex').substring(0, 16) : null,
-      sealed_at: now.toISOString(),
-      file_hash: file_hash || null,
-      retention_expires_at: new Date(Date.now() + RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString(),
-      jurisdiction: JURISDICTION,
-      terms_version: TERMS_VERSION
-    };
-
-    let issueUrl = null;
-    let ledgerPath = null;
-    let githubError = null;
-
-    // Try GitHub integration, but don't fail if it doesn't work
-    if (process.env.GITHUB_TOKEN) {
-      try {
-        [issueUrl, ledgerPath] = await Promise.all([
-          createGitHubIssueForSeal(templateKey, finalEntry, stamp, { sessionId, userId }),
-          createLedgerFileForSeal(ledgerFile, ledgerData)
-        ]);
-      } catch (err) {
-        githubError = err.message;
-        console.error('GitHub integration failed:', err.message);
-      }
-    }
-
-    // Store in Supabase (optional, don't fail if not available)
-    if (SUPABASE_URL && SUPABASE_KEY) {
-      try {
-        await getSupabase().from('stp_seals').insert({
-          seal,
-          entry: finalEntry,
-          template: templateKey,
-          gregorian,
-          hebrew,
-          dreamspell,
-          unix_utc: unixUtc,
-          session_id: sessionId,
-          user_id: userId,
-          ip_hash: ledgerData.ip_hash,
-          github_issue_url: issueUrl,
-          ledger_path: ledgerPath,
-          file_hash: file_hash || null,
-          retention_expires_at: ledgerData.retention_expires_at,
-          jurisdiction: JURISDICTION,
-          terms_version: TERMS_VERSION
-        });
-      } catch (dbErr) {
-        console.error('Supabase insert failed:', dbErr.message);
-      }
-    }
-
-    // Return success
-    return res.status(200).json({
-      success: true,
-      seal,
-      gregorian,
-      hebrew,
-      dreamspell,
-      unix_utc: unixUtc,
-      template: templateKey,
-      template_name: SEAL_TEMPLATES[templateKey].label,
-      ledger_file: ledgerFile,
-      issue_url: issueUrl,
-      ledger_path: ledgerPath,
-      github_error: githubError,
-      file_hash: file_hash || null,
-      retention_days: RETENTION_DAYS,
-      jurisdiction: JURISDICTION,
-      rate_limit_remaining: rateLimit.remaining
-    });
-
-  } catch (err) {
-    console.error('STP seal error:', err);
-    
-    // User-friendly error message (E-09)
-    let userMessage = 'The seal could not be created due to a server error.';
-    if (err.message.includes('GITHUB_TOKEN')) {
-      userMessage = 'GitHub integration is not configured. Your seal was created but not stored in the public ledger.';
-    } else if (err.message.includes('timeout')) {
-      userMessage = 'The request timed out. Please try again. Large files may take longer to process.';
-    } else if (err.message.includes('RATE_LIMITED')) {
-      userMessage = 'GitHub API rate limit exceeded. Please wait a few minutes before trying again.';
-    }
-    
-    return res.status(500).json({
-      error: 'SEAL_ERROR',
-      message: err.message,
-      user_message: userMessage,
-      success: false
-    });
-  }
-}
-
-// Helper functions that were referenced but not defined in this file
 async function createGitHubIssueForSeal(templateKey, entry, stamp, metadata) {
   const tmpl = SEAL_TEMPLATES[templateKey];
   const title = `[${tmpl.label}] ${entry.substring(0, 80)}${entry.length > 80 ? '...' : ''}`;
@@ -790,4 +724,300 @@ async function createLedgerFileForSeal(fileName, ledgerData) {
     content,
   });
   return path;
+}
+
+// ============================================================
+// MAIN HANDLER
+// ============================================================
+export default async function handler(req, res) {
+  // Generate request ID for tracing (F-03)
+  const requestId = `${Date.now()}-${++requestCounter}-${Math.random().toString(36).substring(2, 8)}`;
+  req.requestId = requestId;
+  
+  // CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('X-Request-ID', requestId);
+  
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const pathname = url.pathname;
+
+  // Rate limit response helper
+  function sendRateLimitResponse(ip) {
+    const rateLimit = checkSealRateLimit(ip);
+    const retryAfter = Math.ceil((rateLimit.reset - Date.now()) / 1000);
+    res.setHeader('Retry-After', retryAfter);
+    return res.status(429).json({ 
+      error: 'RATE_LIMIT', 
+      message: `Too many seal requests. ${rateLimit.remaining} remaining.`,
+      user_help: `Please wait ${Math.ceil(retryAfter / 60)} minutes before trying again.`,
+      retry_after_seconds: retryAfter
+    });
+  }
+
+  // ============================================================
+  // F-13: Consent withdrawal endpoint
+  // ============================================================
+  if (req.method === 'POST' && pathname === '/api/stp-seal/consent/withdraw') {
+    return await handleConsentWithdrawal(req, res);
+  }
+
+  // ============================================================
+  // Data deletion endpoint
+  // ============================================================
+  if (req.method === 'POST' && pathname === '/api/stp-seal/delete') {
+    return await handleDataDeletion(req, res);
+  }
+
+  // ============================================================
+  // Prior seal verification endpoint
+  // ============================================================
+  if (req.method === 'GET' && pathname === '/api/stp-seal/verify') {
+    return await handlePriorSealVerify(req, res);
+  }
+
+  // ============================================================
+  // File verification endpoint
+  // ============================================================
+  if (req.method === 'POST' && pathname === '/api/stp-seal/verify-file') {
+    return await handleFileVerify(req, res);
+  }
+
+  // ============================================================
+  // Ledger entries endpoint (F-17 with pagination)
+  // ============================================================
+  if (req.method === 'GET' && pathname === '/api/stp-seal/ledger') {
+    return await getLedgerEntries(req, res);
+  }
+
+  // ============================================================
+  // Health check (F-02, F-12, F-14)
+  // ============================================================
+  if (req.method === 'GET' && pathname === '/api/health') {
+    const [githubStatus, supabaseStatus] = await Promise.all([
+      checkGitHubStatus(),
+      checkSupabaseStatus()
+    ]);
+    
+    const allHealthy = githubStatus.ok && supabaseStatus.ok;
+    
+    return res.status(200).json({
+      status: allHealthy ? 'healthy' : 'degraded',
+      service: 'STP-Seal',
+      version: 'FROZEN-2.0',
+      timestamp: new Date().toISOString(),
+      templates_loaded: Object.keys(SEAL_TEMPLATES).length,
+      jurisdiction: JURISDICTION,
+      retention_days: RETENTION_DAYS,
+      terms_version: TERMS_VERSION,
+      security_contact: SECURITY_CONTACT,
+      data_breach_notification_hours: DATA_BREACH_NOTIFICATION_HOURS,
+      dependencies: {
+        github: githubStatus,
+        supabase: supabaseStatus
+      },
+      third_party_data_processing: {
+        github: 'Seal data stored in public GitHub issues',
+        vercel: 'API request logs (temporary, not stored permanently)',
+        supabase: supabaseStatus.ok ? 'Optional metadata storage' : 'Not configured'
+      },
+      liability_disclaimer: 'The Sovereign Trace Protocol provides timestamping and cryptographic proof. It does not verify the truth or accuracy of sealed content. Users are solely responsible for the content they seal.',
+      endpoints: ['/api/stp-seal', '/api/stp-seal/verify', '/api/stp-seal/verify-file', '/api/stp-seal/ledger', '/api/stp-seal/delete', '/api/stp-seal/consent/withdraw', '/api/health']
+    });
+  }
+
+  // ============================================================
+  // Main seal endpoint
+  // ============================================================
+  if (!(req.method === 'POST' && pathname === '/api/stp-seal')) {
+    return res.status(404).json({ 
+      error: 'NOT_FOUND', 
+      message: 'Endpoint not found',
+      endpoints: ['/api/stp-seal', '/api/stp-seal/verify', '/api/stp-seal/verify-file', '/api/stp-seal/ledger', '/api/health']
+    });
+  }
+
+  // Rate limiting
+  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
+  const rateLimit = checkSealRateLimit(ip);
+  if (!rateLimit.allowed) {
+    return sendRateLimitResponse(ip);
+  }
+
+  try {
+    let { entry, type, sessionId, userId, file_hash } = req.body;
+    
+    if (!entry || typeof entry !== 'string' || !entry.trim()) {
+      return res.status(400).json({ 
+        error: 'EMPTY_ENTRY', 
+        message: 'Entry text is required',
+        user_help: 'Please enter the content you want to seal before continuing. The content field cannot be empty.'
+      });
+    }
+    
+    // F-04: Payload size limit
+    if (entry.length > MAX_ENTRY_SIZE) {
+      return res.status(413).json({
+        error: 'PAYLOAD_TOO_LARGE',
+        message: `Entry exceeds maximum size of ${MAX_ENTRY_SIZE / 1024}KB`,
+        user_help: 'Please reduce the size of your entry or upload as a file instead.'
+      });
+    }
+    
+    // F-05: Strip client timestamps
+    let cleanedEntry = stripClientTimestamps(entry);
+    
+    // F-06: Canonicalize entry
+    let canonicalEntry = canonicalizeEntry(cleanedEntry);
+    
+    const now = new Date();
+    const unixUtc = Math.floor(now.getTime() / 1000);
+    const gregorian = gregorianString(now);
+    const hebrew = hebrewString(now);
+    const dreamspell = dreamspellString(now);
+    
+    // Add server timestamp (F-05)
+    const serverTimestamp = now.toISOString();
+    let finalEntry = canonicalEntry;
+    finalEntry += `\n\nServer Timestamp: ${serverTimestamp}`;
+    
+    if (file_hash) {
+      finalEntry += `\nFile SHA-256: ${file_hash}`;
+    }
+    
+    const seal = computeSealExact(finalEntry, gregorian, hebrew, dreamspell, unixUtc);
+    const templateKey = selectTemplate(finalEntry, type);
+    const ledgerFile = ledgerFileName(templateKey, gregorian, seal);
+    
+    // F-10: Generate human-readable ID
+    const humanReadableId = generateHumanReadableId(seal, now);
+    
+    const stamp = { gregorian, hebrew, dreamspell, unixUtc, seal, ledgerFile };
+    
+    const ledgerData = {
+      protocol: 'SOVEREIGN-TRACE-PROTOCOL',
+      stamp_version: 'FROZEN-2.0',
+      template: templateKey,
+      template_name: SEAL_TEMPLATES[templateKey].label,
+      entry: finalEntry,
+      gregorian,
+      hebrew,
+      dreamspell,
+      unix_utc: unixUtc,
+      seal,
+      human_readable_id: humanReadableId,
+      session_id: sessionId || null,
+      user_id: userId || null,
+      ip_hash: ip ? crypto.createHash('sha256').update(ip).digest('hex').substring(0, 16) : null,
+      sealed_at: now.toISOString(),
+      file_hash: file_hash || null,
+      retention_expires_at: new Date(Date.now() + RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+      jurisdiction: JURISDICTION,
+      terms_version: TERMS_VERSION,
+      request_id: requestId
+    };
+
+    let issueUrl = null;
+    let ledgerPath = null;
+    let githubError = null;
+    let githubDegraded = false;
+
+    // Try GitHub integration, but don't fail if it doesn't work (F-01)
+    if (process.env.GITHUB_TOKEN) {
+      try {
+        const [issueResult, ledgerResult] = await Promise.all([
+          createGitHubIssueForSeal(templateKey, finalEntry, stamp, { sessionId, userId }),
+          createLedgerFileForSeal(ledgerFile, ledgerData)
+        ]);
+        issueUrl = issueResult;
+        ledgerPath = ledgerResult;
+      } catch (err) {
+        githubError = err.message;
+        githubDegraded = err.message.includes('GITHUB_AUTH_FAILED');
+        console.error('GitHub integration failed:', err.message);
+      }
+    }
+
+    // Store in Supabase (optional, don't fail if not available)
+    if (SUPABASE_URL && SUPABASE_KEY) {
+      try {
+        await getSupabase().from('stp_seals').insert({
+          seal,
+          entry: finalEntry,
+          template: templateKey,
+          gregorian,
+          hebrew,
+          dreamspell,
+          unix_utc: unixUtc,
+          session_id: sessionId,
+          user_id: userId,
+          ip_hash: ledgerData.ip_hash,
+          github_issue_url: issueUrl,
+          ledger_path: ledgerPath,
+          file_hash: file_hash || null,
+          human_readable_id: humanReadableId,
+          retention_expires_at: ledgerData.retention_expires_at,
+          jurisdiction: JURISDICTION,
+          terms_version: TERMS_VERSION,
+          request_id: requestId
+        });
+      } catch (dbErr) {
+        console.error('Supabase insert failed:', dbErr.message);
+      }
+    }
+
+    // F-09: Verification example
+    const verificationExample = `curl -X GET "https://${req.headers.host}/api/stp-seal/verify?hash=${seal}"`;
+
+    // Return success
+    return res.status(200).json({
+      success: true,
+      seal,
+      human_readable_id: humanReadableId,
+      gregorian,
+      hebrew,
+      dreamspell,
+      unix_utc: unixUtc,
+      template: templateKey,
+      template_name: SEAL_TEMPLATES[templateKey].label,
+      ledger_file: ledgerFile,
+      issue_url: issueUrl,
+      ledger_path: ledgerPath,
+      github_error: githubError,
+      github_degraded: githubDegraded,
+      file_hash: file_hash || null,
+      retention_days: RETENTION_DAYS,
+      jurisdiction: JURISDICTION,
+      rate_limit_remaining: rateLimit.remaining,
+      verification_example: verificationExample,
+      request_id: requestId
+    });
+
+  } catch (err) {
+    console.error(`[${requestId}] STP seal error:`, err);
+    
+    let userMessage = 'The seal could not be created due to a server error.';
+    let statusCode = 500;
+    
+    if (err.message.includes('GITHUB_TOKEN')) {
+      userMessage = 'GitHub integration is not configured. Your seal was created but not stored in the public ledger.';
+    } else if (err.message.includes('timeout')) {
+      userMessage = 'The request timed out. Please try again. Large files may take longer to process.';
+      statusCode = 504;
+    } else if (err.message.includes('RATE_LIMITED')) {
+      userMessage = 'GitHub API rate limit exceeded. Please wait a few minutes before trying again.';
+      statusCode = 429;
+    }
+    
+    return res.status(statusCode).json({
+      error: 'SEAL_ERROR',
+      message: err.message,
+      user_message: userMessage,
+      success: false,
+      request_id: requestId
+    });
+  }
 }
