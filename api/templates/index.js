@@ -1,0 +1,128 @@
+const fs = require('fs');
+const path = require('path');
+
+const TEMPLATES = {};
+
+// Load all template JSON files
+const templateFiles = [
+  '01-ai-failure.json',
+  '02-research-priority.json',
+  '03-evidence-chain.json',
+  '04-creative-priority.json',
+  '05-clinical-record.json',
+  '06-scope-anchor.json',
+  '07-general-trace.json',
+  '08-foresight-seal.json',
+  '09-webeater-link.json',
+  '10-audit-request.json',
+  '11-audit-completion.json',
+  '12-auditor-application.json',
+  '13-integrity-violation.json',
+  '14-near-miss.json'
+];
+
+for (const file of templateFiles) {
+  const template = require(`./${file}`);
+  TEMPLATES[template.id] = template;
+}
+
+function getTemplate(id) {
+  return TEMPLATES[id] || TEMPLATES['07']; // Default to GENERAL-TRACE
+}
+
+function detectTemplate(entry, contextType = null) {
+  if (contextType && TEMPLATES[contextType]) {
+    return TEMPLATES[contextType];
+  }
+  
+  const lowerEntry = (entry || '').toLowerCase();
+  
+  // Priority order (most severe first)
+  const priority = ['13', '05', '10', '11', '12', '01', '09', '06', '03', '08', '02', '04'];
+  
+  for (const id of priority) {
+    const template = TEMPLATES[id];
+    if (template && template.triggers && template.triggers.some(t => lowerEntry.includes(t.toLowerCase()))) {
+      return template;
+    }
+  }
+  
+  return TEMPLATES['07'];
+}
+
+function validateTemplateRequirements(template, body) {
+  const missing = [];
+  
+  if (template.requires_docusign && !body.docusign_completed) {
+    missing.push('DocuSign verification required');
+  }
+  if (template.requires_identity && !body.identity_verified) {
+    missing.push('Identity verification required');
+  }
+  if (template.requires_phi_gate && !body.phi_gate_confirmed) {
+    missing.push('PHI gate confirmation required');
+  }
+  if (template.requires_stripe && !body.stripe_payment_id) {
+    missing.push('Stripe payment ID required');
+  }
+  if (template.requires_prior_seal && !body.prior_seal_hash) {
+    missing.push('Prior seal hash required (Webeater Link)');
+  }
+  if (template.requires_auditor_badge && !body.auditor_badge) {
+    missing.push('Auditor badge required');
+  }
+  
+  // Check required fields
+  for (const field of template.fields) {
+    if (field.required && !body[field.id]) {
+      missing.push(`Field "${field.label}" is required`);
+    }
+  }
+  
+  return {
+    valid: missing.length === 0,
+    missing
+  };
+}
+
+function renderIssueBody(template, formData) {
+  let body = `## ${template.legal_notice.title}\n\n`;
+  body += template.legal_notice.content.join('\n') + '\n\n---\n\n';
+  
+  for (const field of template.fields) {
+    const value = formData[field.id];
+    if (value) {
+      if (field.type === 'checkboxes') {
+        body += `### ${field.label}\n`;
+        for (const option of field.options) {
+          if (value.includes(option)) {
+            body += `- ✅ ${option}\n`;
+          }
+        }
+        body += '\n';
+      } else if (field.type === 'upload') {
+        body += `### ${field.label}\n`;
+        body += `[Evidence files attached]\n\n`;
+      } else {
+        body += `### ${field.label}\n`;
+        body += `${value}\n\n`;
+      }
+    }
+  }
+  
+  body += `---\n\n## What Happens Next\n\n`;
+  for (const step of template.after_submit.steps) {
+    body += `${step}\n`;
+  }
+  body += `\n---\n\n${template.after_submit.footer}`;
+  
+  return body;
+}
+
+module.exports = {
+  TEMPLATES,
+  getTemplate,
+  detectTemplate,
+  validateTemplateRequirements,
+  renderIssueBody
+};
