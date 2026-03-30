@@ -1748,13 +1748,16 @@ function download(content, filename, mime) { const blob = new Blob([content], { 
 async function syncToSupabase(report) {
   if (!CONFIG.USE_SUPABASE) return;
   try {
-    const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/reports`, {
+    const res = await fetch(`${CONFIG.SUPABASE_URL}/reports`, {
       method: 'POST',
-      headers: { 'apikey': CONFIG.SUPABASE_ANON, 'Authorization': `Bearer ${CONFIG.SUPABASE_ANON}`, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
       body: JSON.stringify({ ...report, photo: null })
     });
     if (res.ok) await dbMarkSynced(report.uuid);
-  } catch { }
+    else console.warn('[VERITAS] Sync failed:', res.status);
+  } catch(err) {
+    console.warn('[VERITAS] Sync error:', report.uuid, err);
+  }
 }
 async function initRealtimeSubscription() {
   if (!CONFIG.USE_SUPABASE || typeof window.supabase === 'undefined') return;
