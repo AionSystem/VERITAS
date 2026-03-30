@@ -1552,16 +1552,74 @@ function handlePhoto(input) {
   };
   reader.readAsDataURL(file);
 }
-function runAiAnalysis() {
-  const statusEl = document.getElementById('photoAiStatus'); statusEl.classList.add('show');
-  document.getElementById('aiStatusText').textContent = 'CERTUS analyzing image...';
-  setTimeout(() => {
-    const mockScore = 0.65 + Math.random() * 0.30; const mockConf = 0.55 + Math.random() * 0.40;
-    STATE.photoAiScore = parseFloat(mockScore.toFixed(3)); STATE.photoAiConf = parseFloat(mockConf.toFixed(3));
-    const confGated = mockConf >= 0.60;
-    document.getElementById('aiStatusText').innerHTML = `CERTUS: Photo scored ${mockScore.toFixed(2)} · Confidence ${(mockConf*100).toFixed(0)}%` + (confGated ? '' : ' <span style="color:var(--watch)">[gated — model confidence below threshold]</span>');
+async function runAiAnalysis() {
+  const statusEl = document.getElementById('photoAiStatus');
+  statusEl.classList.add('show');
+  const statusText = document.getElementById('aiStatusText');
+  statusText.innerHTML = '<span class="spinner"></span> AI analyzing image...';
+  
+  try {
+    // Initialize AI if needed
+    if (!window.aiInitialized && AI_ANALYSIS) {
+      let apiKey = localStorage.getItem('openrouter_api_key');
+      if (!apiKey) {
+        apiKey = prompt('Enter OpenRouter API key for AI analysis (get at openrouter.ai/keys):');
+        if (apiKey) localStorage.setItem('openrouter_api_key', apiKey);
+      }
+      if (apiKey) {
+        AI_ANALYSIS.setApiKey(apiKey);
+        window.aiInitialized = true;
+      }
+    }
+    
+    let assessment;
+    
+    if (AI_ANALYSIS && AI_ANALYSIS.isConfigured && AI_ANALYSIS.isConfigured()) {
+      // Use real AI via OpenRouter
+      const infraType = STATE.infraType || null;
+      assessment = await AI_ANALYSIS.analyzePhoto(STATE.photo, infraType);
+      
+      if (assessment.is_mock) {
+        statusText.innerHTML = `⚠️ AI offline — using fallback scoring. Confidence: ${Math.round(assessment.confidence * 100)}%`;
+      } else {
+        const modelName = assessment.model_used === AI_ANALYSIS.MODELS?.primary?.id ? 'Claude 3.5 Sonnet' : 'DeepSeek';
+        statusText.innerHTML = `✅ AI: ${assessment.damage_level} (${Math.round(assessment.score * 100)}% severity) · Confidence: ${Math.round(assessment.confidence * 100)}% · Model: ${modelName}`;
+        
+        // Auto-select damage level if high confidence
+        if (assessment.confidence > 0.7 && assessment.internal_tier) {
+          if (!STATE.undpTier) {
+            selectDamage(assessment.internal_tier);
+            toast(`AI detected: ${assessment.damage_level}`, 2000);
+          }
+        }
+      }
+      
+      STATE.photoAiScore = assessment.score;
+      STATE.photoAiConf = assessment.confidence;
+      STATE.photoAiModel = assessment.model_used;
+      
+    } else {
+      // Fallback to mock
+      statusText.innerHTML = '⚠️ AI offline — using fallback scoring';
+      const mockScore = 0.65 + Math.random() * 0.30;
+      const mockConf = 0.55 + Math.random() * 0.40;
+      STATE.photoAiScore = parseFloat(mockScore.toFixed(3));
+      STATE.photoAiConf = parseFloat(mockConf.toFixed(3));
+      STATE.photoAiModel = 'mock';
+    }
+    
     document.getElementById('step1Next').disabled = false;
-  }, 1200);
+    
+  } catch (err) {
+    console.error('AI analysis error:', err);
+    statusText.innerHTML = `⚠️ AI error: ${err.message} — using fallback`;
+    const mockScore = 0.65 + Math.random() * 0.30;
+    const mockConf = 0.55 + Math.random() * 0.40;
+    STATE.photoAiScore = parseFloat(mockScore.toFixed(3));
+    STATE.photoAiConf = parseFloat(mockConf.toFixed(3));
+    STATE.photoAiModel = 'mock_fallback';
+    document.getElementById('step1Next').disabled = false;
+  }
 }
 // ==================== STEP NAVIGATION ====================
 function goStep(step) {
