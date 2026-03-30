@@ -1,0 +1,142 @@
+{
+  "id": "08",
+  "name": "foresight-seal",
+  "label": "FORESIGHT-SEAL",
+  "title": "[STP-FORESIGHT] — [SUBJECT] — [DATE]",
+  "labels": ["foresight-seal", "pending-seal"],
+  "assignees": [],
+  "requires_docusign": false,
+  "requires_identity": false,
+  "requires_phi_gate": false,
+  "requires_stripe": false,
+  "requires_prior_seal": false,
+  "requires_auditor_badge": false,
+  "triggers": ["predict", "forecast", "foresight", "projection", "estimate", "prediction"],
+  "legal_notice": {
+    "title": "Foresight Seal",
+    "content": [
+      "This form seals a prediction — about a company, industry, technology, or regulatory development —",
+      "at the exact moment you make it.",
+      "",
+      "**What the seal gives you:** Cryptographic proof, dated today, that you held this foresight",
+      "before it became obvious. When the prediction resolves, the ledger entry proves you saw it first.",
+      "No one can claim you revised it after the fact. The timestamp is the record.",
+      "",
+      "**What this is:** Timestamped professional opinion and foresight based on your analysis.",
+      "",
+      "**What this is not:** A factual assertion that the predicted event has occurred.",
+      "Do not submit predictions framed as established facts. Seal what you foresee — not what you accuse."
+    ]
+  },
+  "fields": [
+    {
+      "type": "input",
+      "id": "submitter_name",
+      "label": "Your Full Name or Professional Name",
+      "description": "The name attached to this foresight record.",
+      "placeholder": "First Last or Professional Name",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "subject",
+      "label": "Subject of Prediction",
+      "description": "Who or what is this prediction about?",
+      "placeholder": "Company name / Industry sector / Technology / Regulatory domain",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "prediction_date",
+      "label": "Date of This Prediction",
+      "description": "Today's date — the date this prediction is being sealed. Format: YYYY-MM-DD",
+      "placeholder": "2026-03-07",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "resolution_timeframe",
+      "label": "Expected Resolution Timeframe",
+      "description": "When do you expect this prediction to resolve — prove true or false?",
+      "placeholder": "Within 12 months / By Q4 2027 / Within 3 years",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "prediction",
+      "label": "The Prediction — Exact",
+      "description": "State your prediction precisely. Specific enough to be verifiable when it resolves.",
+      "placeholder": "State the prediction exactly. Be specific about what you foresee, for whom, and under what conditions.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "reasoning",
+      "label": "Reasoning and Evidence Basis",
+      "description": "What analysis, signals, or patterns lead you to this foresight?",
+      "placeholder": "Describe the reasoning, signals, or evidence base that supports this prediction.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "implication",
+      "label": "Implication If Correct",
+      "description": "If this prediction resolves true — what does it mean for the subject? For the industry?",
+      "placeholder": "Describe what it means if this prediction is correct.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "falsification",
+      "label": "Falsification Condition",
+      "description": "What specific outcome would prove this prediction wrong?",
+      "placeholder": "Describe what would falsify this prediction.",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "confidence_level",
+      "label": "Confidence Level",
+      "description": "How confident are you in this prediction?",
+      "placeholder": "High / Moderate / Speculative — and briefly why",
+      "required": true
+    },
+    {
+      "type": "upload",
+      "id": "supporting_files",
+      "label": "Supporting Analysis Files (Optional)",
+      "description": "Upload any supporting analysis, data, or research that informs this prediction.",
+      "required": false
+    },
+    {
+      "type": "textarea",
+      "id": "supporting_links",
+      "label": "Supporting Links (Optional)",
+      "description": "Links to public information supporting the reasoning basis.",
+      "placeholder": "Links to public sources, reports, or data supporting your analysis.",
+      "required": false
+    },
+    {
+      "type": "checkboxes",
+      "id": "declaration",
+      "label": "Declaration",
+      "options": [
+        "I affirm this is my genuine professional opinion and foresight — not a factual claim that this event has occurred.",
+        "I affirm the reasoning basis described is my honest analysis — not fabricated to support a predetermined conclusion.",
+        "I understand this submission is immutable — it cannot be altered after sealing.",
+        "I understand the protocol seals my prediction and reasoning as of today — it does not guarantee the prediction is correct."
+      ],
+      "required": true
+    }
+  ],
+  "after_submit": {
+    "steps": [
+      "Completeness check — Reviewed for completeness and declaration compliance.",
+      "Sealing — Sealed with a FROZEN-2.0 triple-time cryptographic stamp. Permanent.",
+      "Ledger entry — Enters the Sovereign Trace ledger with your name, timestamp, and SHA-256 hash.",
+      "Notification — You receive your ledger entry ID and SHA-256 hash.",
+      "When your prediction resolves — contact the protocol office with your ledger entry ID. The resolution will be noted in the public record. The timestamp is permanent either way."
+    ],
+    "footer": "The seal is the proof. The ledger is the track record.\n\nSovereign Trace Protocol | Sheldon K. Salmon | aionsystem2026@gmail.com"
+  }
+}
