@@ -9,9 +9,16 @@ const templateFiles = [
   '02-research-priority.json',
   '03-evidence-chain.json',
   '04-creative-priority.json',
+  '05-clinical-record.json',      // You'll need to create this one
   '06-scope-anchor.json',
-  '07-general-trace.json'
-  // Add remaining templates: 05, 08, 09, 10, 11, 12, 13, 14
+  '07-general-trace.json',
+  '08-foresight-seal.json',
+  '09-webeater-link.json',
+  '10-audit-request.json',
+  '11-audit-completion.json',
+  '12-auditor-application.json',
+  '13-integrity-violation.json',
+  '14-near-miss.json'
 ];
 
 for (const file of templateFiles) {
@@ -36,7 +43,7 @@ function detectTemplate(entry, contextType = null) {
   const lowerEntry = (entry || '').toLowerCase();
   
   // Priority order (most severe first)
-  const priority = ['13', '05', '10', '11', '12', '01', '09', '06', '03', '08', '02', '04'];
+  const priority = ['13', '05', '10', '11', '12', '01', '09', '06', '03', '08', '02', '04', '14'];
   
   for (const id of priority) {
     const template = TEMPLATES[id];
@@ -108,6 +115,9 @@ function renderIssueBody(template, formData) {
       } else if (field.type === 'upload') {
         body += `### ${field.label}\n`;
         body += `[Evidence files attached - see GitHub assets]\n\n`;
+      } else if (field.type === 'dropdown') {
+        body += `### ${field.label}\n`;
+        body += `${value}\n\n`;
       } else {
         body += `### ${field.label}\n`;
         body += `${value}\n\n`;
