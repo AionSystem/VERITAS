@@ -82,7 +82,7 @@ The prototype is live, open source under MIT, and testable at [aionsystem.github
 
 VERITAS is an application of the AION Constitutional Stack — a framework ecosystem for certainty engineering in AI systems, developed by Sheldon K. Salmon across 18 interconnected frameworks.
 
-This submission was designed, architected, and directed by a human. AI tools were used as instruments — the same way a carpenter uses a saw. The intellectual core — the CERTUS Engine formula, the four scoring dimensions, the confidence gate logic, the validity thresholds, and the STP integration — is wholly human-originated and manually refined through six rounds of the ADA Red-Team methodology. VERITAS is not a generative AI output.
+This submission was designed, architected, and directed by a human. AI tools were used as instruments — the same way a carpenter uses a saw. The intellectual core — the CERTUS Engine formula, the four scoring dimensions, the confidence gate logic, the validity thresholds, and the STP integration — is wholly human-originated and manually refined through six rounds of systematic adversarial red-teaming. VERITAS is not a generative AI output.
 
 The CERTUS Engine is a direct application of FSVE (Formal Scoring and Validity Engine), a certainty-scoring architecture with a validated scoring methodology and defined validity thresholds. The DCI formula is FSVE applied to crisis data signals. The confidence gate reflects the same threshold logic used across the full AION stack.
 
