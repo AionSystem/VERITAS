@@ -50,6 +50,8 @@ This submission was designed, architected, and directed by Sheldon K. Salmon. AI
 
 UNDP explicitly noted that "submissions produced solely with generative AI are not of interest." VERITAS is not a generative AI output; it is a human‑built system where AI serves as one of several tools (OpenRouter for photo analysis, TensorFlow.js for offline capability) under strict human oversight. Every line of code, every design decision, and every formula in the CERTUS Engine reflects human intent.
 
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
+
 ---
 
 ## Quick Start
@@ -75,6 +77,8 @@ python3 -m http.server 8000
 That's it. You can now submit reports, explore the responder dashboard (access code: `UNDP2026`), and test the entire platform.
 
 For full Supabase sync and deployment, see [Installation & Deployment](#installation--deployment).
+
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
 ---
 
@@ -137,6 +141,8 @@ VERITAS/
 └── README.md                       ← This file
 ```
 
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
+
 ---
 
 ## STP Template Registry (16 Templates)
@@ -165,6 +171,8 @@ The Sovereign Trace Protocol integrates 16 permanent seal templates for differen
 > Templates 01–14 are manual submissions via GitHub issues.
 > Templates 15–16 are integrated with VERITAS for automatic or one-click sealing.
 
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
+
 ---
 
 ## Overview
@@ -175,6 +183,8 @@ VERITAS is a community‑operated damage certification platform for sudden‑ons
 
 - **Live Demo:** [aionsystem.github.io/VERITAS](https://aionsystem.github.io/VERITAS)
 - **2‑Minute Video:** [Watch on YouTube](#)
+
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
 ---
 
@@ -209,6 +219,8 @@ Every DCI score carries an Uncertainty Mass (UM) — a measure of how much the s
 | 0.35–0.60 | Score useful but uncertain |
 | ≥ 0.60 | Do not rely on this score |
 
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
+
 ---
 
 ## AI Photo Analysis — OpenRouter Integration
@@ -229,6 +241,8 @@ VERITAS uses OpenRouter to access state-of-the-art AI models for damage assessme
 3. AI returns: damage level, confidence score, description
 4. CERTUS Engine uses confidence score for PES dimension
 5. If API unavailable → falls back to mock analysis (offline mode)
+
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
 ---
 
@@ -266,6 +280,8 @@ VERITAS meets every mandatory requirement of the UNDP Innocentive Challenge. Ful
 | AI‑powered features | ✅ |
 | Open Source | ✅ |
 
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
+
 ---
 
 ## The VERITAS Ecosystem
@@ -279,6 +295,8 @@ VERITAS is the field instrument in a three‑tool suite built for end‑to‑end
 | CERTUS.AI | Resource allocation simulation | `/public/certus-ai/` |
 
 All three share the same design language, offline capability, and STP integration.
+
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
 ---
 
@@ -301,6 +319,8 @@ Anyone can verify a sealed dataset by:
 2. Comparing it to the hash sealed in the STP ledger
 3. If they match, the dataset has not been altered since export
 
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
+
 ---
 
 ## Technical Stack
@@ -316,6 +336,8 @@ Anyone can verify a sealed dataset by:
 | STP Ledger | GitHub Issues + API | Immutable, verifiable, permanent |
 | Deployment | Vercel + GitHub Pages | Static hosting, serverless functions |
 | License | MIT | Open source, UNDP requirement |
+
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
 ---
 
@@ -345,6 +367,8 @@ Anyone can verify a sealed dataset by:
 - DCI Report Card with uncertainty breakdown
 - STP seal integration (Template 16) — one-click dataset integrity sealing
 
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
+
 ---
 
 ## Anonymization & Safety
@@ -355,6 +379,8 @@ Anyone can verify a sealed dataset by:
 - Sensitive location anonymization (shelters, medical, schools)
 - Data retention policy — 365 days, community opt‑out
 - Indigenous data sovereignty — UNDRIP Article 31 compliant
+
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
 ---
 
@@ -395,12 +421,16 @@ cd ../stp-seal-service
 vercel --prod
 ```
 
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
+
 ---
 
 ## License
 
 MIT © 2026 Sheldon K. Salmon, AionSystem
 See [LICENSE](LICENSE) for full text.
+
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
 ---
 
@@ -413,6 +443,8 @@ See [LICENSE](LICENSE) for full text.
 - [Supabase](https://supabase.com/) — backend sync
 - Claude 3.5 Sonnet — primary damage assessment
 - DeepSeek — fallback AI model
+
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
 ---
 
