@@ -9,8 +9,7 @@
 [![Status](https://img.shields.io/badge/STATUS-Production-1976D2?style=flat-square)](https://github.com/AionSystem/VERITAS)
 [![License](https://img.shields.io/github/license/AionSystem/VERITAS?color=blue)](LICENSE)
 [![Version](https://img.shields.io/badge/version-v2.5.0-orange)](#)
-[![CERTUS Engine](https://img.shields.io/badge/CERTUS-v2.5--ADA--validated-4ade80?style=flat-square)](https://github.com/AionSystem/VERITAS)
-[![ADA Loop](https://img.shields.io/badge/ADA_Loop-6_Rounds_Complete-ffaa33?style=flat-square)](#)
+[![CERTUS Engine](https://img.shields.io/badge/CERTUS-v2.5-4ade80?style=flat-square)](https://github.com/AionSystem/VERITAS)
 [![OpenRouter](https://img.shields.io/badge/OpenRouter-Claude_3.5_Sonnet_+_DeepSeek-4285F4?style=flat-square)](https://openrouter.ai)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](#)
 [![Feedback Welcome](https://img.shields.io/badge/Feedback-welcome-brightgreen)](https://github.com/AionSystem/VERITAS/issues/new/choose)
@@ -25,9 +24,9 @@
 
 ## Architect's Note on AI Use
 
-This submission was designed, architected, and directed by Sheldon K. Salmon. AI tools (including large language models) were used as instruments — the same way a carpenter uses a saw. The intellectual core — the CERTUS Engine, the Damage Confidence Index, the four scoring dimensions, the validity thresholds, the STP integration, and the overall architectural vision — is wholly human‑originated and manually refined through **six rounds of the ADA Red‑Team methodology**.
+This submission was designed, architected, and directed by Sheldon K. Salmon. AI tools (including large language models) were used as instruments — the same way a carpenter uses a saw. The intellectual core — the CERTUS Engine, the Damage Confidence Index, the four scoring dimensions, the validity thresholds, the STP integration, and the overall architectural vision — is wholly human‑originated.
 
-UNDP explicitly noted that "submissions produced solely with generative AI are not of interest." VERITAS is not a generative AI output; it is a human‑built system where AI serves as one of several tools (OpenRouter for photo analysis, TensorFlow.js for offline capability) under strict human oversight. Every line of code, every design decision, and every formula in the CERTUS Engine reflects human intent, verified through red‑team testing and iterative refinement.
+UNDP explicitly noted that "submissions produced solely with generative AI are not of interest." VERITAS is not a generative AI output; it is a human‑built system where AI serves as one of several tools (OpenRouter for photo analysis, TensorFlow.js for offline capability) under strict human oversight. Every line of code, every design decision, and every formula in the CERTUS Engine reflects human intent.
 
 ---
 
@@ -63,7 +62,7 @@ Repository Structure
 VERITAS/
 ├── public/                         ← All static frontend assets
 │   ├── index.html                  ← Main VERITAS interface
-│   ├── certus-engine-v2.5.js       ← CERTUS Engine (FSVE-informed, ADA-validated)
+│   ├── certus-engine-v2.5.js       ← CERTUS Engine (scoring logic)
 │   ├── ai-analysis.js              ← OpenRouter AI integration (Claude + DeepSeek)
 │   ├── manifest.json               ← PWA manifest
 │   ├── sw.js                       ← Service Worker (offline capability)
@@ -84,7 +83,6 @@ VERITAS/
 ├── docs/                           ← Documentation
 │   ├── scale.md
 │   ├── anonymization.md
-│   ├── architecture.md             ←
 │   └── dci-formula.md              ← CERTUS Engine formula documentation
 │
 ├── model/                          ← TensorFlow.js model files (offline AI)
@@ -111,28 +109,15 @@ VERITAS is a community‑operated damage certification platform for sudden‑ons
 
 ---
 
-The CERTUS Engine v2.5 — What 5 Rounds of ADA Red-Teaming Built
+The CERTUS Engine
 
-The CERTUS Engine is the core of VERITAS — an epistemic scoring system that tells responders how much to trust each report. It was refined through 5 rounds of the ADA Red-Team methodology, with each round adding rigor, transparency, and constitutional compliance.
-
-What the ADA Loop Produced
-
-Round FSVE EV Key Improvement
-1 0.71 PAC gate, convergence exit, severity rubric
-2 0.74 VELA epistemic veil, ITL anchor, NRP Gate 1
-3 0.78 VELA-OCEAN, TOPOS shape monitoring, LAV gate
-4 0.82 Multi-agent config, FSVE independence, VELA-C
-5 0.85 Two-tier specification, constitutional review, strengths protocol
-
-Final FSVE EV: 0.85 (VALID)
-TOPOS SGS: 0.92 (DETECTED)
-Status: Production‑Ready
+The CERTUS Engine is the core of VERITAS — an epistemic scoring system that tells responders how much to trust each report.
 
 Scoring Dimensions
 
 Dimension Weight Description
 Photo Evidence Score (PES) 35% AI analysis via OpenRouter (Claude/DeepSeek) with confidence gate
-Corroboration Score (COR) 30% Agreement with other reports within 50m; null when no evidence
+Corroboration Score (COR) 30% Agreement with other reports within 50m
 Temporal Freshness (TFR) 20% Linear decay over 48 hours
 Classification Consistency (CCI) 15% Cross-category logic checks
 
@@ -147,16 +132,16 @@ Uncertainty Mass (UM)
 
 Every DCI score carries an Uncertainty Mass (UM) — a measure of how much the score itself is uncertain:
 
-UM Validity Meaning
-< 0.35 VALID Score is reliable (95% confidence)
-0.35–0.60 DEGRADED Score useful but uncertain (70–95% confidence)
-0.60 SUSPENDED Do not rely on this score (below 70% confidence)
+UM Meaning
+< 0.35 Score is reliable
+0.35–0.60 Score useful but uncertain
+0.60 Do not rely on this score
 
 ---
 
 AI Photo Analysis — OpenRouter Integration
 
-VERITAS uses OpenRouter to access state-of-the-art AI models for damage assessment, with graceful fallback to ensure offline capability.
+VERITAS uses OpenRouter to access AI models for damage assessment, with graceful fallback to ensure offline capability.
 
 Model Configuration
 
@@ -168,23 +153,9 @@ How It Works
 
 1. User captures photo → Canvas strips EXIF metadata
 2. Image sent to OpenRouter API with structured prompt
-3. AI returns: damage level (minimal/partial/complete), confidence score (0–1), description
+3. AI returns: damage level, confidence score, description
 4. CERTUS Engine uses confidence score for PES dimension
 5. If API unavailable → falls back to mock analysis (offline mode)
-
-Why OpenRouter?
-
-· No model hosting — API does the heavy lifting
-· Multiple models — Claude for accuracy, DeepSeek for redundancy
-· Free tier — Sufficient for demonstration
-· Offline fallback — Works even without internet
-
-Real AI vs. Mock
-
-Mode PES Class UM Penalty DCI Impact
-Real AI (Claude) EVALUATIVE 0 Full confidence
-Real AI (DeepSeek) EVALUATIVE 0.05 Slightly reduced
-Mock / Offline INFERENTIAL 0.20 Penalty applied
 
 ---
 
@@ -192,44 +163,40 @@ UNDP Compliance Status
 
 VERITAS meets every mandatory requirement of the UNDP Innocentive Challenge. Full audit: VERITAS_UNDP_COMPLIANCE.md
 
-Requirement Status Notes
-Deliverable 1 – Written Proposal ✅ VERITAS-PROPOSAL.md + this README
-Deliverable 2 – Interactable Prototype ✅ Hosted on GitHub Pages, fully testable
-Deliverable 3 – Video/Tutorial ✅ 2‑minute video embedded
-Req 1a – Frontend + 6 languages ✅ English, Spanish, Arabic, Chinese, French, Russian
-Req 1a – Map auto‑update ✅ Supabase real‑time subscription
-Req 1b – Secure backend + scale ✅ Supabase; 500k+ report capacity
-Req 1c – Dashboard ✅ Responder dashboard with confidence map
-Req 2 – Demonstrated user journey ✅ Video shows capture/display/storage/export
-Req 3 – Non‑monetary incentives ✅ Corroboration count, verification badges
-Req 4 – Offline functionality ✅ IndexedDB + service worker + sync queue
-Req 5 – Multilingual support ✅ 6 UN languages, UI translation, audio guidance
-Req 6 – Building footprint grid ✅ OSM building‑focused tile layer
-Req 6 – Text location fallback ✅ Free‑text field
-Req 7 – Secure data handling ✅ UUID only, EXIF stripped, no IP stored
-Damage Classification Schema ✅ Minimal / Partial / Complete (exact UNDP)
-Core Indicators (4 items) ✅ Date/time, photo, damage tier, GPS
-Infrastructure Type (8 categories + Other) ✅ All 8 UNDP categories
-Infrastructure Name ✅ Text field
-Nature of Crisis ✅ Natural, Technological, Human‑made with subtypes
-Debris Clearing ✅ Yes/No radio
-Electricity Condition ✅ 6 options (exact UNDP wording)
-Health Services Functioning ✅ 5 options (exact UNDP wording)
-Most Pressing Needs ✅ All 15 UNDP options
-Versioning – Multiple reports ✅ Latest report per location (10m radius)
-Export Formats ✅ JSON, CSV, GeoJSON, Shapefile, REST API
-Modular Architecture ✅ Form fields from JSON config
-AI‑powered features ✅ OpenRouter with Claude + DeepSeek
-Rapid deployment methods ✅ Documented in proposal
-Redundancy detection ✅ Conflict flags, versioning
-Landmark‑based location ✅ Text location field
-Open Source ✅ MIT license
+Requirement Status
+Deliverable 1 – Written Proposal ✅
+Deliverable 2 – Interactable Prototype ✅
+Deliverable 3 – Video/Tutorial ✅
+Req 1a – Frontend + 6 languages ✅
+Req 1a – Map auto‑update ✅
+Req 1b – Secure backend + scale ✅
+Req 1c – Dashboard ✅
+Req 2 – Demonstrated user journey ✅
+Req 3 – Non‑monetary incentives ✅
+Req 4 – Offline functionality ✅
+Req 5 – Multilingual support ✅
+Req 6 – Building footprint grid ✅
+Req 6 – Text location fallback ✅
+Req 7 – Secure data handling ✅
+Damage Classification Schema ✅
+Core Indicators (4 items) ✅
+Infrastructure Type (8 categories + Other) ✅
+Nature of Crisis (with subtypes) ✅
+Debris Clearing ✅
+Electricity Condition ✅
+Health Services Functioning ✅
+Most Pressing Needs ✅
+Versioning – Multiple reports ✅
+Export Formats (CSV, GeoJSON, Shapefile, REST) ✅
+Modular Architecture ✅
+AI‑powered features ✅
+Open Source ✅
 
 ---
 
 The VERITAS Ecosystem
 
-VERITAS doesn't stand alone. It's the field instrument in a three‑tool suite built for end‑to‑end crisis data integrity:
+VERITAS is the field instrument in a three‑tool suite built for end‑to‑end crisis data integrity:
 
 Tool Purpose Location
 VERITAS Community damage reporting + DCI scoring /public/index.html
@@ -242,13 +209,13 @@ All three share the same design language, offline capability, and STP integratio
 
 Sovereign Trace Protocol Integration
 
-Every VERITAS dataset can be optionally sealed with the Sovereign Trace Protocol — a permanence infrastructure that stamps the data with a triple‑time cryptographic seal (Gregorian, Hebrew lunisolar, 13‑Moon Dreamspell). The SHA‑256 hash of the full dataset is bound to the seal, making the export tamper‑evident and independently verifiable using the open‑source STP code.
+Every VERITAS dataset can be optionally sealed with the Sovereign Trace Protocol — a permanence infrastructure that stamps the data with a triple‑time cryptographic seal (Gregorian, Hebrew lunisolar, 13‑Moon Dreamspell). The SHA‑256 hash of the full dataset is bound to the seal, making the export tamper‑evident and independently verifiable.
 
 How It Works
 
 1. In the responder dashboard, click STP Seal after exporting
 2. The seal is generated via the STP API (/api/stp-seal.js)
-3. Creates permanent ledger entry in SOVEREIGN-TRACE-PROTOCOL
+3. Creates permanent ledger entry in the STP GitHub repository
 4. Download the STP file alongside your export to prove dataset integrity
 
 ---
@@ -261,7 +228,7 @@ Local Storage IndexedDB Survives offline, syncs when back
 Maps Leaflet.js + OpenStreetMap Free, open source, offline tiles
 AI Analysis OpenRouter (Claude 3.5 + DeepSeek) High accuracy, multiple models
 Offline AI TensorFlow.js + xBD model Local inference when offline
-Backend Sync Supabase (free tier) Real‑time, row‑level security
+Backend Sync Supabase Real‑time, row‑level security
 Deployment Vercel + GitHub Pages Static hosting, serverless functions
 License MIT Open source, UNDP requirement
 
@@ -282,7 +249,7 @@ Two Interfaces
 
 /respond — Responder Dashboard (Access‑Code Gated)
 
-· Confidence map with color‑coded pins (VALID / DEGRADED / SUSPENDED)
+· Confidence map with color‑coded pins
 · Real‑time updates via Supabase subscription
 · Versioned reports — only the latest per location
 · Live confidence dashboard with DCI distribution
@@ -333,9 +300,9 @@ npm install -g vercel
 vercel --prod
 ```
 
-5. Deploy STP service
+5. Deploy STP service (separate project)
 
-The STP seal service runs separately. Deploy to Vercel:
+The STP seal service runs independently:
 
 ```bash
 cd ../stp-seal-service
@@ -365,8 +332,6 @@ Acknowledgments
 
 "The code is open source. The architecture is not replicable."
 
-This is an application of the AION Constitutional Stack — FSVE certainty scoring, ECF tagging, validity thresholds, and the ADA Red‑Team loop — applied to community crisis data. The method travels. The judgment behind it doesn't.
+This is an application of the AION Constitutional Stack — applied to community crisis data. The method travels. The judgment behind it doesn't.
 
-CERTUS Engine v2.5 — validated through 5 rounds of ADA red-teaming
-FSVE EV: 0.85 | TOPOS SGS: 0.92
-Ready for UNDP evaluation.
+CERTUS Engine v2.5 — Ready for UNDP evaluation.
