@@ -9,7 +9,7 @@ const templateFiles = [
   '02-research-priority.json',
   '03-evidence-chain.json',
   '04-creative-priority.json',
-  '05-clinical-record.json',      // You'll need to create this one
+  '05-clinical-record.json', 
   '06-scope-anchor.json',
   '07-general-trace.json',
   '08-foresight-seal.json',
