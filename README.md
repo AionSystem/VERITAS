@@ -82,7 +82,9 @@ VERITAS/
 │   └── schema.sql
 │
 ├── docs/                           ← Documentation
-│   ├── proposal.md                 ← UNDP written proposal
+│   ├── scale.md
+│   ├── anonymization.md
+│   ├── architecture.md             ←
 │   └── dci-formula.md              ← CERTUS Engine formula documentation
 │
 ├── model/                          ← TensorFlow.js model files (offline AI)
