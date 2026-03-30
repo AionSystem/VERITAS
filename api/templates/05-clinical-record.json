@@ -1,0 +1,116 @@
+{
+  "id": "05",
+  "name": "clinical-record",
+  "label": "CLINICAL-RECORD",
+  "title": "[STP-CLINICAL] — [INSTITUTION] — [DATE]",
+  "labels": ["clinical-record", "pending-seal"],
+  "assignees": [],
+  "requires_docusign": false,
+  "requires_identity": false,
+  "requires_phi_gate": true,
+  "requires_stripe": false,
+  "requires_prior_seal": false,
+  "requires_auditor_badge": false,
+  "triggers": ["clinical", "patient", "medical record", "trial", "symptom", "incident report", "adverse event", "protocol", "hipaa"],
+  "legal_notice": {
+    "title": "Clinical Record Seal",
+    "content": [
+      "⚠ **HIPAA / PRIVACY NOTICE**",
+      "",
+      "Do not include patient names, dates of birth, Social Security numbers, addresses,",
+      "or any other protected health information (PHI) in this submission.",
+      "",
+      "Seal the institutional record — not patient data. Describe events by type, context, and significance only.",
+      "",
+      "This seal proves the record existed in this exact form before any review, remediation, or external pressure."
+    ]
+  },
+  "fields": [
+    {
+      "type": "input",
+      "id": "submitter_name",
+      "label": "Submitter Name or Role",
+      "description": "Your name or role. Include institution name if submitting on behalf of an organization.",
+      "placeholder": "Dr. First Last — Institution Name",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "institution",
+      "label": "Institution or Organization",
+      "description": "The institution this record belongs to.",
+      "placeholder": "Full institutional name",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "record_type",
+      "label": "Record Type",
+      "description": "What kind of record is being sealed?",
+      "placeholder": "Incident Report / Trial Data / Protocol Version / Adverse Event / Audit Finding",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "record_date",
+      "label": "Date of Record Creation",
+      "description": "The date this record was created or the event occurred. Format: YYYY-MM-DD",
+      "placeholder": "2026-03-07",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "record_description",
+      "label": "Record Description",
+      "description": "Describe the record — no PHI. Use de-identified descriptions: event type, department, context, significance.",
+      "placeholder": "Describe the record without any protected health information.",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "pre_review_status",
+      "label": "Status at Time of Sealing",
+      "description": "What is the status right now? Before review, before remediation, before audit.",
+      "placeholder": "Pre-review / Pre-remediation / Pre-audit / Pre-submission",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "regulatory_context",
+      "label": "Regulatory Framework (Optional)",
+      "description": "What regulatory framework applies to this record?",
+      "placeholder": "FDA 21 CFR Part 11 / IRB Protocol / CMS / HIPAA / Other",
+      "required": false
+    },
+    {
+      "type": "upload",
+      "id": "supporting_files",
+      "label": "Supporting Files (Optional)",
+      "description": "Upload de-identified supporting documents only. No PHI permitted in uploaded files.",
+      "required": false
+    },
+    {
+      "type": "checkboxes",
+      "id": "declaration",
+      "label": "Declaration — Required",
+      "options": [
+        "I affirm this submission contains no protected health information (PHI) as defined by HIPAA.",
+        "I affirm this record accurately represents the institutional state at the time of sealing.",
+        "I am authorized to submit this record on behalf of my institution.",
+        "I understand this submission is immutable — it cannot be altered after sealing.",
+        "I understand the protocol provides a tamper-evident timestamp — not legal or regulatory advice."
+      ],
+      "required": true
+    }
+  ],
+  "after_submit": {
+    "steps": [
+      "PHI check — Reviewed for any inadvertent PHI before sealing.",
+      "Completeness check — Reviewed for completeness.",
+      "Sealing — Sealed with a FROZEN-2.0 triple-time cryptographic stamp. Permanent.",
+      "Ledger entry — Enters the Sovereign Trace ledger with institution name, timestamp, and SHA-256 hash.",
+      "Notification — You receive your ledger entry ID and SHA-256 hash."
+    ],
+    "footer": "The seal is permanent. The seal is the pre-review record.\n\nSovereign Trace Protocol | Sheldon K. Salmon | aionsystem2026@gmail.com"
+  }
+}
