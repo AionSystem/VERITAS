@@ -1,0 +1,140 @@
+{
+  "id": "16",
+  "name": "veritas-export",
+  "label": "VERITAS-EXPORT",
+  "title": "[VERITAS-EXPORT] — [DATASET SIZE] — [DATE]",
+  "labels": ["veritas-export", "dataset-seal", "integrity-verified"],
+  "assignees": [],
+  "requires_docusign": false,
+  "requires_identity": false,
+  "requires_phi_gate": false,
+  "requires_stripe": false,
+  "requires_prior_seal": false,
+  "requires_auditor_badge": false,
+  "triggers": ["veritas export", "dataset seal", "export integrity"],
+  "legal_notice": {
+    "title": "VERITAS Dataset Export — Sovereign Trace Seal",
+    "content": [
+      "This export was generated from VERITAS, the Community Damage Certification Platform.",
+      "",
+      "**The seal proves:** This exact dataset, containing the reports described below,",
+      "existed at this exact moment, in this exact form, before any analysis, modification, or distribution.",
+      "",
+      "**What is sealed:**",
+      "- Number of reports in the dataset",
+      "- SHA-256 hash of the full dataset (JSON payload)",
+      "- Timestamp of export",
+      "- DCI distribution summary",
+      "- Export format (JSON/CSV/GeoJSON/Shapefile)",
+      "",
+      "**Verification:** Anyone can recompute the SHA-256 hash of the exported file",
+      "and compare it to the hash sealed in the ledger. If they match, the dataset",
+      "has not been altered since export.",
+      "",
+      "This seal is permanent and immutable. The export cannot be repudiated.",
+      "The ledger is the chain of custody."
+    ]
+  },
+  "fields": [
+    {
+      "type": "input",
+      "id": "export_id",
+      "label": "Export ID",
+      "description": "Unique identifier for this export.",
+      "placeholder": "veritas-export-20260307-143022",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "report_count",
+      "label": "Number of Reports",
+      "description": "Total reports included in this export.",
+      "placeholder": "147",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "export_format",
+      "label": "Export Format",
+      "description": "File format of the export.",
+      "placeholder": "JSON / CSV / GeoJSON / Shapefile",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "dataset_hash",
+      "label": "Dataset SHA-256 Hash",
+      "description": "Cryptographic hash of the full exported dataset.",
+      "placeholder": "a1b2c3d4e5f67890...",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "dci_high_count",
+      "label": "High Confidence Reports",
+      "description": "Number of reports with DCI ≥ 0.70.",
+      "placeholder": "42",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "dci_watch_count",
+      "label": "Watch Reports",
+      "description": "Number of reports with DCI 0.40–0.69.",
+      "placeholder": "73",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "dci_review_count",
+      "label": "Review Required Reports",
+      "description": "Number of reports with DCI < 0.40.",
+      "placeholder": "32",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "crisis_type",
+      "label": "Crisis Type",
+      "description": "Primary crisis type in this dataset.",
+      "placeholder": "Earthquake / Flood / Conflict / etc.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "geographic_bounds",
+      "label": "Geographic Bounds (Optional)",
+      "description": "Bounding box of reports in this export.",
+      "placeholder": "Min Lat: 40.5, Max Lat: 40.9, Min Lng: -74.3, Max Lng: -73.9",
+      "required": false
+    },
+    {
+      "type": "input",
+      "id": "exported_by",
+      "label": "Exported By",
+      "description": "Name or role of the person exporting the dataset.",
+      "placeholder": "UNDP Response Coordinator / Organization Name",
+      "required": true
+    },
+    {
+      "type": "checkboxes",
+      "id": "declaration",
+      "label": "Declaration",
+      "options": [
+        "I affirm this export was generated from VERITAS and accurately represents the dataset at the time of export.",
+        "I understand this seal is permanent and immutable.",
+        "I understand anyone can verify dataset integrity by recomputing the SHA-256 hash and comparing to the sealed value."
+      ],
+      "required": true
+    }
+  ],
+  "after_submit": {
+    "steps": [
+      "Export sealed — Permanent entry in the Sovereign Trace ledger.",
+      "Integrity hash recorded — SHA-256 of full dataset.",
+      "Notification — Export ID and seal hash provided.",
+      "Verification — Recipients can verify dataset has not been altered."
+    ],
+    "footer": "The dataset is sealed. The hash is the proof.\n\nVERITAS | Sovereign Trace Protocol | Sheldon K. Salmon | aionsystem2026@gmail.com"
+  }
+}
