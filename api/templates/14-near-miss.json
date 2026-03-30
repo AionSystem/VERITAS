@@ -1,0 +1,113 @@
+{
+  "id": "14",
+  "name": "near-miss",
+  "label": "NEAR-MISS",
+  "title": "[NEAR-MISS] — [Organization] — [Date]",
+  "labels": ["near-miss", "pending-seal"],
+  "assignees": [],
+  "requires_docusign": false,
+  "requires_identity": false,
+  "requires_phi_gate": false,
+  "requires_stripe": false,
+  "requires_prior_seal": false,
+  "requires_auditor_badge": false,
+  "triggers": ["near miss", "almost", "close call", "near disaster", "near-miss"],
+  "legal_notice": {
+    "title": "⚠️ AI Near-Miss Report — Sovereign Trace Protocol",
+    "content": [
+      "A near-miss is an AI output that could have caused harm but was",
+      "caught before impact. Sealing it now — before internal review,",
+      "before remediation, before any pressure to minimize — is the",
+      "epistemic act. The record is permanent from this moment.",
+      "",
+      "**This template does not require a completed failure.**",
+      "It requires honest documentation of what almost happened."
+    ]
+  },
+  "fields": [
+    {
+      "type": "input",
+      "id": "organization",
+      "label": "Organization Name",
+      "description": "Legal name of the organization filing this report.",
+      "placeholder": "Acme Corp",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "contact_name",
+      "label": "Filing Contact — Full Name",
+      "placeholder": "Jane Smith",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "contact_title",
+      "label": "Filing Contact — Title",
+      "placeholder": "Chief AI Officer",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "contact_email",
+      "label": "Filing Contact — Email",
+      "placeholder": "jane@acmecorp.com",
+      "required": true
+    },
+    {
+      "type": "dropdown",
+      "id": "ai_system_type",
+      "label": "AI System Type",
+      "options": [
+        "Large Language Model (LLM)",
+        "Computer Vision / Image Recognition",
+        "Automated Decision System",
+        "Recommendation Engine",
+        "Autonomous Agent",
+        "Medical / Clinical AI",
+        "Financial / Risk AI",
+        "Safety-Critical System AI",
+        "Other"
+      ],
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "ai_system_name",
+      "label": "AI System Identifier",
+      "description": "Model name, version, or internal system identifier.",
+      "placeholder": "GPT-4o / Internal Model v2.3 / etc.",
+      "required": true
+    },
+    {
+      "type": "dropdown",
+      "id": "deployment_domain",
+      "label": "Deployment Domain",
+      "description": "Where was this AI system operating?",
+      "options": [
+        "Healthcare / Clinical",
+        "Financial Services",
+        "Legal",
+        "Defense / Government",
+        "Critical Infrastructure",
+        "Education",
+        "Consumer Product",
+        "Internal Operations",
+        "Research",
+        "Other"
+      ],
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "near_miss_description",
+      "label": "Near-Miss Description",
+      "description": "Describe exactly what the AI system output or action was, and what harm could have resulted if it had not been caught. Be specific. Vague entries do not produce useful sealed records.",
+      "placeholder": "The AI system recommended a medication dosage of 500mg for a patient with documented renal impairment. The correct dose is 50mg. The error was caught by a pharmacist before administration. No harm occurred. The AI was operating on a patient record that lacked the renal flag in the field it was reading.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "prompt_or_input",
+      "label": "Input / Prompt That Produced the Near-Miss",
+      "description": "Exact input, query, or trigger. Copy
