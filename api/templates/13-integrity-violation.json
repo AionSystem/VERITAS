@@ -1,0 +1,114 @@
+{
+  "id": "13",
+  "name": "integrity-violation",
+  "label": "INTEGRITY-VIOLATION",
+  "title": "[INTEGRITY-VIOLATION] — [Auditor Badge or Name] — [Violation Type]",
+  "labels": ["integrity-violation", "pending-review"],
+  "assignees": [],
+  "requires_docusign": false,
+  "requires_identity": false,
+  "requires_phi_gate": false,
+  "requires_stripe": false,
+  "requires_prior_seal": false,
+  "requires_auditor_badge": false,
+  "triggers": ["misuse", "violation", "bribery", "corruption", "badge misuse", "integrity"],
+  "legal_notice": {
+    "title": "Sovereign Trace Protocol — Integrity Violation Filing",
+    "content": [
+      "This form permanently seals a record of an integrity violation.",
+      "All fields are public. The record is immutable after submission.",
+      "",
+      "**You do not need to be a certified auditor to file this.**",
+      "Anyone who witnesses or experiences a violation may file.",
+      "",
+      "Violations include: bribery, badge offered outside official process,",
+      "coercion, falsified audit findings, or any conduct that compromises",
+      "the integrity of the STP ledger.",
+      "",
+      "**This record cannot be deleted.** File with accuracy.",
+      "False filings are also permanently sealed and attributed to the filer."
+    ]
+  },
+  "fields": [
+    {
+      "type": "input",
+      "id": "accused_badge",
+      "label": "Accused Auditor Badge Number (if known)",
+      "placeholder": "STP-AUDITOR-XXXX",
+      "required": false
+    },
+    {
+      "type": "input",
+      "id": "accused_name",
+      "label": "Accused Name or Organization",
+      "placeholder": "Full name or organization involved",
+      "required": true
+    },
+    {
+      "type": "dropdown",
+      "id": "violation_type",
+      "label": "Violation Type",
+      "options": [
+        "Bribery — payment offered to influence audit findings",
+        "Badge Misuse — badge used outside authorized scope",
+        "Coercion — pressure applied to alter findings",
+        "Falsified Findings — audit report does not reflect actual review",
+        "Unauthorized Badge Transfer — badge sold or given to another party",
+        "Annual Cap Exceeded — more than 50 audits filed in calendar year",
+        "Other — describe in evidence section"
+      ],
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "date_of_incident",
+      "label": "Date of Incident",
+      "placeholder": "March 7, 2026",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "evidence",
+      "label": "Evidence and Description",
+      "description": "Describe exactly what occurred. Be specific. This is the permanent record.",
+      "placeholder": "On March 7, 2026, STP-AUDITOR-XXXX offered to certify our outputs without review in exchange for $5,000 paid outside the official system.",
+      "required": true
+    },
+    {
+      "type": "upload",
+      "id": "file_upload",
+      "label": "Evidence Upload",
+      "description": "Upload screenshots, communications, or documents supporting the violation claim.",
+      "required": false
+    },
+    {
+      "type": "input",
+      "id": "filer_linkedin",
+      "label": "Your LinkedIn Profile URL",
+      "description": "Your identity is attached to this filing permanently.",
+      "placeholder": "https://linkedin.com/in/yourprofile",
+      "required": true
+    },
+    {
+      "type": "checkboxes",
+      "id": "declaration",
+      "label": "Declaration",
+      "options": [
+        "I declare that the information in this filing is accurate to the best of my knowledge.",
+        "I understand that false filings are permanently sealed and attributed to me.",
+        "I understand this record is public, immutable, and cannot be removed after submission."
+      ],
+      "required": true
+    }
+  ],
+  "after_submit": {
+    "steps": [
+      "Review — Integrity violation filing reviewed.",
+      "Sealing — Sealed with a FROZEN-2.0 triple-time cryptographic stamp. Permanent.",
+      "Ledger entry — Enters the Sovereign Trace ledger with filer identity, timestamp, and SHA-256 hash.",
+      "Notification — You receive your ledger entry ID and SHA-256 hash.",
+      "Resolution — If violation is substantiated, badge revocation proceedings begin."
+    ],
+    "footer": "The seal is the accusation. The ledger is the permanent record.\n\nSovereign Trace Protocol | Sheldon K. Salmon | aionsystem2026@gmail.com"
+  }
+}
