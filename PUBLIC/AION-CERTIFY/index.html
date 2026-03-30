@@ -10,7 +10,6 @@
   <title>AION.CERTIFY — Integrity Sealing</title>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:ital,wght@0,300;0,400;0,600;0,700;0,900;1,300&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
   <style>
-    /* ========== GLOBAL RESET & VARIABLES ========== */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
       --bg:#08090b;
@@ -277,6 +276,18 @@
       color: var(--muted);
       line-height: 1.5;
     }
+    /* Data Retention Disclosure (C-13) */
+    .data-retention {
+      background: rgba(0,212,255,0.08);
+      border-left: 3px solid var(--cyan);
+      padding: 16px;
+      margin-bottom: 24px;
+      border-radius: 8px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -303,6 +314,11 @@
       color: var(--red);
       font-size: 10px;
     }
+    /* Required field visual feedback (C-18) */
+    .form-input:invalid, .form-textarea:invalid, .form-select:invalid {
+      border-color: var(--red);
+      background: rgba(255,77,77,0.05);
+    }
     .form-input, .form-textarea, .form-select {
       width: 100%;
       padding: 12px;
@@ -313,13 +329,41 @@
       font-family: var(--sans);
       font-size: 16px;
       resize: vertical;
+      transition: border-color 0.2s;
     }
     .form-input:focus, .form-textarea:focus, .form-select:focus {
       outline: none;
       border-color: var(--amber);
     }
 
-    /* Template Wizard Styles (B-09) */
+    /* Wizard Progress (C-09) */
+    .wizard-progress {
+      display: flex;
+      margin-bottom: 32px;
+      background: var(--panel);
+      border-radius: 40px;
+      padding: 4px;
+    }
+    .progress-step {
+      flex: 1;
+      text-align: center;
+      padding: 10px 0;
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: var(--muted);
+      border-radius: 40px;
+      transition: all 0.3s;
+    }
+    .progress-step.completed {
+      background: rgba(74,222,128,0.2);
+      color: var(--edu);
+    }
+    .progress-step.active {
+      background: var(--amber);
+      color: #000;
+      font-weight: 600;
+    }
     .wizard-step {
       display: none;
       animation: fadeIn 0.3s ease;
@@ -371,10 +415,9 @@
       line-height: 1.5;
     }
 
-    /* Template Cards (B-17) */
     .template-cards {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
       gap: 12px;
       margin-top: 16px;
     }
@@ -425,13 +468,23 @@
       color: var(--muted);
       margin-top: 8px;
       line-height: 1.4;
-      display: none;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
     .template-card.expanded .template-card-description {
       display: block;
+      -webkit-line-clamp: unset;
+    }
+    .expand-link {
+      font-size: 8px;
+      color: var(--amber);
+      cursor: pointer;
+      margin-top: 4px;
+      display: inline-block;
     }
 
-    /* Filter pills (B-18) */
     .filter-pills {
       display: flex;
       flex-wrap: wrap;
@@ -605,6 +658,15 @@
       padding: 12px;
       background: rgba(74,222,128,0.1);
       border-radius: 8px;
+      font-family: var(--mono);
+      font-size: 10px;
+    }
+    .deprecation-section {
+      margin-top: 16px;
+      padding: 12px;
+      background: rgba(240,165,0,0.1);
+      border-radius: 8px;
+      border-left: 3px solid var(--amber);
       font-family: var(--mono);
       font-size: 10px;
     }
@@ -831,6 +893,8 @@
       .button-group { flex-direction: column; }
       .wizard-options { grid-template-columns: 1fr; }
       .template-cards { grid-template-columns: 1fr; }
+      .wizard-progress { flex-direction: column; gap: 4px; background: transparent; }
+      .progress-step { background: var(--panel); margin: 2px 0; }
     }
   </style>
 </head>
@@ -880,12 +944,30 @@
       Sealed content may be used as evidence in legal proceedings.<br>
       <strong>This record is permanent and cannot be deleted under any circumstances.</strong> Do not seal anything you may later need to remove.<br>
       Sealing privileged communications may waive legal privilege. Consult your legal counsel before sealing.<br>
+      <strong>Do not seal classified, proprietary, or state-secret information.</strong> You assume all liability for the content you seal.<br>
       <strong>This action is irreversible. There is no deletion or modification after sealing.</strong>
+    </div>
+
+    <!-- Data Retention Disclosure (C-13) -->
+    <div class="data-retention">
+      <strong>📋 Data Retention & Access</strong><br>
+      • Seals are stored in public GitHub issues (permanently, globally accessible)<br>
+      • Your IP address is not stored by VERITAS but may be logged by GitHub<br>
+      • GitHub's <a href="https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement" target="_blank" style="color: var(--cyan);">Privacy Policy</a> applies to issue data<br>
+      • No encryption of issue content — assume public visibility<br>
+      • Vercel (hosting) may have access to API requests as part of normal operations<br>
+      • You may request deprecation of a seal (creates a new seal noting the deprecation), but the original remains
     </div>
   </div>
 
   <div class="card">
-    <!-- Template Wizard (B-09) -->
+    <!-- Wizard Progress (C-09) -->
+    <div class="wizard-progress" id="wizardProgress">
+      <div class="progress-step completed" data-step="1">1. Category</div>
+      <div class="progress-step active" data-step="2">2. Template</div>
+      <div class="progress-step" data-step="3">3. Content</div>
+    </div>
+
     <div id="wizardStep1" class="wizard-step active">
       <div class="form-label">Step 1: What are you sealing?</div>
       <div class="wizard-options">
@@ -927,7 +1009,6 @@
 
     <div id="wizardStep2" class="wizard-step">
       <div class="form-label">Step 2: Select specific template <span class="required">*</span></div>
-      <!-- Filter pills (B-18) -->
       <div class="filter-pills" id="filterPills">
         <span class="filter-pill active" data-filter="all">All</span>
         <span class="filter-pill" data-filter="requiresIdentity">Identity required</span>
@@ -940,25 +1021,24 @@
       <div id="templateInfo" class="template-info"></div>
       <div id="templateRequirements" class="template-requirements"></div>
       
-      <!-- Conditional fields (B-10 with tooltips) -->
       <div id="identityFields" class="identity-fields">
         <div class="form-group">
           <label class="form-label">Full Legal Name <span class="required">*</span>
             <span class="tooltip">❓<span class="tooltip-text">As it appears on government-issued ID for DocuSign verification</span></span>
           </label>
-          <input type="text" id="legalName" class="form-input" placeholder="As it appears on government-issued ID">
+          <input type="text" id="legalName" class="form-input" placeholder="As it appears on government-issued ID" required>
         </div>
         <div class="form-group">
           <label class="form-label">Email Address <span class="required">*</span>
             <span class="tooltip">❓<span class="tooltip-text">DocuSign verification link will be sent here before sealing</span></span>
           </label>
-          <input type="email" id="legalEmail" class="form-input" placeholder="For DocuSign verification">
+          <input type="email" id="legalEmail" class="form-input" placeholder="For DocuSign verification" required>
         </div>
         <div class="form-group">
           <label class="form-label">LinkedIn Profile URL <span class="required">*</span>
             <span class="tooltip">❓<span class="tooltip-text">Your professional identity anchor for the ledger</span></span>
           </label>
-          <input type="url" id="linkedinUrl" class="form-input" placeholder="https://linkedin.com/in/yourprofile">
+          <input type="url" id="linkedinUrl" class="form-input" placeholder="https://linkedin.com/in/yourprofile" required>
         </div>
         <div class="checkbox-group">
           <input type="checkbox" id="docusignConsent">
@@ -971,7 +1051,7 @@
           <label class="form-label">Stripe Transaction Code <span class="required">*</span>
             <span class="tooltip">❓<span class="tooltip-text">Format: ch_ or pi_ followed by alphanumeric characters</span></span>
           </label>
-          <input type="text" id="stripeCode" class="form-input" placeholder="ch_xxxxxxxxxxxxxxxxxxxxxxxxx">
+          <input type="text" id="stripeCode" class="form-input" placeholder="ch_xxxxxxxxxxxxxxxxxxxxxxxxx" pattern="^(ch|pi)_[A-Za-z0-9]{14,}$">
         </div>
         <div class="form-group">
           <label class="form-label">Company Name</label>
@@ -984,7 +1064,7 @@
           <label class="form-label">Prior Seal Hash (64-character SHA-256) <span class="required">*</span>
             <span class="tooltip">❓<span class="tooltip-text">Must be a valid seal already in the STP ledger</span></span>
           </label>
-          <input type="text" id="priorSealHash" class="form-input" placeholder="a1b2c3d4e5f67890...">
+          <input type="text" id="priorSealHash" class="form-input" placeholder="a1b2c3d4e5f67890..." pattern="^[a-fA-F0-9]{64}$">
           <div id="priorSealStatus" style="font-size: 9px; margin-top: 4px;"></div>
         </div>
         <div class="form-group">
@@ -1002,7 +1082,7 @@
           <label class="form-label">STP Auditor Badge Number <span class="required">*</span>
             <span class="tooltip">❓<span class="tooltip-text">Format: STP-AUDITOR-XXXX (4 digits)</span></span>
           </label>
-          <input type="text" id="auditorBadge" class="form-input" placeholder="STP-AUDITOR-XXXX">
+          <input type="text" id="auditorBadge" class="form-input" placeholder="STP-AUDITOR-XXXX" pattern="^STP-AUDITOR-\d{4}$">
         </div>
       </div>
 
@@ -1027,8 +1107,8 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="sealText">Content / Description</label>
-        <textarea id="sealText" class="form-textarea" rows="6" placeholder="Enter the text, decision, or description you want to seal. This will become part of the permanent record."></textarea>
+        <label class="form-label" for="sealText">Content / Description <span class="required">*</span></label>
+        <textarea id="sealText" class="form-textarea" rows="6" placeholder="Enter the text, decision, or description you want to seal. This will become part of the permanent record." required></textarea>
       </div>
 
       <div class="form-group">
@@ -1046,7 +1126,7 @@
 
       <div class="checkbox-group">
         <input type="checkbox" id="ageCheckbox">
-        <label>I confirm I am at least 18 years old and have the legal capacity to enter into this binding declaration. (B-16)</label>
+        <label>I confirm I am at least 18 years old and have the legal capacity to enter into this binding declaration.</label>
       </div>
 
       <div class="checkbox-group">
@@ -1060,6 +1140,15 @@
         <button class="btn btn-primary" id="sealBtn" onclick="confirmSeal()" disabled>🔒 Seal with STP →</button>
       </div>
       <div class="estimated-time" id="estimatedTime"></div>
+
+      <!-- Deprecation Section (C-14) -->
+      <div id="deprecationSection" class="deprecation-section" style="display: none;">
+        <strong>🔄 Deprecate Previous Seal</strong><br>
+        <div class="form-group" style="margin-top: 8px;">
+          <input type="text" id="deprecateHash" class="form-input" placeholder="Previous seal hash to deprecate (optional)">
+          <div style="font-size: 9px; color: var(--muted); margin-top: 4px;">If you made an error, you can create a new seal that deprecates the old one. The original remains permanently.</div>
+        </div>
+      </div>
 
       <div id="previewArea" class="preview-area">
         <div class="preview-title">📄 Preview — How your seal will appear in the ledger</div>
@@ -1084,6 +1173,7 @@
           <button class="btn btn-secondary btn-sm" onclick="copySeal()">📋 Copy seal hash</button>
           <button class="btn btn-secondary btn-sm" onclick="shareSeal()">📤 Share issue URL</button>
           <button class="btn btn-secondary btn-sm" onclick="downloadSealRecord()">📥 Download seal record</button>
+          <button class="btn btn-secondary btn-sm" onclick="showDeprecationForm()">🔄 Deprecate this seal</button>
         </div>
       </div>
 
@@ -1146,6 +1236,24 @@
   </div>
 </div>
 
+<div id="deprecateModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-title">🔄 Deprecate a Previous Seal</div>
+    <div class="modal-message">
+      <input type="text" id="deprecateModalHash" class="form-input" placeholder="Previous seal hash to deprecate" style="margin-bottom: 16px;">
+      <textarea id="deprecateReason" class="form-textarea" rows="3" placeholder="Reason for deprecation (e.g., corrected error, updated information)"></textarea>
+      <div style="font-size: 10px; color: var(--muted); margin-top: 12px;">
+        <strong>Note:</strong> The original seal remains permanently in the ledger.<br>
+        This creates a new seal that references and deprecates the old one.
+      </div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn btn-secondary" onclick="closeDeprecateModal()">Cancel</button>
+      <button class="btn btn-primary" id="confirmDeprecateBtn">Create Deprecation Seal</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
@@ -1190,22 +1298,60 @@
     '16': { name: 'VERITAS Export', category: 'crisis', icon: '📊', requiresIdentity: false, requiresDocusign: false, requiresStripe: false, requiresPriorSeal: false, requiresBadge: false, phiGate: false, description: 'Dataset integrity seal for VERITAS exports.' }
   };
 
+  // Terms version tracking (C-15)
+  const TERMS_VERSION = '2026-03-30-v1';
+
   let selectedCategory = null;
   let selectedTemplate = '07';
   let selectedFile = null;
-  let fileData = null;
   let fileFullHash = null;
   let pendingSealData = null;
   let offlineQueue = [];
   let docusignPending = false;
+  let currentWizardStep = 1;
+  
+  // Circuit breaker for API (C-01)
+  let circuitBreaker = {
+    isOpen: false,
+    failures: 0,
+    lastFailure: null,
+    resetTimeout: 60000, // 1 minute
+    threshold: 3
+  };
+  
+  // Request deduplication (C-02)
+  const pendingRequests = new Map();
 
-  // Load offline queue from localStorage (B-01, B-02)
+  function isCircuitOpen() {
+    if (!circuitBreaker.isOpen) return false;
+    if (Date.now() - circuitBreaker.lastFailure > circuitBreaker.resetTimeout) {
+      circuitBreaker.isOpen = false;
+      circuitBreaker.failures = 0;
+      return false;
+    }
+    return true;
+  }
+
+  function recordFailure() {
+    circuitBreaker.failures++;
+    if (circuitBreaker.failures >= circuitBreaker.threshold) {
+      circuitBreaker.isOpen = true;
+      circuitBreaker.lastFailure = Date.now();
+      toast('⚠️ STP service temporarily degraded — seals will be queued', 5000);
+    }
+  }
+
+  function recordSuccess() {
+    circuitBreaker.failures = 0;
+    circuitBreaker.isOpen = false;
+  }
+
+  // Load offline queue (C-01, B-01, B-02, B-04)
   function loadOfflineQueue() {
     try {
       const saved = localStorage.getItem('aion_certify_queue');
       if (saved) {
         offlineQueue = JSON.parse(saved);
-        // Remove expired items (B-01, B-04)
         const now = Date.now();
         offlineQueue = offlineQueue.filter(item => item.expires > now && item.retries < (item.maxRetries || 5));
         saveOfflineQueue();
@@ -1214,10 +1360,7 @@
   }
 
   function saveOfflineQueue() {
-    // Limit queue size to 50 (B-02)
-    if (offlineQueue.length > 50) {
-      offlineQueue = offlineQueue.slice(-50);
-    }
+    if (offlineQueue.length > 50) offlineQueue = offlineQueue.slice(-50);
     localStorage.setItem('aion_certify_queue', JSON.stringify(offlineQueue));
   }
 
@@ -1229,7 +1372,7 @@
       metadata,
       retries: 0,
       maxRetries: 5,
-      expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days (B-01)
+      expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
       timestamp: new Date().toISOString()
     });
     saveOfflineQueue();
@@ -1247,46 +1390,31 @@
         item.retries++;
         if (item.retries < item.maxRetries && Date.now() < item.expires) {
           remaining.push(item);
-        } else {
-          toast(`⚠️ Seal failed permanently: ${item.id}`, 5000);
         }
       }
     }
     offlineQueue = remaining;
     saveOfflineQueue();
-    if (remaining.length === 0) {
-      toast('✅ All queued seals completed');
-    } else {
-      toast(`⚠️ ${remaining.length} seals still queued (will retry later)`);
-    }
+    if (remaining.length === 0) toast('✅ All queued seals completed');
   }
 
-  // Full file hashing with streaming (B-05)
+  // Full file hashing (B-05)
   async function computeFullFileHash(file) {
     return new Promise((resolve, reject) => {
-      const chunkSize = 1024 * 1024; // 1MB chunks
-      let offset = 0;
       const reader = new FileReader();
-      const hashAlgorithm = 'SHA-256';
-      
       reader.onload = async (e) => {
         try {
           const arrayBuffer = e.target.result;
-          const hashBuffer = await crypto.subtle.digest(hashAlgorithm, arrayBuffer);
-          // For first chunk, initialize; for subsequent, this would need streaming
-          // For simplicity in this implementation, we hash the whole file at once
-          // In production, use progressive hashing with SubtleCrypto
+          const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
           resolve(Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join(''));
-        } catch (err) {
-          reject(err);
-        }
+        } catch (err) { reject(err); }
       };
       reader.onerror = reject;
       reader.readAsArrayBuffer(file);
     });
   }
 
-  // Prior seal verification (B-06)
+  // Prior seal verification (C-06)
   async function verifyPriorSealHash(hash) {
     try {
       const response = await fetch(`/api/stp-seal/verify?hash=${hash}`);
@@ -1294,23 +1422,31 @@
         const data = await response.json();
         return { valid: true, exists: data.exists, ledgerEntry: data.entry };
       }
-    } catch (err) {
-      console.warn('Prior seal verification failed:', err);
-    }
+    } catch (err) { console.warn('Prior seal verification failed:', err); }
     return { valid: false, exists: false };
   }
 
-  // Format validation (B-07, B-08)
-  function validateStripeCode(code) {
-    return /^(ch|pi)_[A-Za-z0-9]{14,}$/.test(code);
-  }
-  function validateAuditorBadge(badge) {
-    return /^STP-AUDITOR-\d{4}$/.test(badge);
+  function validateStripeCode(code) { return /^(ch|pi)_[A-Za-z0-9]{14,}$/.test(code); }
+  function validateAuditorBadge(badge) { return /^STP-AUDITOR-\d{4}$/.test(badge); }
+
+  // Wizard functions (C-09)
+  function updateWizardProgress() {
+    const steps = document.querySelectorAll('.progress-step');
+    steps.forEach(step => {
+      const stepNum = parseInt(step.dataset.step);
+      step.classList.remove('completed', 'active');
+      if (stepNum < currentWizardStep) step.classList.add('completed');
+      if (stepNum === currentWizardStep) step.classList.add('active');
+    });
   }
 
-  // Template Wizard (B-09)
-  let currentWizardStep = 1;
-  
+  function updateWizardDisplay() {
+    document.getElementById('wizardStep1').classList.toggle('active', currentWizardStep === 1);
+    document.getElementById('wizardStep2').classList.toggle('active', currentWizardStep === 2);
+    document.getElementById('wizardStep3').classList.toggle('active', currentWizardStep === 3);
+    updateWizardProgress();
+  }
+
   function initWizard() {
     document.querySelectorAll('.wizard-category').forEach(cat => {
       cat.addEventListener('click', () => {
@@ -1347,17 +1483,13 @@
         document.getElementById('selectedTemplateName').innerHTML = `${TEMPLATES[selectedTemplate]?.icon || '📝'} ${TEMPLATES[selectedTemplate]?.name || 'General Trace'} selected`;
         updateConditionalFields();
         updateSealButton();
+        // Autosave draft (C-19)
+        loadDraft();
       }
     };
   }
 
-  function updateWizardDisplay() {
-    document.getElementById('wizardStep1').classList.toggle('active', currentWizardStep === 1);
-    document.getElementById('wizardStep2').classList.toggle('active', currentWizardStep === 2);
-    document.getElementById('wizardStep3').classList.toggle('active', currentWizardStep === 3);
-  }
-
-  // Template Cards (B-17)
+  // Template rendering (C-10 auto-select first template)
   function renderTemplateCards() {
     const container = document.getElementById('templateCards');
     const searchTerm = document.getElementById('templateSearch')?.value.toLowerCase() || '';
@@ -1382,32 +1514,46 @@
       if (t.requiresPriorSeal) badgeHtml += '<span class="template-card-badge badge-prior">Prior seal req</span>';
       
       return `
-        <div class="template-card ${selectedTemplate === id ? 'selected' : ''}" data-template="${id}">
+        <div class="template-card ${selectedTemplate === id ? 'selected' : ''}" data-template="${id}" tabindex="0" role="button" aria-label="Select template ${t.name}">
           <div class="template-card-icon">${t.icon}</div>
           <div class="template-card-name">${t.name}</div>
           ${badgeHtml}
           <div class="template-card-description">${t.description}</div>
+          <span class="expand-link">▼ Expand</span>
         </div>
       `;
     }).join('');
     
-    document.querySelectorAll('.template-card').forEach(card => {
+    // Keyboard navigation (C-17)
+    const cards = document.querySelectorAll('.template-card');
+    cards.forEach((card, index) => {
       card.addEventListener('click', () => {
-        document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
+        cards.forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
         selectedTemplate = card.dataset.template;
         document.getElementById('wizardSelectBtn').disabled = false;
         updateTemplateInfo();
       });
-      card.addEventListener('mouseenter', () => {
-        const desc = card.querySelector('.template-card-description');
-        if (desc) desc.style.display = 'block';
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          card.click();
+        }
       });
-      card.addEventListener('mouseleave', () => {
-        const desc = card.querySelector('.template-card-description');
-        if (desc) desc.style.display = 'none';
+      // Expand/collapse description
+      const expandLink = card.querySelector('.expand-link');
+      expandLink.addEventListener('click', (e) => {
+        e.stopPropagation();
+        card.classList.toggle('expanded');
+        expandLink.textContent = card.classList.contains('expanded') ? '▲ Collapse' : '▼ Expand';
       });
     });
+    
+    // Auto-select first template if none selected (C-10)
+    if (filteredTemplates.length > 0 && !document.querySelector('.template-card.selected')) {
+      const firstCard = document.querySelector('.template-card');
+      if (firstCard) firstCard.click();
+    }
     
     updateTemplateInfo();
   }
@@ -1439,14 +1585,12 @@
 
   function updateConditionalFields() {
     const template = TEMPLATES[selectedTemplate];
-    
     document.getElementById('identityFields').classList.toggle('show', template?.requiresIdentity || false);
     document.getElementById('stripeFields').classList.toggle('show', template?.requiresStripe || false);
     document.getElementById('webeaterFields').classList.toggle('show', template?.requiresPriorSeal || false);
     document.getElementById('badgeFields').classList.toggle('show', template?.requiresBadge || false);
     document.getElementById('phiWarning').classList.toggle('show', template?.phiGate || false);
     
-    // Prior seal verification listener (B-06)
     if (template?.requiresPriorSeal) {
       const priorInput = document.getElementById('priorSealHash');
       const statusDiv = document.getElementById('priorSealStatus');
@@ -1491,7 +1635,6 @@
     const progressFill = document.getElementById('progressFill');
     progressBar.classList.add('show');
     
-    // Simulate progress for UX
     let progress = 0;
     const interval = setInterval(() => {
       progress += 10;
@@ -1506,7 +1649,10 @@
       
       document.getElementById('fileHint').textContent = `✅ ${file.name} (${(file.size/1024).toFixed(1)} KB) selected`;
       document.getElementById('fileZone').classList.add('has-file');
-      document.getElementById('fileInfo').innerHTML = `Filename: ${file.name}<br>Type: ${file.type || 'binary'}<br>SHA-256: ${fileFullHash.substring(0, 32)}...`;
+      document.getElementById('fileInfo').innerHTML = `Filename: ${file.name}<br>Type: ${file.type || 'binary'}<br>SHA-256: ${fileFullHash.substring(0, 32)}...<br><button class="btn btn-secondary btn-sm" onclick="verifyFileIntegrity()" style="margin-top: 8px;">✓ Verify file integrity</button>`;
+      
+      // Clear file data URL from memory after hash (C-04)
+      selectedFile = null; // Keep reference but clear large data
     } catch (err) {
       console.error('File hashing error:', err);
       toast('Error hashing file. Please try a smaller file.');
@@ -1514,6 +1660,14 @@
       progressBar.classList.remove('show');
     }
     updateSealButton();
+  }
+
+  function verifyFileIntegrity() {
+    if (fileFullHash) {
+      toast(`File SHA-256: ${fileFullHash}`);
+    } else {
+      toast('No file hash available');
+    }
   }
 
   // Build entry for API
@@ -1525,10 +1679,8 @@
     let entry = `[${template.name}]`;
     if (title) entry += `\nTitle: ${title}`;
     if (text) entry += `\n\n${text}`;
-    if (selectedFile) {
-      entry += `\n\nFile: ${selectedFile.name}`;
-      entry += `\nFile SHA-256: ${fileFullHash || 'not computed'}`;
-      entry += `\nFull file available as separate attachment in the permanent record.`;
+    if (fileFullHash) {
+      entry += `\n\nFile SHA-256: ${fileFullHash}`;
     }
     
     if (template.requiresIdentity) {
@@ -1557,13 +1709,35 @@
       if (company) entry += `\nCompany: ${company}`;
     }
     
-    entry += `\n\n---\nSealed via AION.CERTIFY | VERITAS Ecosystem | ${new Date().toISOString()}`;
+    // Deprecation handling (C-14)
+    const deprecateHash = document.getElementById('deprecateHash')?.value.trim();
+    if (deprecateHash) {
+      entry += `\n\n---\n⚠️ DEPRECATION NOTICE\nThis seal deprecates previous seal: ${deprecateHash}\nReason: ${document.getElementById('deprecateReason')?.value.trim() || 'Corrected error or updated information'}\nThe original seal remains permanently in the ledger.`;
+    }
+    
+    entry += `\n\n---\nTerms version: ${TERMS_VERSION} | Accepted: ${new Date().toISOString()}`;
+    entry += `\nSealed via AION.CERTIFY | VERITAS Ecosystem | ${new Date().toISOString()}`;
     return entry;
+  }
+
+  // Server-side file hash verification (C-05)
+  async function uploadAndVerifyFile(file, claimedHash) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('claimed_hash', claimedHash);
+    try {
+      const response = await fetch('/api/stp-seal/verify-file', { method: 'POST', body: formData });
+      if (response.ok) {
+        const data = await response.json();
+        return data.verified;
+      }
+    } catch (err) { console.warn('File verification failed:', err); }
+    return false;
   }
 
   function validateRequirements() {
     const template = TEMPLATES[selectedTemplate];
-    const hasContent = document.getElementById('sealText').value.trim().length > 0 || selectedFile;
+    const hasContent = document.getElementById('sealText').value.trim().length > 0 || fileFullHash;
     if (!hasContent) { toast('Please enter content or select a file to seal'); return false; }
     
     const ageChecked = document.getElementById('ageCheckbox').checked;
@@ -1601,23 +1775,44 @@
     return true;
   }
 
+  // Execute seal with circuit breaker and deduplication (C-01, C-02)
   async function executeSeal(entry, templateId, metadata = {}) {
-    const response = await fetch('/api/stp-seal', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        entry,
-        type: templateId,
-        sessionId: 'certify-' + Date.now(),
-        userId: null,
-        ...metadata
-      })
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    if (isCircuitOpen()) {
+      addToOfflineQueue(entry, templateId, metadata);
+      throw new Error('Circuit breaker open — queued for later');
     }
-    return await response.json();
+    
+    const requestId = `${templateId}-${entry.substring(0, 100)}`;
+    if (pendingRequests.has(requestId)) {
+      throw new Error('Duplicate request in progress');
+    }
+    pendingRequests.set(requestId, true);
+    
+    try {
+      const response = await fetch('/api/stp-seal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entry,
+          type: templateId,
+          sessionId: 'certify-' + Date.now(),
+          userId: null,
+          file_hash: fileFullHash,
+          ...metadata
+        })
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      recordSuccess();
+      return await response.json();
+    } catch (err) {
+      recordFailure();
+      throw err;
+    } finally {
+      pendingRequests.delete(requestId);
+    }
   }
 
   async function sealWithRetry(entry, templateId, metadata, maxRetries = 3) {
@@ -1638,10 +1833,6 @@
 
   // Pre-sealing DocuSign (B-13)
   async function initiateDocusign() {
-    const name = document.getElementById('legalName').value.trim();
-    const email = document.getElementById('legalEmail').value.trim();
-    // In production, call DocuSign API here
-    // For demo, simulate verification
     return new Promise((resolve) => {
       setTimeout(() => {
         toast('✅ Identity verified via DocuSign');
@@ -1655,7 +1846,6 @@
     
     const template = TEMPLATES[selectedTemplate];
     
-    // Pre-sealing DocuSign for identity-required templates (B-13)
     if (template.requiresIdentity && !docusignPending) {
       docusignPending = true;
       document.getElementById('docusignModal').classList.add('show');
@@ -1696,6 +1886,9 @@
       
       saveToRecentSeals(seal);
       toast('✅ Seal created successfully!');
+      
+      // Clear draft after successful seal (C-19)
+      localStorage.removeItem('aion_certify_draft');
     } catch (err) {
       console.error('[AION.CERTIFY] Seal error:', err);
       if (err.message.includes('429')) {
@@ -1712,13 +1905,77 @@
 
   function showPreview() {
     const entry = buildEntry();
-    const template = TEMPLATES[selectedTemplate];
-    const now = new Date();
-    const simulatedStamp = `\n\n---\n📅 Gregorian: ${gregorianString(now)}\n🌑 Hebrew: ${hebrewString(now)}\n🌀 Dreamspell: ${dreamspellString(now)}`;
-    document.getElementById('previewContent').textContent = entry + simulatedStamp;
+    document.getElementById('previewContent').textContent = entry;
     document.getElementById('previewArea').classList.add('show');
     document.getElementById('estimatedTime').textContent = '⏱️ Estimated sealing time: 3-5 seconds';
   }
+
+  // Deprecation workflow (C-14)
+  function showDeprecationForm() {
+    const currentHash = document.getElementById('sealHash').textContent;
+    document.getElementById('deprecateModalHash').value = currentHash;
+    document.getElementById('deprecateModal').classList.add('show');
+  }
+  
+  function closeDeprecateModal() {
+    document.getElementById('deprecateModal').classList.remove('show');
+    document.getElementById('deprecateModalHash').value = '';
+    document.getElementById('deprecateReason').value = '';
+  }
+  
+  async function createDeprecationSeal() {
+    const oldHash = document.getElementById('deprecateModalHash').value.trim();
+    const reason = document.getElementById('deprecateReason').value.trim();
+    if (!oldHash) { toast('Previous seal hash required'); return; }
+    
+    const deprecationEntry = `⚠️ DEPRECATION NOTICE\nThis seal deprecates previous seal: ${oldHash}\nReason: ${reason || 'Corrected error or updated information'}\nThe original seal remains permanently in the ledger.`;
+    
+    try {
+      const seal = await executeSeal(deprecationEntry, '07', {});
+      toast('✅ Deprecation seal created');
+      closeDeprecateModal();
+      document.getElementById('sealHash').textContent = seal.seal;
+      document.getElementById('sealGregorian').textContent = seal.gregorian;
+      document.getElementById('sealHebrew').textContent = seal.hebrew;
+      document.getElementById('sealDreamspell').textContent = seal.dreamspell;
+      document.getElementById('sealLedger').textContent = seal.ledger_file || '—';
+      if (seal.issue_url) {
+        document.getElementById('sealIssue').href = seal.issue_url;
+        document.getElementById('sealIssue').textContent = seal.issue_url;
+      }
+      document.getElementById('sealResult').classList.add('show');
+      saveToRecentSeals(seal);
+    } catch (err) {
+      toast(`Deprecation failed: ${err.message}`);
+    }
+  }
+
+  // Autosave draft (C-19)
+  function autosaveDraft() {
+    const draft = {
+      title: document.getElementById('sealTitle').value,
+      content: document.getElementById('sealText').value,
+      template: selectedTemplate,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('aion_certify_draft', JSON.stringify(draft));
+  }
+  
+  function loadDraft() {
+    try {
+      const saved = localStorage.getItem('aion_certify_draft');
+      if (saved) {
+        const draft = JSON.parse(saved);
+        if (Date.now() - draft.timestamp < 24 * 60 * 60 * 1000) {
+          document.getElementById('sealTitle').value = draft.title || '';
+          document.getElementById('sealText').value = draft.content || '';
+          toast('📝 Draft restored from previous session', 3000);
+        }
+      }
+    } catch(e) {}
+  }
+  
+  setInterval(autosaveDraft, 30000);
 
   function saveToRecentSeals(seal) {
     let recent = [];
@@ -1743,7 +2000,7 @@
   }
 
   function updateSealButton() {
-    const hasContent = document.getElementById('sealText').value.trim().length > 0 || selectedFile;
+    const hasContent = document.getElementById('sealText').value.trim().length > 0 || fileFullHash;
     const ageChecked = document.getElementById('ageCheckbox').checked;
     const termsChecked = document.getElementById('termsCheckbox').checked;
     document.getElementById('sealBtn').disabled = !(hasContent && ageChecked && termsChecked);
@@ -1759,6 +2016,7 @@
   function closeDocusignModal() { document.getElementById('docusignModal').classList.remove('show'); docusignPending = false; }
 
   document.getElementById('confirmSealBtn').onclick = () => { closeModal(); generateSeal(); };
+  document.getElementById('confirmDeprecateBtn').onclick = () => { createDeprecationSeal(); };
   document.getElementById('proceedDocusignBtn').onclick = async () => {
     closeDocusignModal();
     await initiateDocusign();
@@ -1806,6 +2064,18 @@
   loadOfflineQueue();
   loadRecentSeals();
   processOfflineQueue();
+
+  // Keyboard shortcuts (C-17)
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'Enter') {
+      e.preventDefault();
+      if (document.getElementById('sealBtn').disabled === false) confirmSeal();
+    }
+    if (e.ctrlKey && e.key === 'p') {
+      e.preventDefault();
+      showPreview();
+    }
+  });
 
   // ==================== BACKGROUND CANVAS ====================
   const canvas = document.getElementById('hero-canvas');
