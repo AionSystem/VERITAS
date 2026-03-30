@@ -742,16 +742,16 @@
 <script>
 // ==================== FULL VERITAS APPLICATION ====================
 const CONFIG = {
-  SUPABASE_URL:    'https://spqqhvaqjwxcrdbujwna.supabase.co',
-  SUPABASE_ANON:   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwcXFodmFxand4Y3JkYnVqd25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MTY2NDIsImV4cCI6MjA5MDI5MjY0Mn0.1ibM3TwGS82NOAhpzZFbvdCzdveReqaM9sMIVDTO3Tg',
-  ACCESS_CODE:     'UNDP2026',
-  USE_SUPABASE:    true,
-  MAP_CENTER:      [0, 20],
-  MAP_ZOOM:        3,
-  FUZZY_RADIUS:    100,
-  DCI_THRESHOLDS:  { HIGH: 0.70, WATCH: 0.40 },
-  DEDUP_RADIUS:    10,
-  DEDUP_WINDOW:    120,
+  SUPABASE_URL: '/api', // Vercel proxy — keys stay server-side
+  SUPABASE_ANON: 'proxy', // Placeholder — not sent to client
+  ACCESS_CODE: 'UNDP2026',
+  USE_SUPABASE: true,
+  MAP_CENTER: [0, 20],
+  MAP_ZOOM: 3,
+  FUZZY_RADIUS: 100,
+  DCI_THRESHOLDS: { HIGH: 0.70, WATCH: 0.40 },
+  DEDUP_RADIUS: 10,
+  DEDUP_WINDOW: 120,
 };
 const STATE = {
   currentStep:    1,
