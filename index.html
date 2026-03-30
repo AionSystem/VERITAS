@@ -1739,10 +1739,34 @@ function initRespondMap(reports) {
   STATE.respondMap.setView(CONFIG.MAP_CENTER, CONFIG.MAP_ZOOM);
   plotReports(reports);
 }
-function plotReports(reports) { 
+function plotReports(reports) {
   const versioned = versionedReports(reports);
-  if (!STATE.respondMap) return; 
-  versioned.forEach(r => { if (!r.lat || !r.lng) return; const color = CERTUS.tierColor(r.dciTier); const icon = L.divIcon({ className: '', html: `<div style="width:14px;height:14px;background:${color};border-radius:50%;border:2px solid rgba(0,0,0,0.5);box-shadow:0 0 8px ${color}55"></div>`, iconSize: [14,14], iconAnchor:[7,7] }); const popup = `<div class="dci-popup"><b style="color:${color}">${r.undpTier || r.internalTier}</b> · ${r.infraType}<br>DCI: <b>${r.dci.toFixed(3)}</b> · ${CERTUS.tierLabel(r.dciTier)}<br><small>${new Date(r.timestamp).toLocaleString()}</small><br><small style="color:#666">DCI measures report trustworthiness — scored by CERTUS on photo evidence, corroboration, freshness, consistency</small></div>`; L.marker([r.lat, r.lng], { icon }).bindPopup(popup).addTo(STATE.respondMap); }); if (reports.length > 0) { const group = L.featureGroup(reports.map(r => L.marker([r.lat, r.lng]))); STATE.respondMap.fitBounds(group.getBounds().pad(0.1)); } }
+  if (!STATE.respondMap) return;
+  // Clear existing markers before re-plotting
+  if (STATE.markerLayer) STATE.respondMap.removeLayer(STATE.markerLayer);
+  STATE.markerLayer = L.layerGroup().addTo(STATE.respondMap);
+  versioned.forEach(r => {
+    if (!r.lat || !r.lng) return;
+    const color = CERTUS.tierColor(r.dciTier);
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="width:14px;height:14px;background:${color};border-radius:50%;border:2px solid rgba(0,0,0,0.5);box-shadow:0 0 8px ${color}55"></div>`,
+      iconSize: [14,14], iconAnchor:[7,7]
+    });
+    const popup = `<div class="dci-popup">
+      <b style="color:${color}">${r.undpTier || r.internalTier}</b> · ${r.infraType || '—'}<br>
+      DCI: <b>${r.dci?.toFixed(3) || '—'}</b> · ${CERTUS.tierLabel(r.dciTier)}<br>
+      <small>${new Date(r.timestamp).toLocaleString()}</small>
+    </div>`;
+    L.marker([r.lat, r.lng], { icon }).bindPopup(popup).addTo(STATE.markerLayer);
+  });
+  if (versioned.length > 0) {
+    try {
+      const group = L.featureGroup(versioned.filter(r => r.lat && r.lng).map(r => L.marker([r.lat, r.lng])));
+      if (group.getLayers().length > 0) STATE.respondMap.fitBounds(group.getBounds().pad(0.1));
+    } catch(e) { /* single point edge case */ }
+  }
+}
 function updateDashboardCounts(reports) { document.getElementById('dashHigh').textContent = reports.filter(r => r.dciTier === 'high').length; document.getElementById('dashWatch').textContent = reports.filter(r => r.dciTier === 'watch').length; document.getElementById('dashReview').textContent = reports.filter(r => r.dciTier === 'review').length; }
 function updateReportCard(reports) { const total = reports.length || 1; const high = reports.filter(r => r.dciTier === 'high').length; const watch = reports.filter(r => r.dciTier === 'watch').length; const review = reports.filter(r => r.dciTier === 'review').length; const hPct = Math.round((high/total)*100); const wPct = Math.round((watch/total)*100); const rPct = Math.round((review/total)*100); document.getElementById('rcHigh').style.width = hPct + '%'; document.getElementById('rcWatch').style.width = wPct + '%'; document.getElementById('rcReview').style.width = rPct + '%'; document.getElementById('rcHighPct').textContent = hPct + '%'; document.getElementById('rcWatchPct').textContent = wPct + '%'; document.getElementById('rcReviewPct').textContent = rPct + '%'; }
 function updateConflictFlags(reports) { const conflicts = detectConflicts(reports); const list = document.getElementById('conflictList'); if (conflicts.length === 0) { list.innerHTML = '<div style="font-family:var(--mono);font-size:10px;color:var(--muted);padding:10px;text-align:center;">No conflicts detected</div>'; return; } list.innerHTML = conflicts.map(c => `<div class="conflict-item">⚠ ${c.count} reports within 50m disagree on damage level<br>Location: ${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}<br>Tiers present: ${c.tiers.join(' · ')} — Human verification required</div>`).join(''); }
