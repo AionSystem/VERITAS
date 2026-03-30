@@ -1,0 +1,119 @@
+{
+  "id": "02",
+  "name": "research-priority",
+  "label": "RESEARCH-PRIORITY",
+  "title": "[STP-RESEARCH] — [FIELD] — [DATE]",
+  "labels": ["research-priority", "pending-seal"],
+  "assignees": [],
+  "requires_docusign": false,
+  "requires_identity": false,
+  "requires_phi_gate": false,
+  "requires_stripe": false,
+  "requires_prior_seal": false,
+  "requires_auditor_badge": false,
+  "triggers": ["hypothesis", "research", "theory", "prediction", "claim", "finding", "methodology"],
+  "legal_notice": {
+    "title": "Research Priority Seal",
+    "content": [
+      "This form seals your research hypothesis, methodology, or finding at the exact moment of submission.",
+      "",
+      "The SHA-256 seal proves you held this position before results were known — not after.",
+      "This is not peer review. This is not publication. This is a tamper-evident timestamp.",
+      "",
+      "**Identity is optional.** An anonymous sealed record still proves priority — you can identify yourself later and the seal will verify your claim."
+    ]
+  },
+  "fields": [
+    {
+      "type": "input",
+      "id": "submitter_name",
+      "label": "Your Name (Optional)",
+      "description": "If provided, becomes part of the permanent record. Leave blank for anonymous priority seal.",
+      "placeholder": "First Last or leave blank",
+      "required": false
+    },
+    {
+      "type": "input",
+      "id": "field",
+      "label": "Field / Discipline",
+      "description": "The academic or professional field this work belongs to.",
+      "placeholder": "e.g. Machine Learning, Clinical Medicine, Economics, AI Safety",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "submission_type",
+      "label": "Submission Type",
+      "description": "What are you sealing?",
+      "placeholder": "Hypothesis / Finding / Framework Specification / Methodology / Prediction",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "hypothesis_or_claim",
+      "label": "Hypothesis, Finding, or Specification",
+      "description": "State it exactly as it stands now. Do not soften beyond what is genuinely uncertain.",
+      "placeholder": "State your hypothesis, finding, or specification precisely.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "methodology",
+      "label": "Methodology or Derivation",
+      "description": "How did you arrive at this? What method, data, or reasoning produced it?",
+      "placeholder": "Describe your methodology or how this was derived.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "falsification_condition",
+      "label": "Falsification Condition (Optional but Recommended)",
+      "description": "What result would prove this hypothesis wrong? A falsifiable claim is a stronger claim.",
+      "placeholder": "Describe what would falsify this hypothesis or specification.",
+      "required": false
+    },
+    {
+      "type": "input",
+      "id": "current_status",
+      "label": "Current Status",
+      "description": "Where is this work right now?",
+      "placeholder": "Pre-experiment / Pre-submission / Pre-publication / Draft",
+      "required": true
+    },
+    {
+      "type": "upload",
+      "id": "supporting_files",
+      "label": "Supporting Files (Optional)",
+      "description": "Upload any drafts, data previews, or supporting material.",
+      "required": false
+    },
+    {
+      "type": "textarea",
+      "id": "supporting_links",
+      "label": "Supporting Links (Optional)",
+      "description": "Links to prior work, datasets, or related material.",
+      "placeholder": "Links to supporting material.",
+      "required": false
+    },
+    {
+      "type": "checkboxes",
+      "id": "declaration",
+      "label": "Declaration",
+      "options": [
+        "I affirm this submission represents my genuine position at the time of sealing — not a result known in advance.",
+        "I understand this submission is immutable — it cannot be altered after sealing.",
+        "I understand the protocol seals existence at this moment — it does not validate scientific merit."
+      ],
+      "required": true
+    }
+  ],
+  "after_submit": {
+    "steps": [
+      "Completeness check — Reviewed for completeness.",
+      "Sealing — Sealed with a FROZEN-2.0 triple-time cryptographic stamp. Permanent.",
+      "Ledger entry — Enters the Sovereign Trace ledger with timestamp and SHA-256 hash.",
+      "Notification — You receive your ledger entry ID and SHA-256 hash."
+    ],
+    "footer": "The protocol does not evaluate the merit of your research. It seals its existence.\n\nSovereign Trace Protocol | Sheldon K. Salmon | aionsystem2026@gmail.com"
+  }
+}
