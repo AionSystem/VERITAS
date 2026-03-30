@@ -1760,24 +1760,28 @@ async function syncToSupabase(report) {
   }
 }
 async function initRealtimeSubscription() {
-  if (!CONFIG.USE_SUPABASE || typeof window.supabase === 'undefined') return;
-  const client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON);
-  client.channel('veritas-realtime')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'reports' }, payload => {
-      const newReport = payload.new;
-      if (!STATE.reports.some(r => r.uuid === newReport.uuid)) {
-        STATE.reports.push(newReport);
-        if (STATE.respondAuth && STATE.respondMap) {
-          const versioned = versionedReports(STATE.reports);
-          plotReports(versioned);
-          updateDashboardCounts(versioned);
-          updateReportCard(versioned);
-          updateConflictFlags(versioned);
-          toast('New report received — map updated');
+  if (!CONFIG.USE_SUPABASE) return;
+  setInterval(async () => {
+    if (!STATE.respondAuth) return;
+    try {
+      const res = await fetch(`${CONFIG.SUPABASE_URL}/reports?select=*&order=created_at.desc&limit=50`);
+      if (!res.ok) return;
+      const newReports = await res.json();
+      let added = false;
+      newReports.forEach(r => {
+        if (!STATE.reports.some(existing => existing.uuid === r.uuid)) {
+          STATE.reports.push(r);
+          added = true;
         }
+      });
+      if (added && STATE.respondMap) {
+        const versioned = versionedReports(STATE.reports);
+        plotReports(versioned);
+        updateDashboardCounts(versioned);
+        toast('Map updated');
       }
-    })
-    .subscribe();
+    } catch(e) { /* offline */ }
+  }, 30000);
 }
 async function syncPending() { if (!STATE.isOnline || !CONFIG.USE_SUPABASE) return; const unsynced = await dbGetUnsynced(); if (unsynced.length === 0) return; showSyncQueue(unsynced.length); for (const r of unsynced) await syncToSupabase(r); hideSyncQueue(); }
 function showSyncQueue(n) { document.getElementById('syncQueueText').textContent = `Syncing ${n} queued report${n>1?'s':''}...`; document.getElementById('syncQueue').classList.add('show'); }
