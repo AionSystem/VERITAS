@@ -1765,15 +1765,48 @@ function download(content, filename, mime) { const blob = new Blob([content], { 
 async function syncToSupabase(report) {
   if (!CONFIG.USE_SUPABASE) return;
   try {
-    const res = await fetch(`${CONFIG.SUPABASE_URL}/reports`, {
+    const payload = {
+      uuid: report.uuid,
+      timestamp: report.timestamp,
+      lat: report.lat,
+      lng: report.lng,
+      undp_tier: report.undpTier,
+      infra_type: report.infraType,
+      infra_name: report.infraName || report.additionalFields?.infraName || '',
+      crisis_type: report.crisisType || report.additionalFields?.crisisType || '',
+      crisis_sub: report.crisisSubtype || report.additionalFields?.crisisSubtype || '',
+      debris: report.debris || report.additionalFields?.debris || '',
+      electricity: report.electricity || report.additionalFields?.electricity || '',
+      health: report.health || report.additionalFields?.health || '',
+      needs: report.needs || report.additionalFields?.needs || [],
+      loc_mode: report.locMode,
+      text_loc: report.textLocation || '',
+      dci: report.dci,
+      dci_tier: report.dciTier,
+      dci_pes: report.dciPES,
+      dci_cor: report.dciCOR,
+      dci_tfr: report.dciTFR,
+      dci_cci: report.dciCCI,
+      synced: true
+    };
+    const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/reports`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ ...report, photo: null })
+      headers: {
+        'apikey': CONFIG.SUPABASE_ANON,
+        'Authorization': `Bearer ${CONFIG.SUPABASE_ANON}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(payload)
     });
-    if (res.ok) await dbMarkSynced(report.uuid);
-    else console.warn('[VERITAS] Sync failed:', res.status);
+    if (res.ok) {
+      await dbMarkSynced(report.uuid);
+    } else {
+      const errText = await res.text();
+      console.warn('[VERITAS] Sync failed for', report.uuid, '— status:', res.status, errText);
+    }
   } catch(err) {
-    console.warn('[VERITAS] Sync error:', report.uuid, err);
+    console.warn('[VERITAS] Sync error for', report.uuid, ':', err.message);
   }
 }
 async function initRealtimeSubscription() {
