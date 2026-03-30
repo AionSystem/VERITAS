@@ -1,5 +1,7 @@
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+// FIX: Add Busboy for file upload parsing (C-05)
+import Busboy from 'busboy';
 
 // ============================================================
 // CONFIGURATION
@@ -206,6 +208,98 @@ function checkSealRateLimit(ip) {
 }
 
 // ============================================================
+// FIX C-06: PRIOR SEAL VERIFICATION ENDPOINT
+// ============================================================
+async function verifyPriorSeal(hash) {
+  try {
+    // Search GitHub issues for this hash
+    const issues = await ghRequest('/repos/AionSystem/SOVEREIGN-TRACE-PROTOCOL/issues', 'GET');
+    const found = issues.find(issue => issue.body?.includes(hash));
+    if (found) {
+      return { exists: true, issue_number: found.number, url: found.html_url };
+    }
+    return { exists: false };
+  } catch (err) {
+    console.error('Prior seal verification failed:', err);
+    return { exists: false, error: err.message };
+  }
+}
+
+// ============================================================
+// FIX C-05: FILE VERIFICATION ENDPOINT
+// ============================================================
+async function verifyFile(req, res) {
+  return new Promise((resolve, reject) => {
+    const busboy = Busboy({ headers: req.headers });
+    let fileBuffer = null;
+    let claimedHash = null;
+    let fileName = null;
+    
+    busboy.on('file', (fieldname, file, filename) => {
+      fileName = filename;
+      const chunks = [];
+      file.on('data', chunk => chunks.push(chunk));
+      file.on('end', () => {
+        fileBuffer = Buffer.concat(chunks);
+      });
+    });
+    
+    busboy.on('field', (fieldname, val) => {
+      if (fieldname === 'claimed_hash') claimedHash = val;
+    });
+    
+    busboy.on('finish', async () => {
+      if (!fileBuffer || !claimedHash) {
+        return res.status(400).json({ error: 'Missing file or hash' });
+      }
+      
+      const computedHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+      const verified = computedHash === claimedHash;
+      
+      return res.status(200).json({ 
+        verified, 
+        computed_hash: computedHash,
+        claimed_hash: claimedHash,
+        file_name: fileName,
+        file_size: fileBuffer.length
+      });
+    });
+    
+    busboy.on('error', (err) => {
+      console.error('File verification error:', err);
+      return res.status(500).json({ error: 'File processing failed', message: err.message });
+    });
+    
+    req.pipe(busboy);
+  });
+}
+
+// ============================================================
+// FIX: GET LEDGER ENTRIES ENDPOINT (for dashboard)
+// ============================================================
+async function getLedgerEntries(req, res) {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const issues = await ghRequest('/repos/AionSystem/SOVEREIGN-TRACE-PROTOCOL/issues', 'GET');
+    const seals = issues
+      .filter(issue => issue.labels?.some(l => l.name?.includes('seal') || l.name?.includes('trace')))
+      .slice(0, limit)
+      .map(issue => ({
+        issue_number: issue.number,
+        title: issue.title,
+        url: issue.html_url,
+        created_at: issue.created_at,
+        labels: issue.labels.map(l => l.name)
+      }));
+    
+    return res.status(200).json({ seals, count: seals.length });
+  } catch (err) {
+    console.error('Get ledger entries failed:', err);
+    return res.status(500).json({ error: 'LEDGER_ERROR', message: err.message });
+  }
+}
+
+// ============================================================
 // MAIN HANDLER
 // ============================================================
 export default async function handler(req, res) {
@@ -215,19 +309,44 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  // Parse URL for routing
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const pathname = url.pathname;
+
+  // FIX C-06: Prior seal verification endpoint
+  if (req.method === 'GET' && pathname === '/api/stp-seal/verify') {
+    const hash = url.searchParams.get('hash');
+    if (!hash || hash.length !== 64) {
+      return res.status(400).json({ error: 'INVALID_HASH', message: 'Hash must be 64 characters', exists: false });
+    }
+    const result = await verifyPriorSeal(hash);
+    return res.status(200).json({ hash, ...result });
+  }
+
+  // FIX C-05: File verification endpoint
+  if (req.method === 'POST' && pathname === '/api/stp-seal/verify-file') {
+    return await verifyFile(req, res);
+  }
+
+  // FIX: Get ledger entries endpoint (for dashboard)
+  if (req.method === 'GET' && pathname === '/api/stp-seal/ledger') {
+    return await getLedgerEntries(req, res);
+  }
+
   // Health check
-  if (req.method === 'GET' && req.url === '/api/health') {
+  if (req.method === 'GET' && pathname === '/api/health') {
     return res.status(200).json({
       status: 'healthy',
       service: 'STP-Seal',
       timestamp: new Date().toISOString(),
-      version: 'FROZEN-2.0'
+      version: 'FROZEN-2.0',
+      endpoints: ['/api/stp-seal', '/api/stp-seal/verify', '/api/stp-seal/verify-file', '/api/stp-seal/ledger', '/api/health']
     });
   }
 
   // Only handle POST to /api/stp-seal
-  if (!(req.method === 'POST' && req.url === '/api/stp-seal')) {
-    return res.status(404).json({ error: 'Not found', endpoints: ['/api/stp-seal', '/api/health'] });
+  if (!(req.method === 'POST' && pathname === '/api/stp-seal')) {
+    return res.status(404).json({ error: 'Not found', endpoints: ['/api/stp-seal', '/api/stp-seal/verify', '/api/stp-seal/verify-file', '/api/stp-seal/ledger', '/api/health'] });
   }
 
   // Rate limiting
@@ -237,7 +356,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { entry, type, sessionId, userId } = req.body;
+    const { entry, type, sessionId, userId, file_hash } = req.body;
     
     if (!entry || typeof entry !== 'string' || !entry.trim()) {
       return res.status(400).json({ error: 'EMPTY_ENTRY', message: 'Entry text is required' });
@@ -248,8 +367,15 @@ export default async function handler(req, res) {
     const gregorian = gregorianString(now);
     const hebrew = hebrewString(now);
     const dreamspell = dreamspellString(now);
-    const seal = computeSealExact(entry.trim(), gregorian, hebrew, dreamspell, unixUtc);
-    const templateKey = selectTemplate(entry, type);
+    
+    // FIX: Include file_hash in seal computation if provided
+    let finalEntry = entry.trim();
+    if (file_hash) {
+      finalEntry += `\n\nFile SHA-256: ${file_hash}`;
+    }
+    
+    const seal = computeSealExact(finalEntry, gregorian, hebrew, dreamspell, unixUtc);
+    const templateKey = selectTemplate(finalEntry, type);
     const ledgerFile = ledgerFileName(templateKey, gregorian, seal);
     
     const stamp = { gregorian, hebrew, dreamspell, unixUtc, seal, ledgerFile };
@@ -259,7 +385,7 @@ export default async function handler(req, res) {
       stamp_version: 'FROZEN-2.0',
       template: templateKey,
       template_name: SEAL_TEMPLATES[templateKey].label,
-      entry: entry.trim(),
+      entry: finalEntry,
       gregorian,
       hebrew,
       dreamspell,
@@ -268,7 +394,8 @@ export default async function handler(req, res) {
       session_id: sessionId || null,
       user_id: userId || null,
       ip_hash: crypto.createHash('sha256').update(ip || '').digest('hex').substring(0, 16),
-      sealed_at: now.toISOString()
+      sealed_at: now.toISOString(),
+      file_hash: file_hash || null  // FIX: Store file hash if provided
     };
 
     let issueUrl = null;
@@ -279,13 +406,12 @@ export default async function handler(req, res) {
     if (process.env.GITHUB_TOKEN) {
       try {
         [issueUrl, ledgerPath] = await Promise.all([
-          createGitHubIssueForSeal(templateKey, entry.trim(), stamp, { sessionId, userId }),
+          createGitHubIssueForSeal(templateKey, finalEntry, stamp, { sessionId, userId }),
           createLedgerFileForSeal(ledgerFile, ledgerData)
         ]);
       } catch (err) {
         githubError = err.message;
         console.error('GitHub integration failed:', err.message);
-        // Don't throw - seal is still valid
       }
     }
 
@@ -294,7 +420,7 @@ export default async function handler(req, res) {
       try {
         await getSupabase().from('stp_seals').insert({
           seal,
-          entry: entry.trim(),
+          entry: finalEntry,
           template: templateKey,
           gregorian,
           hebrew,
@@ -304,7 +430,8 @@ export default async function handler(req, res) {
           user_id: userId,
           ip_hash: ledgerData.ip_hash,
           github_issue_url: issueUrl,
-          ledger_path: ledgerPath
+          ledger_path: ledgerPath,
+          file_hash: file_hash || null
         });
       } catch (dbErr) {
         console.error('Supabase insert failed:', dbErr.message);
@@ -324,7 +451,8 @@ export default async function handler(req, res) {
       ledger_file: ledgerFile,
       issue_url: issueUrl,
       ledger_path: ledgerPath,
-      github_error: githubError
+      github_error: githubError,
+      file_hash: file_hash || null
     });
 
   } catch (err) {
