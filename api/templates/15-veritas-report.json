@@ -1,0 +1,158 @@
+{
+  "id": "15",
+  "name": "veritas-report",
+  "label": "VERITAS-REPORT",
+  "title": "[VERITAS] — Damage Report — [LOCATION] — [DATE]",
+  "labels": ["veritas-report", "community-submission", "sealed"],
+  "assignees": [],
+  "requires_docusign": false,
+  "requires_identity": false,
+  "requires_phi_gate": false,
+  "requires_stripe": false,
+  "requires_prior_seal": false,
+  "requires_auditor_badge": false,
+  "triggers": ["veritas report", "damage report", "community submission"],
+  "legal_notice": {
+    "title": "VERITAS Community Report — Sovereign Trace Seal",
+    "content": [
+      "This report was submitted through VERITAS, the Community Damage Certification Platform.",
+      "",
+      "**The seal proves:** This report existed at this exact moment, in this exact form,",
+      "before any responder action, before any resource deployment decision.",
+      "",
+      "**What is sealed:**",
+      "- Damage classification (Minimal/Partial/Complete)",
+      "- Infrastructure type and name",
+      "- GPS coordinates (anonymized or precise per reporter choice)",
+      "- Timestamp of submission",
+      "- DCI score and Uncertainty Mass",
+      "- Photo hash (not the image itself, for privacy)",
+      "",
+      "**What is NOT sealed:**",
+      "- Reporter identity (VERITAS is anonymous by design)",
+      "- Raw photo (privacy protection)",
+      "- IP address or device information",
+      "",
+      "This seal is permanent and immutable. The report cannot be altered after sealing.",
+      "The ledger is the witness. The timestamp is the truth."
+    ]
+  },
+  "fields": [
+    {
+      "type": "input",
+      "id": "report_uuid",
+      "label": "Report UUID",
+      "description": "Unique identifier for this VERITAS report.",
+      "placeholder": "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "damage_tier",
+      "label": "Damage Classification",
+      "description": "UNDP 3-tier damage classification.",
+      "placeholder": "Minimal / No damage | Partially damaged | Completely damaged",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "infrastructure_type",
+      "label": "Infrastructure Type",
+      "description": "Type of infrastructure damaged.",
+      "placeholder": "Residential / Road / Bridge / Medical / School / etc.",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "infrastructure_name",
+      "label": "Infrastructure Name (Optional)",
+      "description": "Specific name of the damaged infrastructure.",
+      "placeholder": "Central Bridge, Al-Noor Hospital, etc.",
+      "required": false
+    },
+    {
+      "type": "input",
+      "id": "location_coords",
+      "label": "GPS Coordinates",
+      "description": "Latitude and longitude of the damage location.",
+      "placeholder": "40.7128° N, 74.0060° W",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "location_mode",
+      "label": "Location Mode",
+      "description": "Precise GPS or fuzzy area (±100m).",
+      "placeholder": "Precise / Fuzzy",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "dci_score",
+      "label": "Damage Confidence Index (DCI)",
+      "description": "CERTUS Engine score from 0.0 to 1.0.",
+      "placeholder": "0.85",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "dci_tier",
+      "label": "DCI Tier",
+      "description": "High Confidence / Watch / Review Required",
+      "placeholder": "High Confidence",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "uncertainty_mass",
+      "label": "Uncertainty Mass (UM)",
+      "description": "How much uncertainty is in the DCI score.",
+      "placeholder": "0.28",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "photo_hash",
+      "label": "Photo SHA-256 Hash",
+      "description": "Cryptographic hash of the damage photo (not the image itself).",
+      "placeholder": "a1b2c3d4e5f6...",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "crisis_type",
+      "label": "Crisis Type",
+      "description": "Natural / Technological / Human-made.",
+      "placeholder": "Earthquake / Flood / Conflict / etc.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "needs",
+      "label": "Pressing Needs",
+      "description": "Most urgent needs identified by the reporter.",
+      "placeholder": "Food assistance, medical care, shelter, etc.",
+      "required": false
+    },
+    {
+      "type": "checkboxes",
+      "id": "declaration",
+      "label": "Declaration",
+      "options": [
+        "I affirm this report was submitted in good faith and accurately represents observed damage.",
+        "I understand this seal is permanent and immutable.",
+        "I understand the photo hash is recorded but the image itself is not stored in the STP ledger for privacy."
+      ],
+      "required": true
+    }
+  ],
+  "after_submit": {
+    "steps": [
+      "Report sealed — Permanent entry in the Sovereign Trace ledger.",
+      "Linked to VERITAS report UUID for cross-reference.",
+      "Notification — Report UUID and seal hash provided to reporter.",
+      "Responder access — Sealed report visible in VERITAS responder dashboard."
+    ],
+    "footer": "The report is sealed. The ledger is the witness.\n\nVERITAS | Sovereign Trace Protocol | Sheldon K. Salmon | aionsystem2026@gmail.com"
+  }
+}
