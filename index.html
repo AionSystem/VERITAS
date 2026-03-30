@@ -1514,17 +1514,10 @@ function dbPut(report) { return new Promise((resolve, reject) => { const tx = db
 function dbGetAll() { return new Promise((resolve, reject) => { const tx = db.transaction('reports', 'readonly'); tx.objectStore('reports').getAll().onsuccess = e => resolve(e.target.result); tx.onerror = reject; }); }
 function dbGetUnsynced() { return new Promise((resolve, reject) => { const tx = db.transaction('reports', 'readonly'); const idx = tx.objectStore('reports').index('synced'); idx.getAll(IDBKeyRange.only(false)).onsuccess = e => resolve(e.target.result); tx.onerror = reject; }); }
 function dbMarkSynced(uuid) { return new Promise((resolve, reject) => { const tx = db.transaction('reports', 'readwrite'); const store = tx.objectStore('reports'); const req = store.get(uuid); req.onsuccess = e => { const r = e.target.result; if (r) { r.synced = true; store.put(r).onsuccess = resolve; } else resolve(); }; tx.onerror = reject; }); }
-// ==================== CERTUS ENGINE ====================
-const CERTUS = {
-  W: { PES: 0.35, COR: 0.30, TFR: 0.20, CCI: 0.15 },
-  PES_effective(rawScore, modelConf) { if (!rawScore || modelConf === null || modelConf < 0.60) return 0.50; return Math.max(0, Math.min(1, rawScore)); },
-  COR(reports_nearby) { if (!reports_nearby || reports_nearby.length === 0) return 0.50; if (reports_nearby.length === 1) return 0.50; const tier = reports_nearby[0].internalTier; const agreements = reports_nearby.filter(r => r.internalTier === tier).length; const contradictions = reports_nearby.length - agreements; let score = agreements / reports_nearby.length; score -= contradictions * 0.15; return Math.max(0, Math.min(1, score)); },
-  TFR(timestampISO) { const hoursElapsed = (Date.now() - new Date(timestampISO).getTime()) / 3600000; return Math.max(0, 1 - (hoursElapsed / 48)); },
-  CCI(tier, infraType) { if (!tier || !infraType) return 0.80; if (tier === 'Total Collapse' && infraType === 'Road') return 0.70; if (tier === 'Total Collapse' && infraType === 'Utility') return 0.75; return 1.0; },
-  score(report, nearbyReports = []) { const PES = this.PES_effective(report.photoAiScore, report.photoAiConf); const COR = this.COR(nearbyReports); const TFR = this.TFR(report.timestamp); const CCI = this.CCI(report.internalTier, report.infraType); const dci = (this.W.PES * PES + this.W.COR * COR + this.W.TFR * TFR + this.W.CCI * CCI); return { dci: parseFloat(dci.toFixed(3)), PES, COR, TFR, CCI, tier: dci >= CONFIG.DCI_THRESHOLDS.HIGH ? 'high' : dci >= CONFIG.DCI_THRESHOLDS.WATCH ? 'watch' : 'review' }; },
-  tierLabel(tier) { return { high: 'HIGH CONFIDENCE', watch: 'WATCH', review: 'REVIEW REQUIRED' }[tier]; },
-  tierColor(tier) { return { high: '#f0a500', watch: '#e87c1e', review: '#e84040' }[tier]; },
-};
+// ==================== CERTUS ENGINE v2.5 ====================
+// Now loaded from external file
+// The CERTUS object is already available from certus-engine-v2.5.js
+// We just need to use it, not redefine it
 function generateUUID() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); }); }
 // ==================== PHOTO HANDLING ====================
 function handlePhoto(input) {
