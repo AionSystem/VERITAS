@@ -666,10 +666,27 @@
         <div class="form-group"><label class="form-label" data-i18n="infra_name_label">Infrastructure name (optional)</label><input type="text" id="infraName" class="form-input" placeholder="e.g., Central Bridge, Al-Noor Hospital"></div>
         <div class="form-group"><label class="form-label" data-i18n="crisis_type_label">Nature of crisis</label><div class="radio-group" id="crisisTypeGroup"><label><input type="radio" name="crisisType" value="Natural"> <span data-i18n="crisis_natural">Natural</span></label><label><input type="radio" name="crisisType" value="Technological"> <span data-i18n="crisis_tech">Technological</span></label><label><input type="radio" name="crisisType" value="Human-made"> <span data-i18n="crisis_human">Human‑made</span></label></div><div id="crisisSubtypeContainer" style="margin-top: 12px;"></div></div>
         <div class="form-group"><label class="form-label" data-i18n="debris_label">Is there debris requiring clearing?</label><div class="radio-group"><label><input type="radio" name="debris" value="yes"> <span data-i18n="yes">Yes</span></label><label><input type="radio" name="debris" value="no"> <span data-i18n="no">No</span></label></div></div>
-        <div class="form-group"><label class="form-label" data-i18n="electricity_label">Electricity infrastructure condition</label> <div class="radio-group" id="electricityGroup"><label><input type="radio" name="electricity" value="No damage observed"> No damage observed</label><label><input type="radio" name="electricity" value="Minor damage"> Minor damage (service disruptions but quickly repairable)</label><label><input type="radio" name="electricity" value="Moderate damage"> Moderate damage (partial outages requiring repairs)</label><label><input type="radio" name="electricity" value="Severe damage"> Severe damage (major infrastructure damaged, prolonged outages)</label><label><input type="radio" name="electricity" value="Completely destroyed"> Completely destroyed</label><label><input type="radio" name="electricity" value="Unknown/cannot be assessed"> Unknown/cannot be assessed</label></div>
-        <div class="form-group"><label class="form-label" data-i18n="health_label">Overall health services functioning</label><div class="radio-group" id="healthGroup"><label><input type="radio" name="health" value="Fully functional"> Fully functional</label><label><input type="radio" name="health" value="Partially functional"> Partially functional</label><label><input type="radio" name="health" value="Largely disrupted"> Largely disrupted</label><label><input type="radio" name="health" value="Not functioning at all"> Not functioning at all</label><label><input type="radio" name="health" value="Unknown"> Unknown</label>
-  </div>
-</div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="electricity_label">Electricity infrastructure condition</label>
+          <div class="radio-group" id="electricityGroup">
+            <label><input type="radio" name="electricity" value="No damage observed"> No damage observed</label>
+            <label><input type="radio" name="electricity" value="Minor damage"> Minor damage (service disruptions but quickly repairable)</label>
+            <label><input type="radio" name="electricity" value="Moderate damage"> Moderate damage (partial outages requiring repairs)</label>
+            <label><input type="radio" name="electricity" value="Severe damage"> Severe damage (major infrastructure damaged, prolonged outages)</label>
+            <label><input type="radio" name="electricity" value="Completely destroyed"> Completely destroyed</label>
+            <label><input type="radio" name="electricity" value="Unknown/cannot be assessed"> Unknown/cannot be assessed</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="health_label">Overall health services functioning</label>
+          <div class="radio-group" id="healthGroup">
+            <label><input type="radio" name="health" value="Fully functional"> Fully functional</label>
+            <label><input type="radio" name="health" value="Partially functional"> Partially functional</label>
+            <label><input type="radio" name="health" value="Largely disrupted"> Largely disrupted</label>
+            <label><input type="radio" name="health" value="Not functioning at all"> Not functioning at all</label>
+            <label><input type="radio" name="health" value="Unknown"> Unknown</label>
+          </div>
+        </div>
         <div class="form-group"><label class="form-label" data-i18n="needs_label">Most pressing needs (select all that apply)</label><div class="checkbox-group" id="needsGroup">
             <label><input type="checkbox" value="Food assistance and safe drinking water"> Food assistance and safe drinking water</label>
             <label><input type="checkbox" value="Cash or financial assistance"> Cash or financial assistance</label>
@@ -1792,7 +1809,7 @@ function versionedReports(rawReports) {
   const map = new Map();
   rawReports.forEach(r => {
     if (!r.lat || !r.lng) return;
-    const key = `${Math.round(r.lat*1000)}_${Math.round(r.lng*1000)}`;
+    const key = `${Math.round(r.lat*10000)}_${Math.round(r.lng*10000)}`;
     const existing = map.get(key);
     if (!existing || new Date(r.timestamp) > new Date(existing.timestamp)) map.set(key, r);
   });
