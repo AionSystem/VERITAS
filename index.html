@@ -1737,8 +1737,19 @@ async function submitReport() {
     synced: false,
     ...STATE.additionalFields
   };
-  const certus = CERTUS.score(report, nearby);
-  report.dci = certus.dci; report.dciTier = certus.tier; report.dciPES = certus.PES; report.dciCOR = certus.COR; report.dciTFR = certus.TFR; report.dciCCI = certus.CCI;
+  // Replace the existing certus scoring block
+const certus = CERTUS.score(report, nearby, false); // false = not real model yet
+report.dci = certus.dci;
+report.dciTier = certus.tier;
+report.dciPES = certus.dci_pes;
+report.dciCOR = certus.dci_cor;
+report.dciTFR = certus.dci_tfr;
+report.dciCCI = certus.dci_cci;
+report.dciUM = certus.dci_uncertainty_mass;
+report.dciValidity = certus.dci_validity_status;
+report.dciStrengths = certus.dci_strengths;
+report.dciWeaknesses = certus.dci_weaknesses;
+report.dciAssumptions = certus.dci_assumptions;
   await dbPut(report); STATE.reports.push(report);
   if (STATE.isOnline && CONFIG.USE_SUPABASE) syncToSupabase(report);
   showConfirmation(report, certus);
