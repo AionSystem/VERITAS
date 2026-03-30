@@ -1,0 +1,112 @@
+{
+  "id": "06",
+  "name": "scope-anchor",
+  "label": "SCOPE-ANCHOR",
+  "title": "[STP-SCOPE] — [PARTIES] — [DATE]",
+  "labels": ["scope-anchor", "pending-seal"],
+  "assignees": [],
+  "requires_docusign": false,
+  "requires_identity": false,
+  "requires_phi_gate": false,
+  "requires_stripe": false,
+  "requires_prior_seal": false,
+  "requires_auditor_badge": false,
+  "triggers": ["scope", "agreement", "contract", "deliverable", "milestone", "negotiation", "terms"],
+  "legal_notice": {
+    "title": "Scope Anchor Seal",
+    "content": [
+      "This form seals an agreed position, scope, or decision at the exact moment of submission.",
+      "",
+      "Use this when a project scope has been agreed, a negotiation has reached a position you need to anchor,",
+      "or terms have been discussed verbally and you need a written sealed record before a formal contract is signed.",
+      "",
+      "**This is not a legal contract.** It is a tamper-evident record of your position at a specific moment.",
+      "This seal complements legal documentation — it does not replace it."
+    ]
+  },
+  "fields": [
+    {
+      "type": "input",
+      "id": "submitter_name",
+      "label": "Your Full Name",
+      "description": "The name attached to this sealed record.",
+      "placeholder": "First Last",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "other_party",
+      "label": "Other Party or Parties",
+      "description": "Who is the other party? Company name, individual, or role.",
+      "placeholder": "Acme Corp / Client: First Last / Employer: Company Name",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "agreement_type",
+      "label": "Agreement Type",
+      "description": "What kind of scope or agreement is being sealed?",
+      "placeholder": "Project Scope / Contract Terms / Salary Negotiation / Settlement / Business Terms",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "agreement_date",
+      "label": "Date of Agreement or Position",
+      "description": "The date this scope was agreed or position was reached. Format: YYYY-MM-DD",
+      "placeholder": "2026-03-07",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "scope_or_terms",
+      "label": "Agreed Scope or Position — Exact",
+      "description": "State exactly what was agreed. Include deliverables, timelines, compensation, exclusions.",
+      "placeholder": "State the agreed scope, terms, or position precisely. Include all material details.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "what_is_excluded",
+      "label": "What Is Explicitly Excluded (Optional but Recommended)",
+      "description": "What is NOT included? Explicit exclusions prevent the most common form of scope creep.",
+      "placeholder": "List what is explicitly outside this scope.",
+      "required": false
+    },
+    {
+      "type": "textarea",
+      "id": "context",
+      "label": "Context",
+      "description": "How was this agreement reached? Verbal conversation, email exchange, meeting?",
+      "placeholder": "Describe the context in which this agreement was reached.",
+      "required": true
+    },
+    {
+      "type": "upload",
+      "id": "supporting_files",
+      "label": "Supporting Files (Optional)",
+      "description": "Upload screenshots of email chains, message threads, or documents supporting this agreement.",
+      "required": false
+    },
+    {
+      "type": "checkboxes",
+      "id": "declaration",
+      "label": "Declaration",
+      "options": [
+        "I affirm this record accurately represents my understanding of the agreed scope or position at the time of sealing.",
+        "I understand this submission is immutable — it cannot be altered after sealing.",
+        "I understand the Sovereign Trace Protocol is not a legal contract and does not constitute legal advice."
+      ],
+      "required": true
+    }
+  ],
+  "after_submit": {
+    "steps": [
+      "Completeness check — Reviewed for completeness.",
+      "Sealing — Sealed with a FROZEN-2.0 triple-time cryptographic stamp. Permanent.",
+      "Ledger entry — Enters the Sovereign Trace ledger with your name, timestamp, and SHA-256 hash.",
+      "Notification — You receive your ledger entry ID and SHA-256 hash."
+    ],
+    "footer": "Share the ledger entry ID with the other party if appropriate.\nThe seal is permanent. The seal is the anchor.\n\nSovereign Trace Protocol | Sheldon K. Salmon | aionsystem2026@gmail.com"
+  }
+}
