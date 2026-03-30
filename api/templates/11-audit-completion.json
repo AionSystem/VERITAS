@@ -1,0 +1,134 @@
+{
+  "id": "11",
+  "name": "audit-completion",
+  "label": "AUDIT-COMPLETION",
+  "title": "[AUDIT-COMPLETE] — [Company Name] — [Auditor Badge or UNVERIFIED]",
+  "labels": ["audit-completion", "pending-verification"],
+  "assignees": [],
+  "requires_docusign": false,
+  "requires_identity": false,
+  "requires_phi_gate": false,
+  "requires_stripe": false,
+  "requires_prior_seal": false,
+  "requires_auditor_badge": true,
+  "triggers": ["audit complete", "audit filed", "certified", "attested", "audit completion"],
+  "legal_notice": {
+    "title": "Sovereign Trace Protocol — Audit Completion Filing",
+    "content": [
+      "This form permanently seals a completed AI output audit to the ledger.",
+      "All fields are public. The record is immutable after submission.",
+      "",
+      "**Verified auditors:** Enter your STP Auditor badge number below.",
+      "Your LinkedIn and name will be matched against the verified registry.",
+      "",
+      "**Unverified submissions** are sealed with status `AUDITOR_UNVERIFIED`.",
+      "The record is permanent. The warning is permanent."
+    ]
+  },
+  "fields": [
+    {
+      "type": "input",
+      "id": "auditor_badge",
+      "label": "STP Auditor Badge Number",
+      "description": "Format: STP-AUDITOR-XXXX. Leave blank if filing as unverified.",
+      "placeholder": "STP-AUDITOR-0001",
+      "required": false
+    },
+    {
+      "type": "input",
+      "id": "auditor_linkedin",
+      "label": "Auditor LinkedIn Profile URL",
+      "description": "Must match the LinkedIn on file for your badge number.",
+      "placeholder": "https://linkedin.com/in/yourprofile",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "client_name",
+      "label": "Client Company / Organization",
+      "placeholder": "Acme AI Corp",
+      "required": true
+    },
+    {
+      "type": "dropdown",
+      "id": "tier",
+      "label": "Audit Tier Completed",
+      "options": [
+        "Snapshot — 10 outputs",
+        "Standard — 20 outputs",
+        "Extended — 30 outputs",
+        "Full — 50 outputs",
+        "Enterprise — 100 outputs"
+      ],
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "ai_systems",
+      "label": "AI System(s) Reviewed",
+      "placeholder": "GPT-4o, Claude Sonnet 4.6, Gemini 1.5 Pro",
+      "required": true
+    },
+    {
+      "type": "dropdown",
+      "id": "sheldon_badge",
+      "label": "Sheldon K. Salmon Personal Certification Badge",
+      "description": "Only select YES if Sheldon personally reviewed and certified this audit.",
+      "options": [
+        "No — Standard STP Certified Badge",
+        "Yes — Sheldon K. Salmon Personally Certified"
+      ],
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "findings_summary",
+      "label": "Findings Summary",
+      "description": "High-level summary of audit findings. This is the permanent public record.",
+      "placeholder": "10 outputs reviewed. 3 hallucination events identified. 2 confidence miscalibrations. 1 scope violation. Remediation plan attached. Organization cleared for Tier 1 certification.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "remediation",
+      "label": "Remediation Status",
+      "description": "What was recommended. What was implemented. What remains open.",
+      "placeholder": "Hallucination events: prompt engineering fix deployed. Confidence miscalibrations: model swap recommended, pending.",
+      "required": true
+    },
+    {
+      "type": "upload",
+      "id": "file_upload",
+      "label": "Audit Report Upload",
+      "description": "Upload the full audit report as PDF or ZIP. This is sealed to the ledger.",
+      "required": false
+    },
+    {
+      "type": "input",
+      "id": "audit_date",
+      "label": "Audit Completion Date",
+      "placeholder": "March 7, 2026",
+      "required": true
+    },
+    {
+      "type": "checkboxes",
+      "id": "declaration",
+      "label": "Auditor Declaration",
+      "options": [
+        "I certify that this audit was conducted by me personally and the findings reported here are accurate and complete.",
+        "I understand this record is permanent, immutable, and publicly visible in the Sovereign Trace ledger.",
+        "I understand that filing under a badge number I do not hold is fraud and will be permanently recorded as such."
+      ],
+      "required": true
+    }
+  ],
+  "after_submit": {
+    "steps": [
+      "Badge verification — Checked against verified auditor registry.",
+      "Sealing — Sealed with a FROZEN-2.0 triple-time cryptographic stamp. Permanent.",
+      "Ledger entry — Enters the Sovereign Trace ledger with auditor name, timestamp, and SHA-256 hash.",
+      "Notification — You receive your ledger entry ID and SHA-256 hash."
+    ],
+    "footer": "The seal is the certification. The ledger is the track record.\n\nSovereign Trace Protocol | Sheldon K. Salmon | aionsystem2026@gmail.com"
+  }
+}
