@@ -2,21 +2,26 @@
 
 # VERITAS — Community Damage Certification Platform
 
+<!-- STATUS · VERSION · COMPLIANCE -->
+[![Status](https://img.shields.io/badge/STATUS-Production-1976D2?style=flat-square)](https://github.com/AionSystem/VERITAS)
+[![Version](https://img.shields.io/badge/version-v2.5.0-orange)](#)
+[![Build](https://img.shields.io/badge/build-passing-brightgreen)](#)
+[![License](https://img.shields.io/github/license/AionSystem/VERITAS?color=blue)](LICENSE)
 [![ORCID — Sheldon K. Salmon](https://img.shields.io/badge/ORCID-0009--0005--8057--5115-a6ce39?style=flat&logo=orcid&logoColor=white)](https://orcid.org/0009-0005-8057-5115)
 [![DOI](https://zenodo.org/badge/1194238160.svg)](https://doi.org/10.5281/zenodo.19295266)
-[![STP](https://img.shields.io/badge/STP-Integrated-2E7D32?style=flat-square&logo=git&logoColor=white)](https://github.com/AionSystem/SOVEREIGN-TRACE-PROTOCOL)
-[![Seal](https://img.shields.io/badge/Seal-SHA--256%20Bound-4527A0?style=flat-square&logo=hashnode&logoColor=white)](https://github.com/AionSystem/VERITAS)
-[![Status](https://img.shields.io/badge/STATUS-Production-1976D2?style=flat-square)](https://github.com/AionSystem/VERITAS)
-[![License](https://img.shields.io/github/license/AionSystem/VERITAS?color=blue)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v2.5.0-orange)](#)
+
+<!-- CORE ARCHITECTURE -->
 [![CERTUS Engine](https://img.shields.io/badge/CERTUS-v2.5-4ade80?style=flat-square)](https://github.com/AionSystem/VERITAS)
-[![OpenRouter](https://img.shields.io/badge/OpenRouter-Claude_3.5_Sonnet_+_DeepSeek-4285F4?style=flat-square)](https://openrouter.ai)
+[![STP](https://img.shields.io/badge/STP-Integrated-2E7D32?style=flat-square&logo=git&logoColor=white)](https://github.com/AionSystem/SOVEREIGN-TRACE-PROTOCOL)
 [![STP Templates](https://img.shields.io/badge/STP-16_Templates-2E7D32?style=flat-square)](https://github.com/AionSystem/SOVEREIGN-TRACE-PROTOCOL)
-[![Build](https://img.shields.io/badge/build-passing-brightgreen)](#)
-[![Feedback Welcome](https://img.shields.io/badge/Feedback-welcome-brightgreen)](https://github.com/AionSystem/VERITAS/issues/new/choose)
+[![Seal](https://img.shields.io/badge/Seal-SHA--256%20Bound-4527A0?style=flat-square&logo=hashnode&logoColor=white)](https://github.com/AionSystem/VERITAS)
+
+<!-- TECH STACK -->
+[![OpenRouter](https://img.shields.io/badge/OpenRouter-Claude_3.5_Sonnet_+_DeepSeek-4285F4?style=flat-square)](https://openrouter.ai)
+[![Made with TensorFlow.js](https://img.shields.io/badge/Made%20with-TensorFlow.js-FF6F00?style=flat&logo=tensorflow&logoColor=white)](#)
 [![Made with JavaScript](https://img.shields.io/badge/Made%20with-JavaScript-yellow)](#)
 [![Made with HTML](https://img.shields.io/badge/Made%20with-HTML-red)](#)
-[![Made with TensorFlow.js](https://img.shields.io/badge/Made%20with-TensorFlow.js-FF6F00?style=flat&logo=tensorflow&logoColor=white)](#)
+[![Feedback Welcome](https://img.shields.io/badge/Feedback-welcome-brightgreen)](https://github.com/AionSystem/VERITAS/issues/new/choose)
 
 > **Certainty engineering dressed as a crisis tool**
 > UNDP Accelerator Lab Prize — April 8 Webinar
@@ -56,7 +61,7 @@ UNDP explicitly noted that "submissions produced solely with generative AI are n
 
 ## Quick Start
 
-Get VERITAS running on your machine in under a minute.
+Get the VERITAS frontend running in under a minute.
 
 ```bash
 git clone https://github.com/AionSystem/VERITAS.git
@@ -74,7 +79,15 @@ python3 -m http.server 8000
 # Then visit http://localhost:8000
 ```
 
-That's it. You can now submit reports, explore the responder dashboard (access code: `UNDP2026`), and test the entire platform.
+> **Note:** This starts the frontend only. The `api/` serverless functions (Supabase sync, STP seal service) are separate Vercel deployments and will not be active in local mode. All core CERTUS scoring and offline report submission work without them.
+
+That's it. You can now submit reports, explore the responder dashboard, and test the entire platform.
+
+> **Responder Dashboard Access Code**
+>
+> ```
+> UNDP2026
+> ```
 
 For full Supabase sync and deployment, see [Installation & Deployment](#installation--deployment).
 
@@ -83,6 +96,8 @@ For full Supabase sync and deployment, see [Installation & Deployment](#installa
 ---
 
 ## Repository Structure
+
+**Key files for evaluators:** `public/certus-engine-v2.5.js` (scoring logic) · `public/index.html` (full platform) · `CERTUS.md` (engine documentation) · `VERITAS_UNDP_COMPLIANCE.md` (full compliance audit) · `docs/dci-formula.md` (DCI formula derivation)
 
 ```
 VERITAS/
@@ -98,7 +113,7 @@ VERITAS/
 │   │   └── index.html
 │   └── icons/                      ← App icons for PWA
 │
-├── api/                            ← Vercel serverless functions
+├── api/                            ← Vercel serverless functions (separate deployment)
 │   ├── sync.js                     ← Supabase sync endpoint
 │   ├── reports.js                  ← Reports API
 │   ├── stp-seal.js                 ← STP seal service (GitHub ledger)
@@ -181,6 +196,11 @@ Most crisis tools stop at the data. They collect, they pin, they export — and 
 
 VERITAS is a community‑operated damage certification platform for sudden‑onset crises. It collects reports offline and online, scores the epistemic confidence of each report using the CERTUS Engine, and delivers confidence‑weighted exports to responders within the critical 48‑hour window. The difference isn't more data. It's data that tells you exactly how much it's worth.
 
+**How it works — three steps:**
+1. A community member submits a damage report from any device, online or offline. The CERTUS Engine scores it instantly.
+2. A responder opens the dashboard and sees a confidence-weighted map — green pins are actionable, red pins need field verification first.
+3. Every report and every export is permanently sealed with a cryptographic timestamp. The data chain is verifiable end-to-end.
+
 - **Live Demo:** [aionsystem.github.io/VERITAS](https://aionsystem.github.io/VERITAS)
 - **2‑Minute Video:** [Watch on YouTube](#)
 
@@ -201,6 +221,14 @@ The CERTUS Engine is the core of VERITAS — an epistemic scoring system that te
 | Temporal Freshness (TFR) | 20% | Linear decay over 48 hours |
 | Classification Consistency (CCI) | 15% | Cross-category logic checks |
 
+> **Weight rationale:** PES and COR carry the highest weight because they are the two externally-verifiable dimensions — photo evidence can be independently assessed, corroboration requires independent reporters agreeing. TFR and CCI are internally-derived signals and are weighted accordingly. Full derivation: [`docs/dci-formula.md`](docs/dci-formula.md)
+
+**DCI Formula (compressed):**
+```
+DCI = (PES × 0.35) + (COR × 0.30) + (TFR × 0.20) + (CCI × 0.15)
+UM  = 1 − min(evidence_sources / 3, 1) × (1 − score_variance)
+```
+
 ### Output
 
 | DCI Range | Validity Status | Pin | Action |
@@ -218,6 +246,8 @@ Every DCI score carries an Uncertainty Mass (UM) — a measure of how much the s
 | < 0.35 | Score is reliable |
 | 0.35–0.60 | Score useful but uncertain |
 | ≥ 0.60 | Do not rely on this score |
+
+> SUSPENDED reports (DCI < 0.40) remain visible on the responder dashboard with a red pin and a field-verify prompt. They are never silently dropped — their presence is itself information.
 
 [![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
@@ -248,7 +278,7 @@ VERITAS uses OpenRouter to access state-of-the-art AI models for damage assessme
 
 ## UNDP Compliance Status
 
-VERITAS meets every mandatory requirement of the UNDP Innocentive Challenge. Full audit: [`VERITAS_UNDP_COMPLIANCE.md`](VERITAS_UNDP_COMPLIANCE.md)
+**All 27 mandatory requirements met.** Full audit with evidence: [`VERITAS_UNDP_COMPLIANCE.md`](VERITAS_UNDP_COMPLIANCE.md)
 
 | Requirement | Status |
 |-------------|--------|
@@ -304,6 +334,8 @@ All three share the same design language, offline capability, and STP integratio
 
 VERITAS integrates with the Sovereign Trace Protocol — a permanence infrastructure with 16 template types. Every report and every export can be permanently sealed with a triple‑time cryptographic stamp (Gregorian, Hebrew lunisolar, 13‑Moon Dreamspell).
 
+> **Permanence note:** Sealed records are filed as GitHub Issues on the STP ledger repository. This provides immutable timestamping within the constraints of the GitHub platform. If the STP GitHub API is unavailable at the time of submission, the seal is queued locally and filed on next successful connection — the report itself is never blocked.
+
 ### How It Works
 
 | Template | Trigger | Result |
@@ -328,13 +360,13 @@ Anyone can verify a sealed dataset by:
 | Layer | Technology | Why |
 |-------|-----------|-----|
 | App Shell | PWA (HTML + Service Worker) | Offline‑first, installable |
-| Local Storage | IndexedDB | Survives offline, syncs when back |
+| Local Storage | IndexedDB | Survives offline, syncs when back online; unsynced reports persist indefinitely until connection restored |
 | Maps | Leaflet.js + OpenStreetMap | Free, open source, offline tiles |
 | AI Analysis | OpenRouter (Claude 3.5 + DeepSeek) | High accuracy, multiple models |
 | Offline AI | TensorFlow.js + xBD model | Local inference when offline |
 | Backend Sync | Supabase | Real‑time, row‑level security |
-| STP Ledger | GitHub Issues + API | Immutable, verifiable, permanent |
-| Deployment | Vercel + GitHub Pages | Static hosting, serverless functions |
+| STP Ledger | GitHub Issues + API | Immutable, verifiable, permanent within GitHub platform |
+| Deployment | Vercel (api/) + GitHub Pages (public/) | Two separate deployments — frontend is fully functional standalone |
 | License | MIT | Open source, UNDP requirement |
 
 [![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
@@ -345,17 +377,23 @@ Anyone can verify a sealed dataset by:
 
 ### `/report` — Community Submission (Mobile‑First)
 
+*For a community member in a flood zone with limited connectivity who needs to document and submit damage — without an account, without waiting for signal.*
+
 - Works offline (IndexedDB + Service Worker)
 - Photo capture (EXIF stripped automatically)
 - UNDP 3‑tier damage classification
 - All 8 infrastructure types + Other
 - GPS (precise or fuzzy ±100m for conflict zones)
-- Anonymous submission (UUID only, no IP logged)
+- Anonymous submission (UUID only, no IP logged at application layer)
 - AI‑assisted damage detection (OpenRouter)
 - Confirmation screen shows DCI + UM + validity status
 - Automatic STP seal (Template 15) — every report permanently recorded
 
 ### `/respond` — Responder Dashboard (Access‑Code Gated)
+
+*For a coordination team member at a crisis operations desk who needs to triage incoming reports and allocate field resources with confidence, not guesswork.*
+
+> **Access code:** `UNDP2026`
 
 - Confidence map with color‑coded pins (VALID/DEGRADED/SUSPENDED)
 - Real‑time updates via Supabase subscription
@@ -373,12 +411,13 @@ Anyone can verify a sealed dataset by:
 
 ## Anonymization & Safety
 
-- No accounts, no emails, no IP logging — UUID generated client‑side
+- No accounts, no emails, no IP logging at the application layer — UUID generated client‑side
+  > Note: Infrastructure-layer providers (Vercel, Supabase) may log request metadata per their own policies. Review their privacy documentation for deployment-level considerations.
 - EXIF stripped from photos before upload (Canvas API)
 - GPS fuzzing — "Area Report (±100m)" for conflict zones
 - Sensitive location anonymization (shelters, medical, schools)
 - Data retention policy — 365 days, community opt‑out
-- Indigenous data sovereignty — UNDRIP Article 31 compliant
+- Indigenous data sovereignty — UNDRIP Article 31 as design principle; consultation and consent mechanisms are an active development priority
 
 [![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
@@ -454,6 +493,6 @@ This is an application of the AION Constitutional Stack — applied to community
 
 ---
 
-**CERTUS Engine v2.5** — Ready for UNDP evaluation.
-**STP Template Registry** — 16 permanent seal types.
-**VERITAS** — Every report sealed. Every export verifiable.
+> **CERTUS Engine v2.5** — Ready for UNDP evaluation.
+> **STP Template Registry** — 16 permanent seal types.
+> **VERITAS** — Every report sealed. Every export verifiable.
