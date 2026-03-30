@@ -45,7 +45,7 @@ function detectTemplate(entry, contextType = null) {
   const lowerEntry = (entry || '').toLowerCase();
   
   // Priority order (most severe first)
-  const priority = ['13', '05', '10', '11', '12', '01', '09', '06', '03', '08', '02', '04', '14'];
+  const priority = ['13', '05', '10', '11', '12', '01', '09', '06', '03', '08', '02', '04', '14', '15', '16'];
   
   for (const id of priority) {
     const template = TEMPLATES[id];
