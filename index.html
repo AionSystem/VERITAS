@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="https://unpkg.com/shp-write@latest/shpwrite.js"></script>
+  <script src="https://unpkg.com/shp-write@0.3.2/shpwrite.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
@@ -1899,17 +1899,9 @@ if (hamburger && mobileNav) {
 }
 // ==================== SERVICE WORKER ====================
 if ('serviceWorker' in navigator) {
-  const swCode = `
-    const CACHE_NAME = 'veritas-v1';
-    const ASSETS = ['/','/index.html','/manifest.json','https://unpkg.com/leaflet@1.9.4/dist/leaflet.css','https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'];
-// Google Fonts excluded — opaque responses break cache.addAll()
-// System font fallback handles offline rendering;
-    self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())));
-    self.addEventListener('fetch', e => { const url = new URL(e.request.url); if (url.origin === location.origin || ASSETS.some(a => e.request.url.includes(a))) { e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))); } });
-  `;
-  const swBlob = new Blob([swCode], { type: 'application/javascript' });
-  const swUrl = URL.createObjectURL(swBlob);
-  navigator.serviceWorker.register(swUrl).catch(console.error);
+  navigator.serviceWorker.register('/sw.js')
+    .then(reg => console.log('[VERITAS] SW registered, scope:', reg.scope))
+    .catch(err => console.warn('[VERITAS] SW registration failed:', err));
 }
 // ==================== INITIALISATION ====================
 window.addEventListener('DOMContentLoaded', async () => {
