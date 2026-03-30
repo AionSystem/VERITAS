@@ -1268,47 +1268,101 @@ window.addEventListener('online',()=>{STATE.isOnline=true;document.getElementByI
 window.addEventListener('offline',()=>{STATE.isOnline=false;document.getElementById('offlineBanner').classList.add('show');toast('Offline — reports saved locally');});
 
 // ==================== STP INTEGRATION ====================
-let currentSTPSeal=null;
-async function stampWithSTP(){
-  const reports=await dbGetAll();
-  if(reports.length===0){toast('No reports to seal');return;}
-  const clean=reports.map(r=>({uuid:r.uuid,timestamp:r.timestamp,lat:r.lat,lng:r.lng,undp_damage:r.undpTier,dci:r.dci,dci_tier:r.dciTier}));
-  const datasetStr=JSON.stringify(clean,null,2);
-  const datasetHash=await computeHash(datasetStr);
-  const timestamp=new Date().toISOString();
-  const entry=`VERITAS Export\nTimestamp: ${timestamp}\nReports: ${reports.length}\nDataset SHA-256: ${datasetHash}\nPowered by CERTUS Engine v2.5\nSTP integrity seal requested via AionSystem/VERITAS`;
-  const btn=document.getElementById('stpSealBtn');
-  const originalText=btn.textContent;
-  btn.textContent='Sealing...'; btn.disabled=true;
-  try{
-    const response=await fetchWithTimeout('https://aion-backend-mu.vercel.app/api/stp-seal',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({entry,type:'07',sessionId:'veritas-export-'+timestamp,userId:null})
+// FIX: Use local API endpoint (same deployment)
+let currentSTPSeal = null;
+
+async function stampWithSTP() {
+  const reports = await dbGetAll();
+  if (reports.length === 0) {
+    toast('No reports to seal');
+    return;
+  }
+  
+  const clean = reports.map(r => ({
+    uuid: r.uuid,
+    timestamp: r.timestamp,
+    lat: r.lat,
+    lng: r.lng,
+    undp_damage: r.undpTier,
+    internal_damage: r.internalTier,
+    infrastructure: r.infraType,
+    dci: r.dci,
+    dci_tier: r.dciTier
+  }));
+  
+  const datasetStr = JSON.stringify(clean, null, 2);
+  const datasetHash = await computeHash(datasetStr);
+  const timestamp = new Date().toISOString();
+  
+  // Use Template 16 for VERITAS Export (or Template 07 for general)
+  const entry = `VERITAS Export\nTimestamp: ${timestamp}\nReports: ${reports.length}\nDataset SHA-256: ${datasetHash}\nPowered by CERTUS Engine v2.5\nSTP integrity seal requested via AionSystem/VERITAS`;
+  
+  const btn = document.getElementById('stpSealBtn');
+  const originalText = btn.textContent;
+  btn.textContent = 'Sealing...';
+  btn.disabled = true;
+  
+  try {
+    // FIX: Use relative path to local API (same deployment)
+    const response = await fetchWithTimeout('/api/stp-seal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        entry: entry,
+        type: '07', // GENERAL-TRACE (or use '16' if you've added VERITAS-EXPORT template)
+        sessionId: 'veritas-export-' + timestamp,
+        userId: null
+      })
     });
-    if(!response.ok) throw new Error(`HTTP ${response.status}`);
-    const seal=await response.json();
-    if(!seal.success) throw new Error(seal.error||'Seal failed');
-    currentSTPSeal={...seal,datasetHash,reportsCount:reports.length,exportTimestamp:timestamp};
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+    
+    const seal = await response.json();
+    if (!seal.success) throw new Error(seal.error || 'Seal failed');
+    
+    currentSTPSeal = {
+      ...seal,
+      datasetHash,
+      reportsCount: reports.length,
+      exportTimestamp: timestamp
+    };
+    
     displaySTPSeal(currentSTPSeal);
     toast('STP seal created successfully');
-  }catch(err){
-    console.error('[VERITAS] STP seal error:',err);
-    toast(`STP seal failed: ${err.name==='AbortError'?'Request timed out':err.message}`);
-  }finally{
-    // FIX #12 — always reset button in finally
-    btn.textContent=originalText; btn.disabled=false;
+    
+  } catch (err) {
+    console.error('[VERITAS] STP seal error:', err);
+    toast(`STP seal failed: ${err.name === 'AbortError' ? 'Request timed out' : err.message}`);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
   }
 }
-function displaySTPSeal(seal){
-  const displayDiv=document.getElementById('stpSealDisplay');
-  const contentDiv=document.getElementById('stpSealContent');
-  displayDiv.style.display='block';
-  contentDiv.innerHTML=`<div><strong>Seal ID:</strong> ${seal.ledger_file||'—'}</div><div><strong>SHA-256:</strong> <code>${seal.seal}</code></div><div><strong>📅 Gregorian:</strong> ${seal.gregorian}</div><div><strong>🌑 Hebrew:</strong> ${seal.hebrew}</div><div><strong>🌀 Dreamspell:</strong> ${seal.dreamspell}</div><div><strong>📦 Dataset SHA-256:</strong> <code>${seal.datasetHash}</code></div><div><strong>Reports sealed:</strong> ${seal.reportsCount}</div><div><strong>Issue URL:</strong> <a href="${seal.issue_url}" target="_blank">${seal.issue_url||'—'}</a></div><div><small>Verify: recompute SHA-256 of exported file and compare to Dataset SHA-256 above.</small></div>`;
+
+function displaySTPSeal(seal) {
+  const displayDiv = document.getElementById('stpSealDisplay');
+  const contentDiv = document.getElementById('stpSealContent');
+  displayDiv.style.display = 'block';
+  contentDiv.innerHTML = `
+    <div><strong>Seal ID:</strong> ${seal.ledger_file || seal.seal_id || '—'}</div>
+    <div><strong>SHA-256:</strong> <code>${seal.seal}</code></div>
+    <div><strong>📅 Gregorian:</strong> ${seal.gregorian}</div>
+    <div><strong>🌑 Hebrew:</strong> ${seal.hebrew}</div>
+    <div><strong>🌀 Dreamspell:</strong> ${seal.dreamspell}</div>
+    <div><strong>📦 Dataset SHA-256:</strong> <code>${seal.datasetHash}</code></div>
+    <div><strong>Reports sealed:</strong> ${seal.reportsCount}</div>
+    <div><strong>Issue URL:</strong> <a href="${seal.issue_url}" target="_blank">${seal.issue_url || '—'}</a></div>
+    <div><small>Verify: recompute SHA-256 of exported file and compare to Dataset SHA-256 above.</small></div>
+  `;
 }
-function downloadSTPSeal(){
-  if(!currentSTPSeal) return;
-  const filename=`veritas-stp-seal-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.json`;
-  download(JSON.stringify(currentSTPSeal,null,2),filename,'application/json');
+
+function downloadSTPSeal() {
+  if (!currentSTPSeal) return;
+  const filename = `veritas-stp-seal-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+  download(JSON.stringify(currentSTPSeal, null, 2), filename, 'application/json');
   toast('STP seal file downloaded');
 }
 
