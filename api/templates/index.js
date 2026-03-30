@@ -9,21 +9,19 @@ const templateFiles = [
   '02-research-priority.json',
   '03-evidence-chain.json',
   '04-creative-priority.json',
-  '05-clinical-record.json',
   '06-scope-anchor.json',
-  '07-general-trace.json',
-  '08-foresight-seal.json',
-  '09-webeater-link.json',
-  '10-audit-request.json',
-  '11-audit-completion.json',
-  '12-auditor-application.json',
-  '13-integrity-violation.json',
-  '14-near-miss.json'
+  '07-general-trace.json'
+  // Add remaining templates: 05, 08, 09, 10, 11, 12, 13, 14
 ];
 
 for (const file of templateFiles) {
-  const template = require(`./${file}`);
-  TEMPLATES[template.id] = template;
+  try {
+    const template = require(`./${file}`);
+    TEMPLATES[template.id] = template;
+    console.log(`Loaded template: ${template.id} - ${template.name}`);
+  } catch (err) {
+    console.error(`Failed to load ${file}:`, err.message);
+  }
 }
 
 function getTemplate(id) {
@@ -86,23 +84,30 @@ function validateTemplateRequirements(template, body) {
 }
 
 function renderIssueBody(template, formData) {
-  let body = `## ${template.legal_notice.title}\n\n`;
-  body += template.legal_notice.content.join('\n') + '\n\n---\n\n';
+  let body = '';
   
+  // Add legal notice
+  if (template.legal_notice) {
+    body += `## ${template.legal_notice.title}\n\n`;
+    body += template.legal_notice.content.join('\n') + '\n\n---\n\n';
+  }
+  
+  // Add fields
   for (const field of template.fields) {
     const value = formData[field.id];
     if (value) {
       if (field.type === 'checkboxes') {
         body += `### ${field.label}\n`;
+        const checkedValues = Array.isArray(value) ? value : [value];
         for (const option of field.options) {
-          if (value.includes(option)) {
+          if (checkedValues.includes(option) || (typeof value === 'string' && value.includes(option))) {
             body += `- ✅ ${option}\n`;
           }
         }
         body += '\n';
       } else if (field.type === 'upload') {
         body += `### ${field.label}\n`;
-        body += `[Evidence files attached]\n\n`;
+        body += `[Evidence files attached - see GitHub assets]\n\n`;
       } else {
         body += `### ${field.label}\n`;
         body += `${value}\n\n`;
@@ -110,11 +115,14 @@ function renderIssueBody(template, formData) {
     }
   }
   
-  body += `---\n\n## What Happens Next\n\n`;
-  for (const step of template.after_submit.steps) {
-    body += `${step}\n`;
+  // Add after-submit steps
+  if (template.after_submit) {
+    body += `---\n\n## What Happens Next\n\n`;
+    for (const step of template.after_submit.steps) {
+      body += `${step}\n`;
+    }
+    body += `\n---\n\n${template.after_submit.footer}`;
   }
-  body += `\n---\n\n${template.after_submit.footer}`;
   
   return body;
 }
