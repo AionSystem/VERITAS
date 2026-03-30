@@ -1895,7 +1895,7 @@ function toast(msg, duration = 2500) { const container = document.getElementById
 window.addEventListener('online', () => { STATE.isOnline = true; document.getElementById('offlineBanner').classList.remove('show'); syncPending(); toast('Back online — syncing reports'); });
 window.addEventListener('offline', () => { STATE.isOnline = false; document.getElementById('offlineBanner').classList.add('show'); toast('Offline — reports saved locally'); });
 function copyRestEndpoint() {
-  const endpoint = `${CONFIG.SUPABASE_URL}/rest/v1/reports?select=uuid,timestamp,lat,lng,undpTier,infraType,dci,dciTier`;
+  const endpoint = `https://spqqhvaqjwxcrdbujwna.supabase.co/rest/v1/reports?select=uuid,timestamp,lat,lng,undp_tier,infra_type,dci,dci_tier`;
   navigator.clipboard.writeText(endpoint).then(() => toast('REST API endpoint copied'));
   document.getElementById('exportPreview').textContent =
     `REST API ENDPOINT\n${endpoint}\n\nRequired headers:\n apikey: <SUPABASE_ANON_KEY>\n Authorization: Bearer <SUPABASE_ANON_KEY>\n\nFilter examples:\n ?dci=gte.0.70\n ?dciTier=eq.review\n Accept: text/csv → CSV response\n\n` +
