@@ -1866,12 +1866,11 @@ function plotReports(reports) {
       iconSize: [14,14], iconAnchor:[7,7]
     });
     const popup = `<div class="dci-popup">
-      <b style="color:${color}">${r.undpTier || r.internalTier}</b> · ${r.infraType || '—'}<br>
-      DCI: <b>${r.dci?.toFixed(3) || '—'}</b> · ${CERTUS.tierLabel(r.dciTier)}<br>
-      <small>${new Date(r.timestamp).toLocaleString()}</small>
-    </div>`;
-    L.marker([r.lat, r.lng], { icon }).bindPopup(popup).addTo(STATE.markerLayer);
-  });
+  <b style="color:${color}">${r.undpTier || r.internalTier}</b> · ${r.infraType || '—'}<br>
+  DCI: <b>${r.dci?.toFixed(3) || '—'}</b> · ${CERTUS.tierLabel(r.dciTier)}<br>
+  <span style="color:var(--muted)">UM: ${r.dciUM ? Math.round(r.dciUM * 100) : '—'}% · ${r.dciValidity || '—'}</span><br>
+  <small>${new Date(r.timestamp).toLocaleString()}</small>
+</div>`;
   if (versioned.length > 0) {
     try {
       const group = L.featureGroup(versioned.filter(r => r.lat && r.lng).map(r => L.marker([r.lat, r.lng])));
