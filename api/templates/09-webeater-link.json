@@ -1,0 +1,89 @@
+{
+  "id": "09",
+  "name": "webeater-link",
+  "label": "WEBEATER-LINK",
+  "title": "[WEBEATER] Link: [Source] → [Target]",
+  "labels": ["webeater-link", "pending-seal"],
+  "assignees": [],
+  "requires_docusign": false,
+  "requires_identity": false,
+  "requires_phi_gate": false,
+  "requires_stripe": false,
+  "requires_prior_seal": true,
+  "requires_auditor_badge": false,
+  "triggers": ["link", "bind", "connect two seals", "reference prior seal", "webeater"],
+  "legal_notice": {
+    "title": "WEBEATER: Weave a Connection",
+    "content": [
+      "This form seals a cryptographic link between two entities in the Sovereign Trace ledger.",
+      "",
+      "The reference seal must be a valid, previously sealed SHA-256 hash from the STP ledger.",
+      "False references invalidate this link permanently."
+    ]
+  },
+  "fields": [
+    {
+      "type": "input",
+      "id": "source_id",
+      "label": "Source Identity",
+      "description": "Your name, organization, or GitHub handle.",
+      "placeholder": "Sheldon K. Salmon",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "target_id",
+      "label": "Target Identity",
+      "description": "The name or organization you are linking to.",
+      "placeholder": "OpenAI",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "ref_seal",
+      "label": "Reference Seal",
+      "description": "The 64-character SHA-256 seal of the trace you are linking to. Must be exact.",
+      "placeholder": "19276f3fbdd02960...",
+      "required": true
+    },
+    {
+      "type": "dropdown",
+      "id": "relation_type",
+      "label": "Nature of Connection",
+      "description": "Select the type of relationship this link represents.",
+      "options": [
+        "Audit & Certification",
+        "Mentorship / Reference",
+        "Contribution / Collaboration",
+        "Sovereign Acknowledgment"
+      ],
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "context",
+      "label": "Contextual Evidence",
+      "description": "Briefly describe the significance of this link. What does it record?",
+      "placeholder": "Sealed AI failure report for [system] on [date]. Link establishes audit chain.",
+      "required": true
+    },
+    {
+      "type": "checkboxes",
+      "id": "declaration",
+      "label": "Declaration",
+      "options": [
+        "I confirm the Reference Seal above belongs to a real, previously sealed trace. I understand a false reference invalidates this link."
+      ],
+      "required": true
+    }
+  ],
+  "after_submit": {
+    "steps": [
+      "Reference seal validation — Checked against STP ledger.",
+      "Sealing — Sealed with a FROZEN-2.0 triple-time cryptographic stamp. Permanent.",
+      "Ledger entry — Enters the Sovereign Trace ledger with your name, timestamp, and SHA-256 hash.",
+      "Notification — You receive your ledger entry ID and SHA-256 hash."
+    ],
+    "footer": "The link is permanent. The seal is the connection.\n\nSovereign Trace Protocol | Sheldon K. Salmon | aionsystem2026@gmail.com"
+  }
+}
