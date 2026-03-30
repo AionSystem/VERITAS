@@ -1,0 +1,105 @@
+{
+  "id": "03",
+  "name": "evidence-chain",
+  "label": "EVIDENCE-CHAIN",
+  "title": "[STP-EVIDENCE] — [TYPE] — [DATE]",
+  "labels": ["evidence-chain", "pending-seal"],
+  "assignees": [],
+  "requires_docusign": false,
+  "requires_identity": false,
+  "requires_phi_gate": false,
+  "requires_stripe": false,
+  "requires_prior_seal": false,
+  "requires_auditor_badge": false,
+  "triggers": ["evidence", "source", "document", "witness", "proof", "chain of custody", "receipt"],
+  "legal_notice": {
+    "title": "Evidence Chain Seal",
+    "content": [
+      "This form seals a document, communication, or piece of evidence at the exact moment you received or created it.",
+      "",
+      "**The seal proves:** You had this material, in this exact form, on this exact date. It has not been altered since.",
+      "",
+      "**Source protection:** You are not required to name your source. Seal only what you intend to make permanent.",
+      "",
+      "This is chain of custody infrastructure — not a complaint form."
+    ]
+  },
+  "fields": [
+    {
+      "type": "input",
+      "id": "submitter_name",
+      "label": "Your Name or Publication (Optional)",
+      "description": "If provided, becomes part of the permanent record. Leave blank for anonymous chain of custody.",
+      "placeholder": "Name, publication, or organization — or leave blank",
+      "required": false
+    },
+    {
+      "type": "input",
+      "id": "evidence_type",
+      "label": "Evidence Type",
+      "description": "What kind of material is being sealed?",
+      "placeholder": "Document / Source Communication / Transcript / Photograph / Data / Other",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "receipt_date",
+      "label": "Date Material Was Received or Created",
+      "description": "The date you received or created this material. Format: YYYY-MM-DD",
+      "placeholder": "2026-03-07",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "material_description",
+      "label": "Description of Material",
+      "description": "Describe what it is, what it pertains to, and what it shows. No source-identifying information unless intended for the permanent record.",
+      "placeholder": "Describe the material and what it establishes.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "source_context",
+      "label": "Context (Optional)",
+      "description": "How was this material obtained? Do not include source-identifying information unless intended for the permanent record.",
+      "placeholder": "Context for the material — optional.",
+      "required": false
+    },
+    {
+      "type": "input",
+      "id": "disclosure_timeline",
+      "label": "Intended Disclosure Timeline (Optional)",
+      "description": "When do you plan to publish or disclose? Establishes that the seal predates the public record.",
+      "placeholder": "Pre-publication / Expected: April 2026 / Ongoing investigation",
+      "required": false
+    },
+    {
+      "type": "upload",
+      "id": "evidence_files",
+      "label": "Evidence Files (Optional)",
+      "description": "Upload documents, screenshots, or files. These become part of the sealed record.",
+      "required": false
+    },
+    {
+      "type": "checkboxes",
+      "id": "declaration",
+      "label": "Declaration",
+      "options": [
+        "I affirm this description accurately represents the material I received or created on the stated date.",
+        "I understand this submission is immutable — it cannot be altered after sealing.",
+        "I understand the protocol seals my account of receiving the material — not the authenticity of the material itself.",
+        "I have not included information in this submission that would endanger any individual."
+      ],
+      "required": true
+    }
+  ],
+  "after_submit": {
+    "steps": [
+      "Completeness check — Reviewed for completeness.",
+      "Sealing — Sealed with a FROZEN-2.0 triple-time cryptographic stamp. Permanent.",
+      "Ledger entry — Enters the Sovereign Trace ledger with timestamp and SHA-256 hash.",
+      "Notification — You receive your ledger entry ID and SHA-256 hash."
+    ],
+    "footer": "The seal is permanent. The seal is the chain of custody.\n\nSovereign Trace Protocol | Sheldon K. Salmon | aionsystem2026@gmail.com"
+  }
+}
