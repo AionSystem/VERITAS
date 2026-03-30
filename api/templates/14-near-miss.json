@@ -110,4 +110,124 @@
       "type": "textarea",
       "id": "prompt_or_input",
       "label": "Input / Prompt That Produced the Near-Miss",
-      "description": "Exact input, query, or trigger. Copy
+      "description": "Exact input, query, or trigger. Copy verbatim.",
+      "placeholder": "Paste the exact input here.",
+      "required": false
+    },
+    {
+      "type": "textarea",
+      "id": "ai_output",
+      "label": "Exact AI Output",
+      "description": "Copy the exact output verbatim. Do not summarize. The seal is on this exact text. Summarized outputs produce weaker sealed records.",
+      "placeholder": "Paste the exact AI output here.",
+      "required": true
+    },
+    {
+      "type": "dropdown",
+      "id": "severity_if_realized",
+      "label": "Severity If Near-Miss Had Become Actual Harm",
+      "description": "Assess the severity of harm that would have resulted.",
+      "options": [
+        "Critical — fatality, permanent injury, or catastrophic loss",
+        "High — serious injury, major financial loss, or significant legal exposure",
+        "Medium — significant disruption, reversible harm, or moderate exposure",
+        "Low — minor disruption, no lasting harm"
+      ],
+      "required": true
+    },
+    {
+      "type": "dropdown",
+      "id": "detection_method",
+      "label": "How Was the Near-Miss Caught?",
+      "options": [
+        "Human reviewer — pre-deployment review",
+        "Human reviewer — post-deployment, pre-impact",
+        "Automated monitoring / alerting system",
+        "Client / end-user flagged before impact",
+        "Downstream system rejection",
+        "Regulatory or compliance check",
+        "Incident report from third party",
+        "Other"
+      ],
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "catch_description",
+      "label": "Detection Detail",
+      "description": "Describe exactly how and by whom the near-miss was caught.",
+      "placeholder": "A pharmacist reviewing the AI recommendation against the patient chart identified the dosage discrepancy before dispensing.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "root_cause_hypothesis",
+      "label": "Root Cause Hypothesis",
+      "description": "What do you currently believe caused the AI to produce this output? This is a hypothesis at time of filing — not a final determination. Tag it [?] if uncertain.",
+      "placeholder": "The AI system was reading the medication field without access to the renal impairment flag stored in a separate data silo. [?]",
+      "required": false
+    },
+    {
+      "type": "textarea",
+      "id": "immediate_action",
+      "label": "Immediate Action Taken",
+      "description": "What was done immediately after the near-miss was detected?",
+      "placeholder": "AI recommendation overridden. Patient received correct dosage. Incident flagged for root cause review.",
+      "required": true
+    },
+    {
+      "type": "dropdown",
+      "id": "remediation_status",
+      "label": "Remediation Status at Time of Filing",
+      "options": [
+        "No remediation begun — filing before internal review",
+        "Root cause investigation in progress",
+        "Remediation in progress — not yet complete",
+        "Remediation complete — not yet verified",
+        "Remediation complete and verified"
+      ],
+      "required": true
+    },
+    {
+      "type": "checkboxes",
+      "id": "recurrence_risk",
+      "label": "Recurrence Risk Assessment",
+      "options": [
+        "The conditions that produced this near-miss are still present in the deployment",
+        "The AI system producing this near-miss is still in active deployment",
+        "Other AI systems in this deployment may be subject to the same root cause",
+        "This near-miss pattern has been observed before — this is not the first instance"
+      ],
+      "required": false
+    },
+    {
+      "type": "textarea",
+      "id": "prior_instances",
+      "label": "Prior Instances (if applicable)",
+      "description": "If this near-miss pattern has occurred before, describe prior instances. If this is the first known instance, leave blank.",
+      "placeholder": "Leave blank if first known instance.",
+      "required": false
+    },
+    {
+      "type": "checkboxes",
+      "id": "declaration",
+      "label": "Declaration",
+      "options": [
+        "I declare that the AI output described above is reproduced verbatim and that the near-miss occurred as described. I understand this record is permanent and immutable from the moment of filing. I am authorized to file this report on behalf of the organization named above.",
+        "I understand that this near-miss record does not constitute an admission of liability, regulatory violation, or legal wrongdoing. It is an honest epistemic record of an AI output that almost caused harm.",
+        "I understand that the content of this filing is my organization's sole responsibility. The Sovereign Trace Protocol seals the record — it does not verify the accuracy of the content. See NON-RECOURSE-STATEMENT.md."
+      ],
+      "required": true
+    }
+  ],
+  "after_submit": {
+    "steps": [
+      "Completeness check — Reviewed for completeness.",
+      "Sealing — Sealed with a FROZEN-2.0 triple-time cryptographic stamp. Permanent.",
+      "Ledger entry — Enters the Sovereign Trace ledger with your name, timestamp, and SHA-256 hash.",
+      "Notification — You receive your ledger entry ID and SHA-256 hash.",
+      "Remediation tracking — Optional follow-up when root cause is identified and remediation is complete."
+    ],
+    "footer": "The near-miss is the lesson. The seal is the record.\n\nSovereign Trace Protocol | Sheldon K. Salmon | aionsystem2026@gmail.com"
+  }
+}
