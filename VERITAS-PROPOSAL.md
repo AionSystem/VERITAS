@@ -54,6 +54,7 @@ The DCI maps to three tiers: 🟢 High Confidence (≥0.70) · 🟡 Watch (0.40�
 **Versioning**: the map displays the latest report per building (10-meter cluster radius). For clusters of buildings, the dashboard groups damage levels by area and surfaces intervention priority — satisfying both versioning scenarios specified in UNDP's requirements.
 
 **Modular architecture**: the entire form is JSON-driven. New field sections are added without touching HTML — UNDP can append post-crisis livelihood questions to the same interface without rebuilding the app.
+"modular step architecture allows UNDP to add new form steps without structural changes"
 
 The prototype is live, open source under MIT, and testable at [aionsystem.github.io/VERITAS](https://aionsystem.github.io/VERITAS).
 
