@@ -1758,15 +1758,60 @@ function showConfirmation(report, certus) {
   document.getElementById('reportForm').style.display = 'none';
   const screen = document.getElementById('confirmScreen');
   screen.classList.add('show');
+  
   const scoreEl = document.getElementById('confirmDciScore');
   scoreEl.textContent = certus.dci.toFixed(2);
   scoreEl.className = `dci-score-large ${certus.tier}`;
+  
   const badge = document.getElementById('confirmDciBadge');
   badge.textContent = CERTUS.tierLabel(certus.tier);
   badge.className = `dci-tier-badge ${certus.tier}`;
+  
+  // Add UM display
+  let umEl = document.getElementById('confirmDciUM');
+  if (!umEl) {
+    umEl = document.createElement('div');
+    umEl.id = 'confirmDciUM';
+    umEl.style.cssText = 'font-family: var(--mono); font-size: 10px; margin: 10px 0;';
+    badge.insertAdjacentElement('afterend', umEl);
+  }
+  const umPct = Math.round(certus.dci_uncertainty_mass * 100);
+  const validityColor = certus.dci_validity_status === 'VALID' ? '#4ade80' : 
+                        (certus.dci_validity_status === 'DEGRADED' ? '#f0a500' : '#ff4d4d');
+  umEl.innerHTML = `Uncertainty Mass: ${umPct}% · <span style="color:${validityColor}">${certus.dci_validity_status}</span>`;
+  
+  // Add strengths/weaknesses
+  let swEl = document.getElementById('confirmStrengths');
+  if (!swEl) {
+    swEl = document.createElement('div');
+    swEl.id = 'confirmStrengths';
+    swEl.style.cssText = 'margin-top: 12px; font-size: 10px; text-align: left;';
+    umEl.insertAdjacentElement('afterend', swEl);
+  }
+  let swHtml = '';
+  if (certus.dci_strengths && certus.dci_strengths.length) {
+    swHtml += '<div style="color: var(--edu);">✅ ' + certus.dci_strengths.join('</div><div style="color: var(--edu);">✅ ') + '</div>';
+  }
+  if (certus.dci_weaknesses && certus.dci_weaknesses.length) {
+    swHtml += '<div style="color: var(--warn); margin-top: 6px;">⚠️ ' + certus.dci_weaknesses.join('</div><div style="color: var(--warn);">⚠️ ') + '</div>';
+  }
+  swEl.innerHTML = swHtml;
+  
+  // Update engagement message
   const nearbyCount = findNearby(STATE.reports, report.lat, report.lng, 50).length;
   const msgDiv = document.getElementById('engagementMessage');
-  msgDiv.innerHTML = nearbyCount > 0 ? `✅ Your report is corroborated by ${nearbyCount} other report${nearbyCount !== 1 ? 's' : ''} in this area. This helps prioritize resources.` : `📢 You are the first report in this area. Your observation is critical — share the app so others can add their reports.`;
+  
+  if (certus.dci_flags?.cor_no_evidence) {
+    msgDiv.innerHTML = `📢 First report in this area — no corroboration yet. Share the app so others can confirm.`;
+  } else if (certus.dci_flags?.cor_contradiction) {
+    msgDiv.innerHTML = `⚠️ ${nearbyCount} nearby reports disagree. Human verification recommended.`;
+  } else if (certus.dci_validity_status === 'SUSPENDED') {
+    msgDiv.innerHTML = `⚠️ This report has high uncertainty. Field verification required before acting.`;
+  } else {
+    msgDiv.innerHTML = nearbyCount > 0 
+      ? `✅ Corroborated by ${nearbyCount} other report${nearbyCount !== 1 ? 's' : ''}. Reliable signal.`
+      : `📢 You are the first report in this area. Share the app to build corroboration.`;
+  }
 }
 function resetReport() {
   STATE.photo = null; STATE.photoAiScore = null; STATE.photoAiConf = null; STATE.undpTier = null; STATE.internalTier = null; STATE.infraType = null; STATE.coords = null; STATE.locMode = 'precise'; STATE.reportMap = null; STATE.reportMarker = null;
