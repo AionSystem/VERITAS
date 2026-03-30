@@ -1,0 +1,128 @@
+{
+  "version": 2,
+  "name": "veritas",
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 30,
+      "memory": 1024,
+      "excludeFiles": "**/node_modules/@tensorflow/**"
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/health",
+      "dest": "/api/stp-seal.js"
+    },
+    {
+      "src": "/api/stp-seal",
+      "dest": "/api/stp-seal.js"
+    },
+    {
+      "src": "/api/stp-seal/verify",
+      "dest": "/api/stp-seal.js"
+    },
+    {
+      "src": "/api/stp-seal/verify-file",
+      "dest": "/api/stp-seal.js"
+    },
+    {
+      "src": "/api/stp-seal/ledger",
+      "dest": "/api/stp-seal.js"
+    },
+    {
+      "src": "/api/sync",
+      "dest": "/api/sync.js"
+    },
+    {
+      "src": "/api/reports",
+      "dest": "/api/reports.js"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
+    }
+  ],
+  "builds": [
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "env": {
+    "SUPABASE_URL": "@supabase_url",
+    "SUPABASE_SERVICE_KEY": "@supabase_service_key",
+    "GITHUB_TOKEN": "@github_token"
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400" },
+        { "key": "Content-Type", "value": "application/manifest+json" }
+      ]
+    },
+    {
+      "source": "/icons/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/certify",
+      "destination": "/public/aion-certify/index.html"
+    },
+    {
+      "source": "/certify/(.*)",
+      "destination": "/public/aion-certify/$1"
+    },
+    {
+      "source": "/simulator",
+      "destination": "/public/certus-ai/index.html"
+    },
+    {
+      "source": "/simulator/(.*)",
+      "destination": "/public/certus-ai/$1"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/sync",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
