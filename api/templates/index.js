@@ -9,7 +9,7 @@ const templateFiles = [
   '02-research-priority.json',
   '03-evidence-chain.json',
   '04-creative-priority.json',
-  '05-clinical-record.json', 
+  '05-clinical-record.json',
   '06-scope-anchor.json',
   '07-general-trace.json',
   '08-foresight-seal.json',
@@ -18,7 +18,9 @@ const templateFiles = [
   '11-audit-completion.json',
   '12-auditor-application.json',
   '13-integrity-violation.json',
-  '14-near-miss.json'
+  '14-near-miss.json',
+  '15-veritas-report.json',      // ← New
+  '16-veritas-export.json'       // ← New
 ];
 
 for (const file of templateFiles) {
