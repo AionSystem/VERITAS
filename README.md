@@ -1,4 +1,4 @@
-![1000008409](https://github.com/user-attachments/assets/38eb9c0c-4591-4d31-987e-db14f8dbfe51)
+![image-13](https://github.com/user-attachments/assets/5137bafd-0717-49b0-a546-27c6e2184d80)
 
 # VERITAS — Community Damage Certification Platform
 
