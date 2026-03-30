@@ -1,0 +1,142 @@
+{
+  "id": "01",
+  "name": "ai-failure",
+  "label": "AI-FAILURE",
+  "title": "[STP-SUBMISSION] — [COMPANY NAME] — [DATE OF OUTPUT]",
+  "labels": ["submission", "pending-verification"],
+  "assignees": [],
+  "requires_docusign": true,
+  "requires_identity": true,
+  "requires_phi_gate": false,
+  "requires_stripe": false,
+  "requires_prior_seal": false,
+  "requires_auditor_badge": false,
+  "legal_notice": {
+    "title": "⚠ LEGAL NOTICE — READ BEFORE PROCEEDING",
+    "content": [
+      "By completing and submitting this form you are entering into a legally binding declaration.",
+      "- Your identity will be verified via the digital signature process described below",
+      "- Your name will be permanently attached to this submission in the Sovereign Trace ledger",
+      "- This record is immutable — it cannot be altered or deleted after sealing",
+      "- Submitting false, fabricated, or materially misleading information exposes you to civil and criminal liability",
+      "- Anonymous submissions are not accepted",
+      "",
+      "This is not a complaint form. This is a permanent epistemic record.",
+      "The Sovereign Trace Protocol is the notary. You are the witness."
+    ]
+  },
+  "fields": [
+    {
+      "type": "input",
+      "id": "submitter_name",
+      "label": "Your Full Legal Name",
+      "description": "As it appears on government-issued ID. Becomes part of the permanent record.",
+      "placeholder": "First Last",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "submitter_email",
+      "label": "Your Email Address",
+      "description": "A DocuSign identity verification link will be sent here. Submission incomplete until verified.",
+      "placeholder": "you@example.com",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "company_name",
+      "label": "Company / Organization Name",
+      "description": "The company that produced or deployed the AI system in question.",
+      "placeholder": "Full legal company name",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "ai_system",
+      "label": "AI System Name and Version",
+      "description": "The specific AI system, product, or model that produced the output.",
+      "placeholder": "e.g. GPT-4o via CompanyX API v2, March 2026",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "output_date",
+      "label": "Date of AI Output",
+      "description": "The date the AI produced the output being submitted. Format: YYYY-MM-DD",
+      "placeholder": "2026-03-05",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "exact_output",
+      "label": "Exact AI Output",
+      "description": "Copy the exact text. Do not paraphrase. If visual, describe precisely.",
+      "placeholder": "Paste the exact output here.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "decision_context",
+      "label": "Decision Context",
+      "description": "What decision was this AI output used to inform? What was at stake?",
+      "placeholder": "Describe the decision or action this output was used for.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "failure_description",
+      "label": "Failure Description",
+      "description": "What is the specific failure? Hallucination, false confidence, harmful output, other.",
+      "placeholder": "Describe the failure clearly and specifically.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "harm_or_risk",
+      "label": "Harm Occurred or Risk Created",
+      "description": "What harm resulted or what risk was created? If no harm yet, describe the exposure.",
+      "placeholder": "Describe actual or potential harm.",
+      "required": true
+    },
+    {
+      "type": "upload",
+      "id": "screenshots",
+      "label": "Screenshots / Evidence Files",
+      "description": "Upload screenshots of the AI output, interface, or any supporting evidence.",
+      "required": false
+    },
+    {
+      "type": "textarea",
+      "id": "additional_links",
+      "label": "Additional Evidence Links (Optional)",
+      "description": "Any external links supporting this submission.",
+      "placeholder": "Links to supporting evidence.",
+      "required": false
+    },
+    {
+      "type": "checkboxes",
+      "id": "legal_declaration",
+      "label": "Legal Declaration — Required",
+      "description": "You must affirm all of the following to submit.",
+      "options": [
+        "I affirm that the information in this submission is true and accurate to the best of my knowledge.",
+        "I understand that my full legal name will be permanently attached to this submission.",
+        "I understand that this submission is immutable — it cannot be altered or deleted after sealing.",
+        "I understand that submitting false or misleading information exposes me to civil and criminal liability.",
+        "I consent to identity verification via DocuSign before this submission is sealed.",
+        "I am not submitting anonymously. My identity is attached to this record."
+      ],
+      "required": true
+    }
+  ],
+  "after_submit": {
+    "steps": [
+      "Identity verification — DocuSign link sent to your email. Submission not accepted until complete.",
+      "Completeness check — Reviewed for completeness. Truth verification is your responsibility.",
+      "Sealing — Sealed with a FROZEN-2.0 triple-time cryptographic stamp. Permanent.",
+      "Ledger entry — Enters the Sovereign Trace public ledger with your name, timestamp, and SHA-256 hash.",
+      "Notification — You receive your ledger entry ID and SHA-256 hash."
+    ],
+    "footer": "Sovereign Trace Protocol is the notary. You are the witness.\nSovereign Trace Protocol | Sheldon K. Salmon | aionsystem2026@gmail.com"
+  }
+}
