@@ -1,0 +1,95 @@
+{
+  "id": "07",
+  "name": "general-trace",
+  "label": "GENERAL-TRACE",
+  "title": "[STP-TRACE] — [CATEGORY] — [DATE]",
+  "labels": ["general-trace", "pending-seal"],
+  "assignees": [],
+  "requires_docusign": false,
+  "requires_identity": false,
+  "requires_phi_gate": false,
+  "requires_stripe": false,
+  "requires_prior_seal": false,
+  "requires_auditor_badge": false,
+  "triggers": [],
+  "legal_notice": {
+    "title": "General Trace Seal",
+    "content": [
+      "This form is for anything that needs to be sealed permanently and does not fit a more specific template.",
+      "",
+      "The stamp function does not care what it seals. A sealed moment is a sealed moment.",
+      "",
+      "**Write exactly what is true right now.**",
+      "No narrative arc. No hedging beyond what is genuinely uncertain.",
+      "Present-moment. Exact. Specific. Make it worth sealing."
+    ]
+  },
+  "fields": [
+    {
+      "type": "input",
+      "id": "submitter_name",
+      "label": "Your Name (Optional)",
+      "description": "If provided, becomes part of the permanent record. Leave blank for an anonymous trace.",
+      "placeholder": "First Last or leave blank",
+      "required": false
+    },
+    {
+      "type": "input",
+      "id": "category",
+      "label": "Category",
+      "description": "What kind of trace is this?",
+      "placeholder": "Personal observation / Decision record / Government record / Architectural decision / Other",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "trace_date",
+      "label": "Date of the Moment Being Sealed",
+      "description": "The date this observation, decision, or record was made. Format: YYYY-MM-DD",
+      "placeholder": "2026-03-07",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "trace_entry",
+      "label": "Your Trace Entry",
+      "description": "Write exactly what is true right now. Present-moment. Exact. This is what the seal binds to.",
+      "placeholder": "Write your trace entry here. Exact. Specific. Present-moment.",
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "why_this_matters",
+      "label": "Why This Moment Deserves Sealing (Optional)",
+      "description": "Optional context. Why does this need to be permanently recorded?",
+      "placeholder": "Why does this moment matter enough to seal?",
+      "required": false
+    },
+    {
+      "type": "upload",
+      "id": "supporting_files",
+      "label": "Supporting Files (Optional)",
+      "description": "Upload any files relevant to this trace. These become part of the sealed record.",
+      "required": false
+    },
+    {
+      "type": "checkboxes",
+      "id": "declaration",
+      "label": "Declaration",
+      "options": [
+        "I affirm this entry accurately represents my observation, position, or record at the time of sealing.",
+        "I understand this submission is immutable — it cannot be altered after sealing."
+      ],
+      "required": true
+    }
+  ],
+  "after_submit": {
+    "steps": [
+      "Completeness check — Reviewed for completeness.",
+      "Sealing — Sealed with a FROZEN-2.0 triple-time cryptographic stamp. Permanent.",
+      "Ledger entry — Enters the Sovereign Trace ledger with timestamp and SHA-256 hash.",
+      "Notification — You receive your ledger entry ID and SHA-256 hash."
+    ],
+    "footer": "The seal is permanent. The seal is the resolution.\n\nSovereign Trace Protocol | Sheldon K. Salmon | aionsystem2026@gmail.com"
+  }
+}
