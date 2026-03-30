@@ -1,0 +1,142 @@
+{
+  "id": "10",
+  "name": "audit-request",
+  "label": "AUDIT-REQUEST",
+  "title": "[AUDIT] — [Company Name] — [Tier Selected]",
+  "labels": ["audit-request", "pending-payment-verification"],
+  "assignees": [],
+  "requires_docusign": false,
+  "requires_identity": false,
+  "requires_phi_gate": false,
+  "requires_stripe": true,
+  "requires_prior_seal": false,
+  "requires_auditor_badge": false,
+  "triggers": ["audit request", "certification", "verify", "attest", "audit"],
+  "legal_notice": {
+    "title": "⚠ READ BEFORE SUBMITTING",
+    "content": [
+      "**Intake days: Monday and Tuesday only.**",
+      "Issues submitted on any other day of the week are **voided and non-refundable.**",
+      "No exceptions. No appeals. The schedule is the filter.",
+      "",
+      "**Delivery: Weekends.** Reports are delivered Saturday or Sunday via scheduled reply.",
+      "Standard turnaround is same weekend or following weekend depending on tier and submission date.",
+      "",
+      "**Expedited work** is available at a daily multiplier. Work required in under 4 hours is not accepted.",
+      "",
+      "**Payment verification:** Submit your Stripe transaction code below.",
+      "Send the payment screenshot to the contact email on file.",
+      "I match the transaction code in this issue to your email and Stripe. All three must align before work begins.",
+      "",
+      "If they do not align — the issue is closed. No refund."
+    ]
+  },
+  "fields": [
+    {
+      "type": "input",
+      "id": "company_name",
+      "label": "Company / Organization Name",
+      "placeholder": "Acme AI Corp",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "contact_email",
+      "label": "Contact Email",
+      "description": "Must match the email the payment screenshot was sent from.",
+      "placeholder": "contact@yourcompany.com",
+      "required": true
+    },
+    {
+      "type": "dropdown",
+      "id": "tier",
+      "label": "Audit Tier",
+      "description": "Select the tier that matches your payment.",
+      "options": [
+        "Snapshot — 10 outputs — $2,500",
+        "Standard — 20 outputs — $5,000",
+        "Extended — 30 outputs — $7,500",
+        "Full — 50 outputs — $12,500",
+        "Enterprise — 100 outputs — $25,000"
+      ],
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "transaction_code",
+      "label": "Stripe Transaction Code",
+      "description": "The transaction ID from your Stripe payment. Format: ch_xxxxxxxxxxxxxxxxxxxxxxxx",
+      "placeholder": "ch_3xxxxxxxxxxxxxxxxxxxxxxxxx",
+      "required": true
+    },
+    {
+      "type": "dropdown",
+      "id": "expedited",
+      "label": "Expedited Delivery?",
+      "description": "Standard delivery is weekend. Expedited adds a daily multiplier to the base price. Under 4 hours is not accepted.",
+      "options": [
+        "No — standard weekend delivery",
+        "Yes — 1 week turnaround",
+        "Yes — 3 day turnaround",
+        "Yes — 48 hour turnaround",
+        "Yes — 24 hour turnaround"
+      ],
+      "required": true
+    },
+    {
+      "type": "textarea",
+      "id": "output_description",
+      "label": "AI Outputs to Review",
+      "description": "Briefly describe the outputs. Attach files below. Do not paste raw text here.",
+      "placeholder": "10 GPT-4o outputs from our customer support pipeline, March 2026. PDF attached.",
+      "required": true
+    },
+    {
+      "type": "input",
+      "id": "ai_system",
+      "label": "AI System(s) Used",
+      "placeholder": "GPT-4o, Claude Sonnet, Gemini 1.5 Pro",
+      "required": true
+    },
+    {
+      "type": "upload",
+      "id": "file_upload",
+      "label": "File Upload",
+      "description": "Upload your AI output files here. PDF, screenshots, or exported logs accepted. Max 10 files per submission.",
+      "required": false
+    },
+    {
+      "type": "checkboxes",
+      "id": "schedule_acknowledgment",
+      "label": "Schedule Acknowledgment",
+      "options": [
+        "I understand that intake is Monday and Tuesday only. Submissions on any other day are voided and non-refundable.",
+        "I understand that delivery occurs on weekends and the standard turnaround is same or following weekend.",
+        "I understand that payment verification requires my transaction code in this issue AND a screenshot sent to the contact email. Both must match before work begins.",
+        "I understand that expedited work under 4 hours is not accepted."
+      ],
+      "required": true
+    },
+    {
+      "type": "checkboxes",
+      "id": "legal_declaration",
+      "label": "Legal Declaration",
+      "options": [
+        "I confirm I am authorized to submit these AI outputs for external review. I have read and agree to the Terms of Service.",
+        "I understand that the completed audit report will be sealed using Sovereign Trace Protocol FROZEN-2.0 and permanently recorded in the public ledger."
+      ],
+      "required": true
+    }
+  ],
+  "after_submit": {
+    "steps": [
+      "Payment verification — Stripe transaction code validated against email and screenshot.",
+      "Intake check — Only processed if submitted Monday or Tuesday.",
+      "Audit conducted — Per tier specifications.",
+      "Sealing — Sealed with a FROZEN-2.0 triple-time cryptographic stamp. Permanent.",
+      "Delivery — Report delivered weekend via scheduled reply.",
+      "Notification — You receive your ledger entry ID and SHA-256 hash."
+    ],
+    "footer": "The audit is the record. The seal is the certification.\n\nSovereign Trace Protocol | Sheldon K. Salmon | aionsystem2026@gmail.com"
+  }
+}
