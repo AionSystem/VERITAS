@@ -1,0 +1,12 @@
+{
+  "routes": [
+    {
+      "src": "/certify",
+      "dest": "/public/aion-certify/index.html"
+    },
+    {
+      "src": "/simulator",
+      "dest": "/public/certus-ai/index.html"
+    }
+  ]
+}
