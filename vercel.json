@@ -30,6 +30,14 @@
       "dest": "/api/stp-seal.js"
     },
     {
+      "src": "/api/stp-seal/delete",
+      "dest": "/api/stp-seal.js"
+    },
+    {
+      "src": "/api/stp-seal/consent/withdraw",
+      "dest": "/api/stp-seal.js"
+    },
+    {
       "src": "/api/sync",
       "dest": "/api/sync.js"
     },
@@ -40,6 +48,22 @@
     {
       "src": "/api/(.*)",
       "dest": "/api/$1.js"
+    },
+    {
+      "src": "/certify",
+      "dest": "/public/aion-certify/index.html"
+    },
+    {
+      "src": "/certify/(.*)",
+      "dest": "/public/aion-certify/$1"
+    },
+    {
+      "src": "/simulator",
+      "dest": "/public/certus-ai/index.html"
+    },
+    {
+      "src": "/simulator/(.*)",
+      "dest": "/public/certus-ai/$1"
     },
     {
       "src": "/(.*)",
@@ -66,7 +90,7 @@
       "source": "/api/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS, DELETE" },
         { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
@@ -91,38 +115,4 @@
       "source": "/manifest.json",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=86400" },
-        { "key": "Content-Type", "value": "application/manifest+json" }
-      ]
-    },
-    {
-      "source": "/icons/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
-      ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/certify",
-      "destination": "/public/aion-certify/index.html"
-    },
-    {
-      "source": "/certify/(.*)",
-      "destination": "/public/aion-certify/$1"
-    },
-    {
-      "source": "/simulator",
-      "destination": "/public/certus-ai/index.html"
-    },
-    {
-      "source": "/simulator/(.*)",
-      "destination": "/public/certus-ai/$1"
-    }
-  ],
-  "crons": [
-    {
-      "path": "/api/sync",
-      "schedule": "0 * * * *"
-    }
-  ]
-}
+        { "key": "Content-Type", "value": "application/manifest+json"
