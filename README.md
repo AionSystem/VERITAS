@@ -4,7 +4,7 @@
 
 <!-- STATUS · VERSION · COMPLIANCE -->
 [![Status](https://img.shields.io/badge/STATUS-Production-1976D2?style=flat-square)](https://github.com/AionSystem/VERITAS)
-[![Version](https://img.shields.io/badge/version-v2.5.0-orange)](#)
+[![Version](https://img.shields.io/badge/version-v2.5.1-orange)](#)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](#)
 [![License](https://img.shields.io/github/license/AionSystem/VERITAS?color=blue)](LICENSE)
 [![ORCID — Sheldon K. Salmon](https://img.shields.io/badge/ORCID-0009--0005--8057--5115-a6ce39?style=flat&logo=orcid&logoColor=white)](https://orcid.org/0009-0005-8057-5115)
