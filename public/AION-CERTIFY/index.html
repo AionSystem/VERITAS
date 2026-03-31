@@ -1417,7 +1417,7 @@
   // Prior seal verification (C-06)
   async function verifyPriorSealHash(hash) {
     try {
-      const response = await fetch(`/api/stp-seal/verify?hash=${hash}`);
+      const response = await fetch(`https://veritas-flax-eta.vercel.app/api/stp-seal/verify?hash=${hash}`);
       if (response.ok) {
         const data = await response.json();
         return { valid: true, exists: data.exists, ledgerEntry: data.entry };
