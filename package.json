@@ -1,8 +1,8 @@
 {
   "name": "veritas",
-  "version": "2.5.1",
-  "description": "VERITAS — Community Damage Certification Platform. CERTUS Engine, DCI scoring, offline-first, STP integrity seals. UNDP compliant.",
-  "author": "Sheldon K. Salmon <aionsystem2026@gmail.com>",
+  "version": "2.5.0",
+  "description": "VERITAS — Community Damage Certification Platform",
+  "author": "Sheldon K. Salmon",
   "license": "MIT",
   "type": "module",
   "main": "api/stp-seal.js",
@@ -17,24 +17,9 @@
     "busboy": "^1.6.0"
   },
   "devDependencies": {
-    "vercel": "^32.0.0"
+    "vercel": "^37.0.0"
   },
   "engines": {
-    "node": "24.x"
-  },
-  "keywords": [
-    "disaster-response",
-    "crisis-management",
-    "damage-assessment",
-    "undp",
-    "humanitarian",
-    "offline-first",
-    "pwa",
-    "stp",
-    "sovereign-trace-protocol"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/AionSystem/VERITAS.git"
+    "node": "20.x"
   }
 }
