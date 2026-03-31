@@ -13,8 +13,7 @@
     "deploy": "vercel --prod"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0",
-    "busboy": "^1.6.0"
+    "@supabase/supabase-js": "^2.39.0"
   },
   "devDependencies": {
     "vercel": "^37.0.0"
