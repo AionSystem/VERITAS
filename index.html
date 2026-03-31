@@ -1304,7 +1304,7 @@ async function stampWithSTP() {
   
   try {
     // FIX: Use relative path to local API (same deployment)
-    const response = await fetchWithTimeout('/api/stp-seal', {
+    const response = await fetchWithTimeout('https://veritas-flax-eta.vercel.app/api/stp-seal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
