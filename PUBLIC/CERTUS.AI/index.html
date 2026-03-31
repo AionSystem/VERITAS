@@ -45,7 +45,7 @@
       --font-size-h2: clamp(28px, 4vw + 8px, 44px);
     }
 
-    /* Dark mode theme (H-17) */
+    /* Dark mode theme */
     [data-theme="light"] {
       --bg:#f4f1e8;
       --bg-deep:#ede9dc;
@@ -317,6 +317,32 @@
     .discrimination-warning.show {
       display: block;
     }
+    /* J-09: Filter summary bar */
+    .filter-summary {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 16px;
+      margin-bottom: 20px;
+      font-family: var(--mono);
+      font-size: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .filter-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .filter-tag {
+      background: rgba(240,165,0,0.15);
+      padding: 2px 8px;
+      border-radius: 20px;
+      color: var(--amber);
+    }
     .tooltip-icon {
       cursor: help;
       margin-left: 6px;
@@ -324,7 +350,6 @@
       font-size: 11px;
       border-bottom: 1px dotted var(--amber);
     }
-    /* Mobile tooltip (I-18) */
     .tooltip-icon.mobile-tooltip {
       cursor: pointer;
     }
@@ -385,6 +410,12 @@
       display: flex;
       gap: 8px;
       margin-bottom: 12px;
+    }
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 16px;
     }
     input[type="range"] {
       width: 100%;
@@ -468,6 +499,14 @@
       gap: 8px;
       animation: fadeIn 0.3s ease;
     }
+    .allocation-item .copy-btn {
+      opacity: 0.3;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .allocation-item:hover .copy-btn {
+      opacity: 1;
+    }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(5px); }
       to { opacity: 1; transform: translateY(0); }
@@ -536,10 +575,23 @@
       cursor: pointer;
       margin-bottom: 24px;
       transition: all 0.2s;
+      position: relative;
     }
     .file-zone:hover {
       border-color: var(--amber);
       background: rgba(240,165,0,0.05);
+    }
+    .file-loading {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-size: 11px;
+      gap: 8px;
     }
     .spinner {
       display: inline-block;
@@ -563,6 +615,51 @@
       background: var(--panel);
       border-radius: 8px;
       text-align: center;
+    }
+    .help-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.9);
+      backdrop-filter: blur(8px);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+    .help-modal.show {
+      display: flex;
+    }
+    .help-content {
+      background: var(--surface);
+      border: 1px solid var(--amber);
+      border-radius: 24px;
+      padding: 32px;
+      max-width: 500px;
+      width: 90%;
+    }
+    .help-title {
+      font-family: var(--sans);
+      font-size: 24px;
+      color: var(--amber);
+      margin-bottom: 20px;
+    }
+    .help-section {
+      margin-bottom: 16px;
+    }
+    .help-section h4 {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--amber);
+      margin-bottom: 8px;
+    }
+    .help-section p {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.6;
     }
     .toast-container {
       position: fixed;
@@ -625,6 +722,7 @@
       .stats-grid { grid-template-columns: 1fr; }
       .allocation-item { flex-direction: column; align-items: flex-start; }
       .priority-actions { justify-content: center; }
+      .filter-summary { flex-direction: column; align-items: flex-start; }
     }
   </style>
 </head>
@@ -657,6 +755,8 @@
   <div class="hero">
     <div class="theme-row">
       <button id="themeToggle" class="btn btn-secondary btn-sm">🌓 Light Mode</button>
+      <button id="resetDefaultsBtn" class="btn btn-secondary btn-sm">↺ Reset to Defaults</button>
+      <button id="clearSettingsBtn" class="btn btn-secondary btn-sm">🗑️ Clear Saved Settings</button>
     </div>
     <h1>CERTUS.<em>AI</em></h1>
     <div class="hero-tagline">Confidence‑driven resource allocation simulator</div>
@@ -670,6 +770,7 @@
       • Results show recommended deployment order<br>
       <strong>Reports with SUSPENDED validity appear with red background and are deprioritized.</strong><br>
       <span class="tooltip-icon" title="Weighted DCI = DCI × (1.0 for VALID, 0.8 for DEGRADED, 0.5 for SUSPENDED)">ℹ️ Weighted DCI formula</span>
+      <span class="tooltip-icon" title="Press '?' for keyboard shortcuts">⌨️ Keyboard shortcuts</span>
     </div>
 
     <div class="legal-disclaimer">
@@ -684,6 +785,12 @@
     <div id="discriminationWarning" class="discrimination-warning"></div>
   </div>
 
+  <!-- J-09: Filter summary bar -->
+  <div id="filterSummary" class="filter-summary" style="display: none;">
+    <div class="filter-tags" id="filterTags"></div>
+    <div class="filter-stats" id="filterStats"></div>
+  </div>
+
   <!-- Data source selection -->
   <div class="card">
     <div class="section-title">1. Load Damage Data</div>
@@ -696,6 +803,9 @@
     <div style="display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap;">
       <button class="btn btn-secondary" id="loadFromDBBtn" onclick="loadFromIndexedDB()">📡 Load from VERITAS IndexedDB</button>
       <button class="btn btn-secondary" id="loadDemoBtn" onclick="loadDemoData()">🎮 Load Demo Data</button>
+      <button class="btn btn-secondary" id="exportFullStateBtn" onclick="exportFullState()">💾 Export Full State</button>
+      <button class="btn btn-secondary" id="importFullStateBtn" onclick="document.getElementById('fullStateInput').click()">📥 Import Full State</button>
+      <input type="file" id="fullStateInput" accept=".json" style="display:none" onchange="importFullState(this)">
       <button class="btn btn-secondary" id="exportConfigBtn" onclick="exportConfiguration()">⚙️ Export Config</button>
       <button class="btn btn-secondary" id="importConfigBtn" onclick="document.getElementById('configInput').click()">📥 Import Config</button>
       <input type="file" id="configInput" accept=".json" style="display:none" onchange="importConfiguration(this)">
@@ -756,11 +866,13 @@
     <div class="control-group">
       <label class="control-label">Conflict resolution</label>
       <div class="checkbox-group">
-        <label><input type="radio" name="conflict" value="highest" checked> Use highest DCI</label>
-        <label><input type="radio" name="conflict" value="flag"> Flag for human review</label>
+        <label><input type="radio" name="conflict" value="highest" checked> Use highest DCI <span class="tooltip-icon" title="When multiple reports at same location, use the one with highest DCI">ℹ️</span></label>
+        <label><input type="radio" name="conflict" value="flag"> Flag for human review <span class="tooltip-icon" title="Mark conflicting reports for human review and deprioritize them">ℹ️</span></label>
       </div>
     </div>
-    <button class="btn btn-primary" id="runSimulation" onclick="runSimulation()">Run Simulation →</button>
+    <div class="action-buttons">
+      <button class="btn btn-primary" id="runSimulation" onclick="runSimulation()">Run Simulation →</button>
+    </div>
   </div>
 
   <!-- Map and allocation results -->
@@ -806,6 +918,34 @@
   </footer>
 </div>
 
+<!-- J-19: Help modal -->
+<div id="helpModal" class="help-modal">
+  <div class="help-content">
+    <div class="help-title">⌨️ Keyboard Shortcuts</div>
+    <div class="help-section">
+      <h4>Simulation</h4>
+      <p><kbd>Ctrl</kbd> + <kbd>Enter</kbd> — Run simulation</p>
+    </div>
+    <div class="help-section">
+      <h4>Export</h4>
+      <p><kbd>Ctrl</kbd> + <kbd>S</kbd> — Export full plan</p>
+      <p><kbd>Ctrl</kbd> + <kbd>E</kbd> — Seal plan with STP</p>
+    </div>
+    <div class="help-section">
+      <h4>Priorities</h4>
+      <p><kbd>Ctrl</kbd> + <kbd>A</kbd> — Select all priorities</p>
+      <p><kbd>Ctrl</kbd> + <kbd>D</kbd> — Deselect all priorities</p>
+    </div>
+    <div class="help-section">
+      <h4>Other</h4>
+      <p><kbd>?</kbd> — Show this help menu</p>
+    </div>
+    <div style="margin-top: 20px; text-align: center;">
+      <button class="btn btn-secondary" onclick="closeHelpModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
@@ -836,51 +976,197 @@
   let lastMapBounds = null;
   let mapLoadAttempts = 0;
   let simulationTimeout = null;
+  let isDemoData = false;
+  let defaultDCIWarningsShown = false;
 
-  // I-09: Select all / deselect all priorities
-  function selectAllPriorities() {
-    document.querySelectorAll('#priorityFilters input').forEach(cb => {
-      cb.checked = true;
-    });
-    checkDiscriminationWarning();
-    saveSimulationState();
-    if (document.getElementById('controlsCard').style.display !== 'none') {
-      debouncedRunSimulation();
-    }
-  }
-
-  function deselectAllPriorities() {
-    document.querySelectorAll('#priorityFilters input').forEach(cb => {
-      cb.checked = false;
-    });
-    checkDiscriminationWarning();
-    saveSimulationState();
-    if (document.getElementById('controlsCard').style.display !== 'none') {
-      debouncedRunSimulation();
-    }
-  }
-
-  // I-02: Debounced auto-run
-  let debounceTimer = null;
-  function debouncedRunSimulation() {
-    if (debounceTimer) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      if (document.getElementById('controlsCard').style.display !== 'none') {
-        runSimulation();
+  // J-05: Deduplicate reports by UUID
+  function deduplicateReports(reportArray) {
+    const seen = new Map();
+    const duplicates = [];
+    const unique = [];
+    for (const r of reportArray) {
+      if (seen.has(r.uuid)) {
+        duplicates.push(r.uuid);
+      } else {
+        seen.set(r.uuid, true);
+        unique.push(r);
       }
-    }, 500);
+    }
+    if (duplicates.length > 0) {
+      toast(`⚠️ Removed ${duplicates.length} duplicate report(s) by UUID`, 4000, true);
+    }
+    return unique;
   }
 
-  // I-05: Check extreme thresholds
-  function checkExtremeThreshold(threshold) {
-    if (threshold < 0.1) {
-      toast('⚠️ Very low threshold — many low-confidence reports included. Verify before acting.', 4000, true);
-    } else if (threshold > 0.9) {
-      toast('⚠️ Very high threshold — few reports meet criteria. May miss critical damage.', 4000, true);
+  // J-09: Update filter summary bar
+  function updateFilterSummary() {
+    const threshold = parseFloat(document.getElementById('dciThreshold').value);
+    const resourceCount = parseInt(document.getElementById('resourceCount').value);
+    const priorities = Array.from(document.querySelectorAll('#priorityFilters input:checked')).map(cb => cb.value);
+    const order = document.querySelector('input[name="order"]:checked')?.value || 'weighted';
+    const orderNames = { weighted: 'Weighted DCI', dci: 'Raw DCI', freshness: 'Freshness', certus: 'CERTUS native' };
+    
+    const filterTagsDiv = document.getElementById('filterTags');
+    const filterStatsDiv = document.getElementById('filterStats');
+    
+    filterTagsDiv.innerHTML = `
+      <span class="filter-tag">DCI ≥ ${threshold.toFixed(2)}</span>
+      <span class="filter-tag">Teams: ${resourceCount}</span>
+      <span class="filter-tag">Priorities: ${priorities.join(', ')}</span>
+      <span class="filter-tag">Order: ${orderNames[order]}</span>
+    `;
+    
+    const total = reports.length;
+    const filtered = reports.filter(r => r.dci >= threshold && priorities.includes(r.infraType)).length;
+    filterStatsDiv.innerHTML = `${filtered} / ${total} reports match filters`;
+    
+    document.getElementById('filterSummary').style.display = 'flex';
+  }
+
+  // J-10: Reset to defaults
+  function resetToDefaults() {
+    document.getElementById('dciThreshold').value = '0.4';
+    document.getElementById('thresholdVal').textContent = '0.40';
+    document.getElementById('resourceCount').value = '10';
+    document.getElementById('resourceVal').textContent = '10';
+    document.querySelectorAll('#priorityFilters input').forEach(cb => {
+      cb.checked = ['Residential', 'Medical', 'School', 'Road', 'Bridge', 'Utility'].includes(cb.value);
+    });
+    const weightedRadio = document.querySelector('input[name="order"][value="weighted"]');
+    if (weightedRadio) weightedRadio.checked = true;
+    const highestRadio = document.querySelector('input[name="conflict"][value="highest"]');
+    if (highestRadio) highestRadio.checked = true;
+    saveSimulationState();
+    checkDiscriminationWarning();
+    if (reports.length > 0) {
+      runSimulation();
+    } else {
+      updateFilterSummary();
+      toast('Reset to default parameters', 2000);
     }
   }
 
-  // I-05: Get priority score with validated UM range
+  // J-16: Clear saved settings
+  function clearSavedSettings() {
+    if (confirm('Clear all saved settings? This will reset parameters to defaults.')) {
+      localStorage.removeItem('certus_ai_state');
+      resetToDefaults();
+      toast('Saved settings cleared', 2000);
+    }
+  }
+
+  // J-01: Export full state
+  function exportFullState() {
+    if (reports.length === 0) {
+      toast('No data to export');
+      return;
+    }
+    const state = {
+      version: '1.0',
+      exported_at: new Date().toISOString(),
+      is_demo: isDemoData,
+      reports: reports,
+      parameters: {
+        dciThreshold: parseFloat(document.getElementById('dciThreshold').value),
+        resourceCount: parseInt(document.getElementById('resourceCount').value),
+        priorities: Array.from(document.querySelectorAll('#priorityFilters input:checked')).map(cb => cb.value),
+        order: document.querySelector('input[name="order"]:checked')?.value,
+        conflictMode: document.querySelector('input[name="conflict"]:checked')?.value
+      }
+    };
+    const dataStr = JSON.stringify(state, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `certus-full-state-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('Full state exported');
+  }
+
+  // J-02: Import full state
+  async function importFullState(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'file-loading';
+    loadingDiv.innerHTML = '<span class="spinner"></span> Importing state...';
+    const fileZone = document.getElementById('fileZone');
+    fileZone.style.position = 'relative';
+    fileZone.appendChild(loadingDiv);
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const state = JSON.parse(e.target.result);
+        let loadedReports = state.reports || [];
+        if (state.is_demo) {
+          toast('⚠️ Imported state contains demo data. Verify before using for real decisions.', 5000, true);
+        }
+        loadedReports = deduplicateReports(loadedReports);
+        reports = loadedReports.map(validateReport);
+        isDemoData = state.is_demo || false;
+        
+        if (state.parameters) {
+          document.getElementById('dciThreshold').value = state.parameters.dciThreshold || 0.4;
+          document.getElementById('thresholdVal').textContent = (state.parameters.dciThreshold || 0.4).toFixed(2);
+          document.getElementById('resourceCount').value = state.parameters.resourceCount || 10;
+          document.getElementById('resourceVal').textContent = state.parameters.resourceCount || 10;
+          if (state.parameters.priorities) {
+            document.querySelectorAll('#priorityFilters input').forEach(cb => {
+              cb.checked = state.parameters.priorities.includes(cb.value);
+            });
+          }
+          const orderRadio = document.querySelector(`input[name="order"][value="${state.parameters.order || 'weighted'}"]`);
+          if (orderRadio) orderRadio.checked = true;
+          const conflictRadio = document.querySelector(`input[name="conflict"][value="${state.parameters.conflictMode || 'highest'}"]`);
+          if (conflictRadio) conflictRadio.checked = true;
+        }
+        
+        document.getElementById('loadStatus').innerHTML = `✅ Imported ${reports.length} reports from saved state.`;
+        checkDefaultDCIValues();
+        showSummary();
+        initMap();
+        runSimulation();
+        document.getElementById('clearDataBtn').style.display = 'inline-block';
+        saveSimulationState();
+        toast('Full state imported successfully');
+      } catch (err) {
+        toast('Invalid state file');
+        console.error(err);
+      } finally {
+        loadingDiv.remove();
+      }
+    };
+    reader.readAsText(file);
+    input.value = '';
+  }
+
+  // J-06: Stale demo data warning
+  function checkStaleDemoData() {
+    if (isDemoData && reports.length > 0) {
+      const oldestTimestamp = Math.min(...reports.map(r => new Date(r.timestamp).getTime()));
+      const hoursOld = (Date.now() - oldestTimestamp) / 3600000;
+      if (hoursOld > 24) {
+        toast(`⚠️ Demo data is ${Math.round(hoursOld)} hours old. Refresh demo data for current timestamps.`, 5000, true);
+      }
+    }
+  }
+
+  // J-13: Watermark demo exports
+  function addDemoWatermark(data) {
+    if (isDemoData) {
+      data.is_demo = true;
+      data.warning = "⚠️ This data is synthetic demo data, not real damage reports. Do not use for actual deployment decisions.";
+    }
+    return data;
+  }
+
+  // J-05: Get priority score with validated UM range
   function getPriorityScore(report) {
     let score = report.dci || 0.5;
     const um = Math.min(1, Math.max(0, report.dciUM || 0.3));
@@ -889,7 +1175,7 @@
     return score;
   }
 
-  // I-09: Get marker icon based on infrastructure type
+  // J-09: Get marker icon based on infrastructure type
   function getMarkerIcon(infraType, color) {
     const iconMap = {
       'Medical': '🏥',
@@ -913,70 +1199,26 @@
     });
   }
 
-  // I-18: Mobile tooltip handling
-  function initTooltips() {
-    const tooltips = document.querySelectorAll('.tooltip-icon');
-    if ('ontouchstart' in window) {
-      tooltips.forEach(t => {
-        t.classList.add('mobile-tooltip');
-        t.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const title = t.getAttribute('title');
-          if (title) toast(title, 3000);
-        });
-      });
+  // J-18: Copy to clipboard function
+  function copyToClipboard(text, itemId) {
+    navigator.clipboard.writeText(text).then(() => {
+      toast(`Copied: ${text.substring(0, 50)}...`);
+      const btn = document.querySelector(`.allocation-item[data-idx="${itemId}"] .copy-btn`);
+      if (btn) {
+        btn.textContent = '✓';
+        setTimeout(() => { btn.textContent = '📋'; }, 1000);
+      }
+    }).catch(() => toast('Failed to copy'));
+  }
+
+  // I-05: Check extreme thresholds
+  function checkExtremeThreshold(threshold) {
+    if (threshold < 0.1) {
+      toast('⚠️ Very low threshold — many low-confidence reports included. Verify before acting.', 4000, true);
+    } else if (threshold > 0.9) {
+      toast('⚠️ Very high threshold — few reports meet criteria. May miss critical damage.', 4000, true);
     }
   }
-
-  // I-01: Map initialization with error boundary
-  function initMap() {
-    const mapContainer = document.getElementById('simulateMap');
-    const loadingEl = document.getElementById('mapLoading');
-    loadingEl.style.display = 'flex';
-    
-    try {
-      if (map) {
-        lastMapBounds = map.getBounds();
-        map.remove();
-      }
-      map = L.map('simulateMap').setView([0, 20], 2);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-      }).addTo(map);
-      markerCluster = L.markerClusterGroup();
-      map.addLayer(markerCluster);
-      
-      if (lastMapBounds && lastMapBounds.isValid()) {
-        map.fitBounds(lastMapBounds);
-      }
-      
-      loadingEl.style.display = 'none';
-      mapLoadAttempts = 0;
-    } catch (err) {
-      console.error('Map failed to load:', err);
-      mapLoadAttempts++;
-      loadingEl.style.display = 'none';
-      
-      const errorDiv = document.createElement('div');
-      errorDiv.className = 'map-error';
-      errorDiv.innerHTML = '🗺️ Map unavailable. Please check your internet connection.<br><button class="btn-sm btn-secondary" onclick="retryMapLoad()" style="margin-top:8px;">Retry</button>';
-      mapContainer.parentNode.insertBefore(errorDiv, mapContainer.nextSibling);
-      mapContainer.style.display = 'none';
-      
-      toast('Map failed to load. Retry or continue without map.', 5000, true);
-    }
-  }
-
-  function retryMapLoad() {
-    const errorDiv = document.querySelector('.map-error');
-    if (errorDiv) errorDiv.remove();
-    const mapContainer = document.getElementById('simulateMap');
-    mapContainer.style.display = 'block';
-    initMap();
-    if (reports.length > 0) updateMapWithFiltered();
-  }
-
-  // I-17: Map loading skeleton (shown via CSS)
 
   // I-07: Timestamp validation
   function validateTimestamp(ts) {
@@ -985,7 +1227,6 @@
   }
 
   // I-06: Check for default DCI values
-  let defaultDCIWarningsShown = false;
   function checkDefaultDCIValues() {
     const defaultValues = reports.filter(r => r.dci === 0.5 && !r.originalDCI);
     if (defaultValues.length > 0 && !defaultDCIWarningsShown) {
@@ -1026,7 +1267,6 @@
     };
   }
 
-  // I-01: State persistence with error handling
   function saveSimulationState() {
     try {
       const state = {
@@ -1075,7 +1315,39 @@
     }
   }
 
-  // I-13: Discrimination warning
+  function selectAllPriorities() {
+    document.querySelectorAll('#priorityFilters input').forEach(cb => {
+      cb.checked = true;
+    });
+    checkDiscriminationWarning();
+    saveSimulationState();
+    updateFilterSummary();
+    if (document.getElementById('controlsCard').style.display !== 'none') {
+      debouncedRunSimulation();
+    }
+  }
+
+  function deselectAllPriorities() {
+    document.querySelectorAll('#priorityFilters input').forEach(cb => {
+      cb.checked = false;
+    });
+    checkDiscriminationWarning();
+    saveSimulationState();
+    updateFilterSummary();
+    if (document.getElementById('controlsCard').style.display !== 'none') {
+      debouncedRunSimulation();
+    }
+  }
+
+  function debouncedRunSimulation() {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      if (document.getElementById('controlsCard').style.display !== 'none') {
+        runSimulation();
+      }
+    }, 500);
+  }
+
   function checkDiscriminationWarning() {
     const checkedPriorities = Array.from(document.querySelectorAll('#priorityFilters input:checked')).map(cb => cb.value);
     const criticalInfra = ['Medical', 'School'];
@@ -1089,7 +1361,6 @@
     }
   }
 
-  // I-17: Dark mode toggle
   function initTheme() {
     const savedTheme = localStorage.getItem('certus_ai_theme');
     if (savedTheme === 'light') {
@@ -1114,13 +1385,11 @@
     }
   }
 
-  // I-06: Relative timestamps for demo data
   function getRelativeTimestamp(hoursAgo) {
     return new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString();
   }
 
-  // I-03: Import configuration
-  async function importConfiguration(input) {
+  function importConfiguration(input) {
     const file = input.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -1129,7 +1398,7 @@
         const config = JSON.parse(e.target.result);
         if (config.parameters) {
           document.getElementById('dciThreshold').value = config.parameters.dciThreshold || 0.4;
-          document.getElementById('thresholdVal').textContent = parseFloat(config.parameters.dciThreshold || 0.4).toFixed(2);
+          document.getElementById('thresholdVal').textContent = (config.parameters.dciThreshold || 0.4).toFixed(2);
           document.getElementById('resourceCount').value = config.parameters.resourceCount || 10;
           document.getElementById('resourceVal').textContent = config.parameters.resourceCount || 10;
           if (config.parameters.priorities) {
@@ -1143,16 +1412,17 @@
           if (conflictRadio) conflictRadio.checked = true;
           toast('Configuration imported');
           saveSimulationState();
-          runSimulation();
+          updateFilterSummary();
+          if (reports.length > 0) runSimulation();
         }
       } catch (err) {
         toast('Invalid configuration file');
       }
     };
     reader.readAsText(file);
+    input.value = '';
   }
 
-  // I-02: Export configuration
   function exportConfiguration() {
     const config = {
       generated: new Date().toISOString(),
@@ -1177,7 +1447,7 @@
     toast('Configuration exported');
   }
 
-  // I-06: Demo data with relative timestamps
+  // Demo data with relative timestamps
   const DEMO_REPORTS = [
     { uuid: 'demo-1', lat: 40.7128, lng: -74.0060, dci: 0.85, dciTier: 'high', dciValidity: 'VALID', dciUM: 0.20, infraType: 'Residential', undpTier: 'Partially damaged', timestamp: getRelativeTimestamp(2) },
     { uuid: 'demo-2', lat: 40.7140, lng: -74.0080, dci: 0.62, dciTier: 'watch', dciValidity: 'DEGRADED', dciUM: 0.45, infraType: 'Medical', undpTier: 'Minimal / No damage', timestamp: getRelativeTimestamp(12) },
@@ -1194,18 +1464,22 @@
   }
 
   async function loadDemoData() {
+    isDemoData = true;
     reports = DEMO_REPORTS.map(validateReport);
-    document.getElementById('loadStatus').innerHTML = `🎮 Loaded ${reports.length} demo reports with relative timestamps.`;
+    reports = deduplicateReports(reports);
+    document.getElementById('loadStatus').innerHTML = `🎮 Loaded ${reports.length} demo reports with relative timestamps. ${isDemoData ? '⚠️ This is synthetic data.' : ''}`;
     showSummary();
     initMap();
     runSimulation();
     document.getElementById('clearDataBtn').style.display = 'inline-block';
     saveSimulationState();
+    checkStaleDemoData();
   }
 
   function clearData() {
     if (confirm('Clear all loaded data? This cannot be undone.')) {
       reports = [];
+      isDemoData = false;
       allocationResult = [];
       if (map && markerCluster) {
         markerCluster.clearLayers();
@@ -1215,6 +1489,7 @@
       document.getElementById('resultsCard').style.display = 'none';
       document.getElementById('loadStatus').innerHTML = '';
       document.getElementById('clearDataBtn').style.display = 'none';
+      document.getElementById('filterSummary').style.display = 'none';
       defaultDCIWarningsShown = false;
       toast('Data cleared');
     }
@@ -1223,6 +1498,14 @@
   async function loadFromFile(input) {
     const file = input.files[0];
     if (!file) return;
+    
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'file-loading';
+    loadingDiv.innerHTML = '<span class="spinner"></span> Loading file...';
+    const fileZone = document.getElementById('fileZone');
+    fileZone.style.position = 'relative';
+    fileZone.appendChild(loadingDiv);
+    
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
@@ -1231,8 +1514,10 @@
         if (rawReports.length > 5000) {
           toast(`⚠️ Large dataset (${rawReports.length} reports). May affect performance.`, 5000, true);
         }
+        rawReports = deduplicateReports(rawReports);
         reports = rawReports.map(validateReport);
-        document.getElementById('loadStatus').innerHTML = `✅ Loaded ${reports.length} reports from file.`;
+        isDemoData = data.is_demo || false;
+        document.getElementById('loadStatus').innerHTML = `✅ Loaded ${reports.length} reports from file.${isDemoData ? ' ⚠️ This is synthetic demo data.' : ''}`;
         checkDefaultDCIValues();
         showSummary();
         initMap();
@@ -1242,9 +1527,12 @@
       } catch (err) {
         toast('Invalid JSON file');
         console.error(err);
+      } finally {
+        loadingDiv.remove();
       }
     };
     reader.readAsText(file);
+    input.value = '';
   }
 
   async function loadFromIndexedDB() {
@@ -1278,7 +1566,9 @@
         toast(`⚠️ Large dataset (${all.length} reports). May affect performance.`, 5000, true);
       }
       
-      reports = all.map(validateReport);
+      const deduped = deduplicateReports(all);
+      reports = deduped.map(validateReport);
+      isDemoData = false;
       document.getElementById('loadStatus').innerHTML = `✅ Loaded ${reports.length} reports from VERITAS database.`;
       checkDefaultDCIValues();
       showSummary();
@@ -1308,6 +1598,53 @@
     document.getElementById('statNoCoords').textContent = noCoords;
     document.getElementById('summaryCard').style.display = 'block';
     document.getElementById('controlsCard').style.display = 'block';
+  }
+
+  function initMap() {
+    const mapContainer = document.getElementById('simulateMap');
+    const loadingEl = document.getElementById('mapLoading');
+    loadingEl.style.display = 'flex';
+    
+    try {
+      if (map) {
+        lastMapBounds = map.getBounds();
+        map.remove();
+      }
+      map = L.map('simulateMap').setView([0, 20], 2);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+      markerCluster = L.markerClusterGroup();
+      map.addLayer(markerCluster);
+      
+      if (lastMapBounds && lastMapBounds.isValid()) {
+        map.fitBounds(lastMapBounds);
+      }
+      
+      loadingEl.style.display = 'none';
+      mapLoadAttempts = 0;
+    } catch (err) {
+      console.error('Map failed to load:', err);
+      mapLoadAttempts++;
+      loadingEl.style.display = 'none';
+      
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'map-error';
+      errorDiv.innerHTML = '🗺️ Map unavailable. Please check your internet connection.<br><button class="btn-sm btn-secondary" onclick="retryMapLoad()" style="margin-top:8px;">Retry</button>';
+      mapContainer.parentNode.insertBefore(errorDiv, mapContainer.nextSibling);
+      mapContainer.style.display = 'none';
+      
+      toast('Map failed to load. Retry or continue without map.', 5000, true);
+    }
+  }
+
+  function retryMapLoad() {
+    const errorDiv = document.querySelector('.map-error');
+    if (errorDiv) errorDiv.remove();
+    const mapContainer = document.getElementById('simulateMap');
+    mapContainer.style.display = 'block';
+    initMap();
+    if (reports.length > 0) updateMapWithFiltered();
   }
 
   function updateMapWithFiltered() {
@@ -1370,7 +1707,6 @@
     }));
   }
 
-  // I-10: Excluded reports summary
   function updateExcludedSummary(filteredCount) {
     const total = reports.length;
     const excluded = total - filteredCount;
@@ -1396,6 +1732,7 @@
     checkExtremeThreshold(threshold);
     checkDiscriminationWarning();
     saveSimulationState();
+    checkStaleDemoData();
     
     setTimeout(() => {
       try {
@@ -1423,6 +1760,7 @@
 
         allocationResult = candidates.slice(0, resourceCount);
         updateMapWithFiltered();
+        updateFilterSummary();
 
         const listDiv = document.getElementById('allocationList');
         if (allocationResult.length === 0) {
@@ -1432,10 +1770,11 @@
             const validityClass = r.dciValidity === 'SUSPENDED' ? 'suspended' : (r.dciValidity === 'DEGRADED' ? 'degraded' : '');
             const conflictFlag = r.conflictFlagged ? ' ⚠️ CONFLICT' : '';
             const ci = `±${Math.round((r.dciUM || 0.3) * 100)}%`;
+            const copyText = `${r.undpTier} · ${r.infraType} | DCI: ${r.dci.toFixed(3)} ${ci} | Validity: ${r.dciValidity}`;
             return `
-              <div class="allocation-item ${validityClass}">
+              <div class="allocation-item ${validityClass}" data-idx="${idx}">
                 <span>${idx+1}. ${r.undpTier} · ${r.infraType}${conflictFlag}</span>
-                <span>DCI ${r.dci.toFixed(3)} ${ci} | ${r.dciValidity || 'UNKNOWN'}</span>
+                <span>DCI ${r.dci.toFixed(3)} ${ci} | ${r.dciValidity || 'UNKNOWN'} <span class="copy-btn" onclick="copyToClipboard('${copyText.replace(/'/g, "\\'")}', ${idx})">📋</span></span>
               </div>
             `;
           }).join('');
@@ -1457,7 +1796,6 @@
     }, 50);
   }
 
-  // I-13: Export with sensitive data warning (full)
   function exportPlan() {
     if (!allocationResult.length) {
       toast('No allocation to export');
@@ -1468,7 +1806,7 @@
       return;
     }
     
-    const plan = {
+    let plan = {
       generated: new Date().toISOString(),
       parameters: {
         dciThreshold: parseFloat(document.getElementById('dciThreshold').value),
@@ -1491,6 +1829,9 @@
         conflictFlagged: r.conflictFlagged || false
       }))
     };
+    
+    plan = addDemoWatermark(plan);
+    
     const dataStr = JSON.stringify(plan, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1504,14 +1845,13 @@
     toast('Plan exported');
   }
 
-  // I-14: Anonymized export (minimal, no UUIDs)
   function exportPlanMinimal() {
     if (!allocationResult.length) {
       toast('No allocation to export');
       return;
     }
     
-    const plan = {
+    let plan = {
       generated: new Date().toISOString(),
       parameters: {
         dciThreshold: parseFloat(document.getElementById('dciThreshold').value),
@@ -1531,6 +1871,9 @@
         timestamp: r.timestamp
       }))
     };
+    
+    plan = addDemoWatermark(plan);
+    
     const dataStr = JSON.stringify(plan, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1613,41 +1956,56 @@
     }, duration);
   }
 
+  // J-19: Help modal
+  function showHelpModal() {
+    document.getElementById('helpModal').classList.add('show');
+  }
+  function closeHelpModal() {
+    document.getElementById('helpModal').classList.remove('show');
+  }
+
   // Event listeners
   document.getElementById('dciThreshold').addEventListener('input', (e) => {
     document.getElementById('thresholdVal').textContent = parseFloat(e.target.value).toFixed(2);
     saveSimulationState();
     checkExtremeThreshold(parseFloat(e.target.value));
+    updateFilterSummary();
     debouncedRunSimulation();
   });
   document.getElementById('resourceCount').addEventListener('input', (e) => {
     document.getElementById('resourceVal').textContent = e.target.value;
     saveSimulationState();
+    updateFilterSummary();
     debouncedRunSimulation();
   });
   document.querySelectorAll('#priorityFilters input').forEach(cb => {
     cb.addEventListener('change', () => {
       saveSimulationState();
       checkDiscriminationWarning();
+      updateFilterSummary();
       debouncedRunSimulation();
     });
   });
   document.querySelectorAll('input[name="order"]').forEach(radio => {
     radio.addEventListener('change', () => {
       saveSimulationState();
+      updateFilterSummary();
       debouncedRunSimulation();
     });
   });
   document.querySelectorAll('input[name="conflict"]').forEach(radio => {
     radio.addEventListener('change', () => {
       saveSimulationState();
+      updateFilterSummary();
       debouncedRunSimulation();
     });
   });
   document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+  document.getElementById('resetDefaultsBtn').addEventListener('click', resetToDefaults);
+  document.getElementById('clearSettingsBtn').addEventListener('click', clearSavedSettings);
   document.getElementById('runSimulation').addEventListener('click', runSimulation);
 
-  // I-11: Keyboard shortcuts
+  // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key === 'Enter') {
       e.preventDefault();
@@ -1671,6 +2029,10 @@
       e.preventDefault();
       deselectAllPriorities();
     }
+    if (e.key === '?') {
+      e.preventDefault();
+      showHelpModal();
+    }
   });
 
   // Service Worker registration
@@ -1685,6 +2047,20 @@
   initTheme();
   checkDiscriminationWarning();
   initTooltips();
+
+  function initTooltips() {
+    const tooltips = document.querySelectorAll('.tooltip-icon');
+    if ('ontouchstart' in window) {
+      tooltips.forEach(t => {
+        t.classList.add('mobile-tooltip');
+        t.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const title = t.getAttribute('title');
+          if (title) toast(title, 3000);
+        });
+      });
+    }
+  }
 
   // ==================== BACKGROUND CANVAS ====================
   const canvas = document.getElementById('hero-canvas');
