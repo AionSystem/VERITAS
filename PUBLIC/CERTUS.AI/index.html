@@ -8,6 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="description" content="CERTUS.AI — Confidence‑driven resource allocation simulator. Part of the VERITAS ecosystem.">
   <title>CERTUS.AI — Resource Simulator</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:ital,wght@0,300;0,400;0,600;0,700;0,900;1,300&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -44,6 +45,18 @@
       --font-size-h2: clamp(28px, 4vw + 8px, 44px);
     }
 
+    /* Dark mode theme (H-17) */
+    [data-theme="light"] {
+      --bg:#f4f1e8;
+      --bg-deep:#ede9dc;
+      --surface:#e5e0d0;
+      --panel:#dbd5c4;
+      --border:#c0b8a0;
+      --text:#1a1810;
+      --muted:#5a5040;
+      --dim:#a09880;
+    }
+
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     html{scroll-behavior:smooth;}
     body{
@@ -54,7 +67,7 @@
       line-height:1.5;
       overflow-x:hidden;
       cursor:none;
-      transition:background 0.5s ease;
+      transition:background 0.5s ease, color 0.3s ease;
     }
     body::before{
       content:'';
@@ -262,8 +275,13 @@
       letter-spacing: 2px;
       margin-bottom: 32px;
     }
-
-    /* Info panel (G-09) */
+    .theme-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
     .info-panel {
       background: rgba(240,165,0,0.08);
       border-left: 3px solid var(--amber);
@@ -274,8 +292,6 @@
       font-size: 11px;
       line-height: 1.6;
     }
-
-    /* Legal disclaimer (G-13, G-14) */
     .legal-disclaimer {
       background: rgba(255,77,77,0.08);
       border-left: 3px solid var(--red);
@@ -287,13 +303,38 @@
       color: var(--muted);
       line-height: 1.5;
     }
-
+    .discrimination-warning {
+      background: rgba(255,77,77,0.15);
+      border-left: 3px solid var(--red);
+      padding: 12px;
+      margin-bottom: 16px;
+      border-radius: 8px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--red);
+      display: none;
+    }
+    .discrimination-warning.show {
+      display: block;
+    }
+    .tooltip-icon {
+      cursor: help;
+      margin-left: 6px;
+      color: var(--amber);
+      font-size: 11px;
+      border-bottom: 1px dotted var(--amber);
+    }
+    /* Mobile tooltip (I-18) */
+    .tooltip-icon.mobile-tooltip {
+      cursor: pointer;
+    }
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 24px;
       padding: 28px;
       margin: 24px 0;
+      transition: background 0.3s ease, border-color 0.3s ease;
     }
     .section-title {
       font-family: var(--sans);
@@ -340,6 +381,11 @@
       margin-bottom: 8px;
       display: block;
     }
+    .priority-actions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
     input[type="range"] {
       width: 100%;
       accent-color: var(--amber);
@@ -361,6 +407,40 @@
       align-items: center;
       gap: 6px;
       font-size: 13px;
+    }
+    .map-container {
+      position: relative;
+      min-height: 400px;
+    }
+    .map-loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--panel);
+      padding: 12px 24px;
+      border-radius: 40px;
+      font-family: var(--mono);
+      font-size: 11px;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--border);
+    }
+    .map-error {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255,77,77,0.9);
+      color: #fff;
+      padding: 16px 24px;
+      border-radius: 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      text-align: center;
+      z-index: 10;
     }
     #simulateMap {
       height: 400px;
@@ -384,6 +464,13 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     .allocation-item:last-child {
       border-bottom: none;
@@ -437,6 +524,10 @@
     .btn-danger:hover {
       background: #cc0000;
     }
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 10px;
+    }
     .file-zone {
       border: 2px dashed var(--border);
       border-radius: 16px;
@@ -463,6 +554,16 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
+    .excluded-summary {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 12px;
+      padding: 8px;
+      background: var(--panel);
+      border-radius: 8px;
+      text-align: center;
+    }
     .toast-container {
       position: fixed;
       bottom: 24px;
@@ -486,6 +587,10 @@
       color: var(--text);
       animation: toastIn 0.3s var(--ease);
       pointer-events: none;
+    }
+    .toast.warning {
+      border-color: var(--amber);
+      color: var(--amber);
     }
     @keyframes toastIn {
       from { opacity: 0; transform: translateY(10px); }
@@ -518,10 +623,12 @@
       .nav-hamburger { display: flex; }
       .wrapper { padding: 0 20px; }
       .stats-grid { grid-template-columns: 1fr; }
+      .allocation-item { flex-direction: column; align-items: flex-start; }
+      .priority-actions { justify-content: center; }
     }
   </style>
 </head>
-<body>
+<body data-theme="dark">
 <canvas id="hero-canvas"></canvas>
 <div class="custom-cursor" id="custom-cursor"></div>
 
@@ -548,28 +655,33 @@
   </div>
 
   <div class="hero">
+    <div class="theme-row">
+      <button id="themeToggle" class="btn btn-secondary btn-sm">🌓 Light Mode</button>
+    </div>
     <h1>CERTUS.<em>AI</em></h1>
     <div class="hero-tagline">Confidence‑driven resource allocation simulator</div>
     
-    <!-- Info panel (G-09) -->
     <div class="info-panel">
       <strong>🤔 How this simulator works:</strong><br>
       • Load damage reports from VERITAS (JSON export or IndexedDB)<br>
       • Filter reports by DCI threshold and infrastructure type<br>
-      • Sort by confidence (DCI × validity weight) or freshness<br>
+      • Sort by confidence (DCI × validity status) or freshness<br>
       • Allocate available teams to highest-priority reports<br>
       • Results show recommended deployment order<br>
-      <strong>Reports with SUSPENDED validity appear with red background and are deprioritized.</strong>
+      <strong>Reports with SUSPENDED validity appear with red background and are deprioritized.</strong><br>
+      <span class="tooltip-icon" title="Weighted DCI = DCI × (1.0 for VALID, 0.8 for DEGRADED, 0.5 for SUSPENDED)">ℹ️ Weighted DCI formula</span>
     </div>
 
-    <!-- Legal disclaimer (G-13, G-14) -->
     <div class="legal-disclaimer">
       <strong>⚠️ DECISION-SUPPORT ONLY</strong><br>
       This simulation assists human judgment — it does not replace it.<br>
       <strong>Do not use this simulation for life-critical decisions without human verification.</strong><br>
       Final deployment decisions require field verification, especially for REVIEW REQUIRED reports.<br>
-      All data processed locally in your browser. No data is sent to any server except when explicitly sealing a plan with STP.
+      <strong>Data stored only in your browser.</strong> Clear browser data to remove saved reports and settings.<br>
+      <strong>Note on algorithmic bias:</strong> Reports with high uncertainty are deprioritized. This may delay response to areas with limited connectivity or few reporters.
     </div>
+
+    <div id="discriminationWarning" class="discrimination-warning"></div>
   </div>
 
   <!-- Data source selection -->
@@ -581,9 +693,12 @@
       <input type="file" id="fileInput" accept=".json" style="display:none" onchange="loadFromFile(this)">
     </div>
     <div id="loadStatus" style="font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 8px;"></div>
-    <div style="display: flex; gap: 12px; margin-top: 12px;">
+    <div style="display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap;">
       <button class="btn btn-secondary" id="loadFromDBBtn" onclick="loadFromIndexedDB()">📡 Load from VERITAS IndexedDB</button>
       <button class="btn btn-secondary" id="loadDemoBtn" onclick="loadDemoData()">🎮 Load Demo Data</button>
+      <button class="btn btn-secondary" id="exportConfigBtn" onclick="exportConfiguration()">⚙️ Export Config</button>
+      <button class="btn btn-secondary" id="importConfigBtn" onclick="document.getElementById('configInput').click()">📥 Import Config</button>
+      <input type="file" id="configInput" accept=".json" style="display:none" onchange="importConfiguration(this)">
       <button class="btn btn-danger" id="clearDataBtn" onclick="clearData()" style="display: none;">🗑️ Clear Data</button>
     </div>
   </div>
@@ -616,6 +731,10 @@
     </div>
     <div class="control-group">
       <label class="control-label">Infrastructure priority (select at least one)</label>
+      <div class="priority-actions">
+        <button class="btn-sm btn-secondary" id="selectAllBtn" onclick="selectAllPriorities()">Select All</button>
+        <button class="btn-sm btn-secondary" id="deselectAllBtn" onclick="deselectAllPriorities()">Deselect All</button>
+      </div>
       <div class="checkbox-group" id="priorityFilters">
         <label><input type="checkbox" value="Residential" checked> Residential</label>
         <label><input type="checkbox" value="Medical" checked> Medical</label>
@@ -628,7 +747,7 @@
     <div class="control-group">
       <label class="control-label">Prioritization order</label>
       <div class="checkbox-group">
-        <label><input type="radio" name="order" value="weighted" checked> Weighted DCI (DCI × validity status)</label>
+        <label><input type="radio" name="order" value="weighted" checked> Weighted DCI (DCI × validity status) <span class="tooltip-icon" title="VALID=1.0, DEGRADED=0.8, SUSPENDED=0.5">ℹ️</span></label>
         <label><input type="radio" name="order" value="dci"> Raw DCI first (highest confidence)</label>
         <label><input type="radio" name="order" value="freshness"> Freshness first (newest)</label>
         <label><input type="radio" name="order" value="certus"> CERTUS native (includes freshness decay)</label>
@@ -647,15 +766,22 @@
   <!-- Map and allocation results -->
   <div id="resultsCard" class="card" style="display: none;">
     <div class="section-title">4. Allocation Results</div>
-    <div id="simulateMap"></div>
+    <div class="map-container">
+      <div id="simulateMap"></div>
+      <div id="mapLoading" class="map-loading" style="display: none;">
+        <span class="spinner"></span> Loading map...
+      </div>
+    </div>
     <div class="control-group">
       <label class="control-label">Deployment plan (sorted by priority)</label>
       <div id="allocationList" class="allocation-list">
         <div style="text-align: center; padding: 20px;">Run simulation to see suggested deployment order.</div>
       </div>
     </div>
+    <div id="excludedSummary" class="excluded-summary" style="display: none;"></div>
     <div style="display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap;">
       <button class="btn btn-secondary" id="exportPlanBtn" onclick="exportPlan()" style="display: none;">📄 Export plan (JSON)</button>
+      <button class="btn btn-secondary" id="exportMinimalBtn" onclick="exportPlanMinimal()" style="display: none;">🔒 Export anonymized (minimal)</button>
       <button class="btn btn-secondary" id="certifyPlanBtn" onclick="certifyPlan()" style="display: none;">🔒 Seal plan with STP</button>
     </div>
   </div>
@@ -707,85 +833,393 @@
   let markerCluster = null;
   let allocationResult = [];
   let isLoading = false;
+  let lastMapBounds = null;
+  let mapLoadAttempts = 0;
+  let simulationTimeout = null;
 
-  // Demo data (G-12)
-  const DEMO_REPORTS = [
-    { uuid: 'demo-1', lat: 40.7128, lng: -74.0060, dci: 0.85, dciTier: 'high', dciValidity: 'VALID', dciUM: 0.20, infraType: 'Residential', undpTier: 'Partially damaged', timestamp: new Date().toISOString() },
-    { uuid: 'demo-2', lat: 40.7140, lng: -74.0080, dci: 0.62, dciTier: 'watch', dciValidity: 'DEGRADED', dciUM: 0.45, infraType: 'Medical', undpTier: 'Minimal / No damage', timestamp: new Date().toISOString() },
-    { uuid: 'demo-3', lat: 40.7100, lng: -74.0100, dci: 0.35, dciTier: 'review', dciValidity: 'SUSPENDED', dciUM: 0.65, infraType: 'School', undpTier: 'Completely damaged', timestamp: new Date(Date.now() - 86400000).toISOString() },
-    { uuid: 'demo-4', lat: 40.7150, lng: -74.0050, dci: 0.78, dciTier: 'high', dciValidity: 'VALID', dciUM: 0.25, infraType: 'Bridge', undpTier: 'Partially damaged', timestamp: new Date().toISOString() },
-    { uuid: 'demo-5', lat: 40.7180, lng: -74.0120, dci: 0.55, dciTier: 'watch', dciValidity: 'DEGRADED', dciUM: 0.50, infraType: 'Utility', undpTier: 'Minimal / No damage', timestamp: new Date().toISOString() },
-    { uuid: 'demo-6', lat: null, lng: null, textLocation: 'Near central market', dci: 0.72, dciTier: 'high', dciValidity: 'VALID', dciUM: 0.30, infraType: 'Residential', undpTier: 'Completely damaged', timestamp: new Date().toISOString(), noCoords: true }
-  ];
-
-  // Helper functions
-  function getColorForDCI(dci) {
-    if (dci >= 0.70) return '#f0a500';
-    if (dci >= 0.40) return '#e87c1e';
-    return '#e84040';
+  // I-09: Select all / deselect all priorities
+  function selectAllPriorities() {
+    document.querySelectorAll('#priorityFilters input').forEach(cb => {
+      cb.checked = true;
+    });
+    checkDiscriminationWarning();
+    saveSimulationState();
+    if (document.getElementById('controlsCard').style.display !== 'none') {
+      debouncedRunSimulation();
+    }
   }
 
-  // G-05: Get priority score with UM weighting
+  function deselectAllPriorities() {
+    document.querySelectorAll('#priorityFilters input').forEach(cb => {
+      cb.checked = false;
+    });
+    checkDiscriminationWarning();
+    saveSimulationState();
+    if (document.getElementById('controlsCard').style.display !== 'none') {
+      debouncedRunSimulation();
+    }
+  }
+
+  // I-02: Debounced auto-run
+  let debounceTimer = null;
+  function debouncedRunSimulation() {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      if (document.getElementById('controlsCard').style.display !== 'none') {
+        runSimulation();
+      }
+    }, 500);
+  }
+
+  // I-05: Check extreme thresholds
+  function checkExtremeThreshold(threshold) {
+    if (threshold < 0.1) {
+      toast('⚠️ Very low threshold — many low-confidence reports included. Verify before acting.', 4000, true);
+    } else if (threshold > 0.9) {
+      toast('⚠️ Very high threshold — few reports meet criteria. May miss critical damage.', 4000, true);
+    }
+  }
+
+  // I-05: Get priority score with validated UM range
   function getPriorityScore(report) {
     let score = report.dci || 0.5;
-    // Weight by validity status (G-05)
-    if (report.dciValidity === 'DEGRADED') score *= 0.8;
-    if (report.dciValidity === 'SUSPENDED') score *= 0.5;
+    const um = Math.min(1, Math.max(0, report.dciUM || 0.3));
+    if (um > 0.6) score *= 0.5;
+    else if (um > 0.35) score *= 0.8;
     return score;
   }
 
-  // G-07: CERTUS native freshness decay
+  // I-09: Get marker icon based on infrastructure type
+  function getMarkerIcon(infraType, color) {
+    const iconMap = {
+      'Medical': '🏥',
+      'School': '🏫',
+      'Residential': '🏠',
+      'Road': '🛣️',
+      'Bridge': '🌉',
+      'Utility': '⚡',
+      'Commercial': '🏪',
+      'Government': '🏛️',
+      'Transport': '🚂',
+      'Community': '🏘️',
+      'Public': '⛲'
+    };
+    const iconChar = iconMap[infraType] || '📍';
+    return L.divIcon({
+      className: '',
+      html: `<div style="width:20px;height:20px;background:${color};border-radius:50%;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-size:10px;">${iconChar}</div>`,
+      iconSize: [20, 20],
+      popupAnchor: [0, -10]
+    });
+  }
+
+  // I-18: Mobile tooltip handling
+  function initTooltips() {
+    const tooltips = document.querySelectorAll('.tooltip-icon');
+    if ('ontouchstart' in window) {
+      tooltips.forEach(t => {
+        t.classList.add('mobile-tooltip');
+        t.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const title = t.getAttribute('title');
+          if (title) toast(title, 3000);
+        });
+      });
+    }
+  }
+
+  // I-01: Map initialization with error boundary
+  function initMap() {
+    const mapContainer = document.getElementById('simulateMap');
+    const loadingEl = document.getElementById('mapLoading');
+    loadingEl.style.display = 'flex';
+    
+    try {
+      if (map) {
+        lastMapBounds = map.getBounds();
+        map.remove();
+      }
+      map = L.map('simulateMap').setView([0, 20], 2);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+      markerCluster = L.markerClusterGroup();
+      map.addLayer(markerCluster);
+      
+      if (lastMapBounds && lastMapBounds.isValid()) {
+        map.fitBounds(lastMapBounds);
+      }
+      
+      loadingEl.style.display = 'none';
+      mapLoadAttempts = 0;
+    } catch (err) {
+      console.error('Map failed to load:', err);
+      mapLoadAttempts++;
+      loadingEl.style.display = 'none';
+      
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'map-error';
+      errorDiv.innerHTML = '🗺️ Map unavailable. Please check your internet connection.<br><button class="btn-sm btn-secondary" onclick="retryMapLoad()" style="margin-top:8px;">Retry</button>';
+      mapContainer.parentNode.insertBefore(errorDiv, mapContainer.nextSibling);
+      mapContainer.style.display = 'none';
+      
+      toast('Map failed to load. Retry or continue without map.', 5000, true);
+    }
+  }
+
+  function retryMapLoad() {
+    const errorDiv = document.querySelector('.map-error');
+    if (errorDiv) errorDiv.remove();
+    const mapContainer = document.getElementById('simulateMap');
+    mapContainer.style.display = 'block';
+    initMap();
+    if (reports.length > 0) updateMapWithFiltered();
+  }
+
+  // I-17: Map loading skeleton (shown via CSS)
+
+  // I-07: Timestamp validation
+  function validateTimestamp(ts) {
+    const date = new Date(ts);
+    return isNaN(date.getTime()) ? new Date().toISOString() : ts;
+  }
+
+  // I-06: Check for default DCI values
+  let defaultDCIWarningsShown = false;
+  function checkDefaultDCIValues() {
+    const defaultValues = reports.filter(r => r.dci === 0.5 && !r.originalDCI);
+    if (defaultValues.length > 0 && !defaultDCIWarningsShown) {
+      defaultDCIWarningsShown = true;
+      toast(`⚠️ ${defaultValues.length} report(s) have default DCI values (0.5). Original data may be missing.`, 5000, true);
+    }
+  }
+
   function getFreshnessWeight(timestamp) {
-    const hoursElapsed = (Date.now() - new Date(timestamp).getTime()) / 3600000;
+    const validTs = validateTimestamp(timestamp);
+    const hoursElapsed = (Date.now() - new Date(validTs).getTime()) / 3600000;
     return Math.max(0, 1 - (hoursElapsed / 48));
   }
 
-  // Validate report data (G-03)
   function validateReport(r) {
+    const um = Math.min(1, Math.max(0, r.dciUM || 0.3));
+    let validity = r.dciValidity;
+    if (um > 0.6) validity = 'SUSPENDED';
+    else if (um > 0.35) validity = 'DEGRADED';
+    else validity = 'VALID';
+    
+    const originalDCI = r.dci;
+    let dci = typeof r.dci === 'number' ? Math.min(1, Math.max(0, r.dci)) : 0.5;
+    
     return {
       ...r,
-      dci: typeof r.dci === 'number' ? r.dci : 0.5,
-      dciTier: r.dciTier || (r.dci >= 0.70 ? 'high' : r.dci >= 0.40 ? 'watch' : 'review'),
-      dciValidity: r.dciValidity || (r.dci >= 0.70 ? 'VALID' : r.dci >= 0.40 ? 'DEGRADED' : 'SUSPENDED'),
-      dciUM: typeof r.dciUM === 'number' ? r.dciUM : 0.3,
+      dci: dci,
+      originalDCI: originalDCI !== dci ? originalDCI : undefined,
+      dciTier: r.dciTier || (dci >= 0.70 ? 'high' : dci >= 0.40 ? 'watch' : 'review'),
+      dciValidity: validity,
+      dciUM: um,
       lat: r.lat || null,
       lng: r.lng || null,
-      timestamp: r.timestamp || new Date().toISOString(),
+      timestamp: validateTimestamp(r.timestamp),
       infraType: r.infraType || r.infrastructure || 'Unknown',
       undpTier: r.undpTier || r.undp_damage || 'Unknown',
       uuid: r.uuid || `local-${Date.now()}-${Math.random()}`
     };
   }
 
-  // Load demo data (G-12)
+  // I-01: State persistence with error handling
+  function saveSimulationState() {
+    try {
+      const state = {
+        dciThreshold: document.getElementById('dciThreshold').value,
+        resourceCount: document.getElementById('resourceCount').value,
+        priorities: Array.from(document.querySelectorAll('#priorityFilters input:checked')).map(cb => cb.value),
+        order: document.querySelector('input[name="order"]:checked')?.value || 'weighted',
+        conflictMode: document.querySelector('input[name="conflict"]:checked')?.value || 'highest'
+      };
+      localStorage.setItem('certus_ai_state', JSON.stringify(state));
+    } catch (err) {
+      console.warn('Failed to save state:', err);
+      toast('Could not save settings. Storage may be full.', 3000, true);
+    }
+  }
+
+  function loadSimulationState() {
+    try {
+      const saved = localStorage.getItem('certus_ai_state');
+      if (saved) {
+        const state = JSON.parse(saved);
+        if (state.dciThreshold) {
+          document.getElementById('dciThreshold').value = state.dciThreshold;
+          document.getElementById('thresholdVal').textContent = parseFloat(state.dciThreshold).toFixed(2);
+        }
+        if (state.resourceCount) {
+          document.getElementById('resourceCount').value = state.resourceCount;
+          document.getElementById('resourceVal').textContent = state.resourceCount;
+        }
+        if (state.priorities) {
+          document.querySelectorAll('#priorityFilters input').forEach(cb => {
+            cb.checked = state.priorities.includes(cb.value);
+          });
+        }
+        if (state.order) {
+          const orderRadio = document.querySelector(`input[name="order"][value="${state.order}"]`);
+          if (orderRadio) orderRadio.checked = true;
+        }
+        if (state.conflictMode) {
+          const conflictRadio = document.querySelector(`input[name="conflict"][value="${state.conflictMode}"]`);
+          if (conflictRadio) conflictRadio.checked = true;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load state:', err);
+    }
+  }
+
+  // I-13: Discrimination warning
+  function checkDiscriminationWarning() {
+    const checkedPriorities = Array.from(document.querySelectorAll('#priorityFilters input:checked')).map(cb => cb.value);
+    const criticalInfra = ['Medical', 'School'];
+    const excluded = criticalInfra.filter(c => !checkedPriorities.includes(c));
+    const warningDiv = document.getElementById('discriminationWarning');
+    if (excluded.length > 0) {
+      warningDiv.innerHTML = `⚠️ Note: You have excluded [${excluded.join(', ')}] from prioritization. This may result in delayed response to critical infrastructure. Review your priorities to ensure equitable resource allocation.`;
+      warningDiv.classList.add('show');
+    } else {
+      warningDiv.classList.remove('show');
+    }
+  }
+
+  // I-17: Dark mode toggle
+  function initTheme() {
+    const savedTheme = localStorage.getItem('certus_ai_theme');
+    if (savedTheme === 'light') {
+      document.body.setAttribute('data-theme', 'light');
+      document.getElementById('themeToggle').textContent = '🌙 Dark Mode';
+    } else {
+      document.body.setAttribute('data-theme', 'dark');
+      document.getElementById('themeToggle').textContent = '🌓 Light Mode';
+    }
+  }
+
+  function toggleTheme() {
+    const current = document.body.getAttribute('data-theme');
+    if (current === 'dark') {
+      document.body.setAttribute('data-theme', 'light');
+      localStorage.setItem('certus_ai_theme', 'light');
+      document.getElementById('themeToggle').textContent = '🌙 Dark Mode';
+    } else {
+      document.body.setAttribute('data-theme', 'dark');
+      localStorage.setItem('certus_ai_theme', 'dark');
+      document.getElementById('themeToggle').textContent = '🌓 Light Mode';
+    }
+  }
+
+  // I-06: Relative timestamps for demo data
+  function getRelativeTimestamp(hoursAgo) {
+    return new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString();
+  }
+
+  // I-03: Import configuration
+  async function importConfiguration(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const config = JSON.parse(e.target.result);
+        if (config.parameters) {
+          document.getElementById('dciThreshold').value = config.parameters.dciThreshold || 0.4;
+          document.getElementById('thresholdVal').textContent = parseFloat(config.parameters.dciThreshold || 0.4).toFixed(2);
+          document.getElementById('resourceCount').value = config.parameters.resourceCount || 10;
+          document.getElementById('resourceVal').textContent = config.parameters.resourceCount || 10;
+          if (config.parameters.priorities) {
+            document.querySelectorAll('#priorityFilters input').forEach(cb => {
+              cb.checked = config.parameters.priorities.includes(cb.value);
+            });
+          }
+          const orderRadio = document.querySelector(`input[name="order"][value="${config.parameters.order || 'weighted'}"]`);
+          if (orderRadio) orderRadio.checked = true;
+          const conflictRadio = document.querySelector(`input[name="conflict"][value="${config.parameters.conflictMode || 'highest'}"]`);
+          if (conflictRadio) conflictRadio.checked = true;
+          toast('Configuration imported');
+          saveSimulationState();
+          runSimulation();
+        }
+      } catch (err) {
+        toast('Invalid configuration file');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // I-02: Export configuration
+  function exportConfiguration() {
+    const config = {
+      generated: new Date().toISOString(),
+      parameters: {
+        dciThreshold: parseFloat(document.getElementById('dciThreshold').value),
+        resourceCount: parseInt(document.getElementById('resourceCount').value),
+        priorities: Array.from(document.querySelectorAll('#priorityFilters input:checked')).map(cb => cb.value),
+        order: document.querySelector('input[name="order"]:checked')?.value,
+        conflictMode: document.querySelector('input[name="conflict"]:checked')?.value
+      }
+    };
+    const dataStr = JSON.stringify(config, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `certus-config-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('Configuration exported');
+  }
+
+  // I-06: Demo data with relative timestamps
+  const DEMO_REPORTS = [
+    { uuid: 'demo-1', lat: 40.7128, lng: -74.0060, dci: 0.85, dciTier: 'high', dciValidity: 'VALID', dciUM: 0.20, infraType: 'Residential', undpTier: 'Partially damaged', timestamp: getRelativeTimestamp(2) },
+    { uuid: 'demo-2', lat: 40.7140, lng: -74.0080, dci: 0.62, dciTier: 'watch', dciValidity: 'DEGRADED', dciUM: 0.45, infraType: 'Medical', undpTier: 'Minimal / No damage', timestamp: getRelativeTimestamp(12) },
+    { uuid: 'demo-3', lat: 40.7100, lng: -74.0100, dci: 0.35, dciTier: 'review', dciValidity: 'SUSPENDED', dciUM: 0.65, infraType: 'School', undpTier: 'Completely damaged', timestamp: getRelativeTimestamp(36) },
+    { uuid: 'demo-4', lat: 40.7150, lng: -74.0050, dci: 0.78, dciTier: 'high', dciValidity: 'VALID', dciUM: 0.25, infraType: 'Bridge', undpTier: 'Partially damaged', timestamp: getRelativeTimestamp(5) },
+    { uuid: 'demo-5', lat: 40.7180, lng: -74.0120, dci: 0.55, dciTier: 'watch', dciValidity: 'DEGRADED', dciUM: 0.50, infraType: 'Utility', undpTier: 'Minimal / No damage', timestamp: getRelativeTimestamp(24) },
+    { uuid: 'demo-6', lat: null, lng: null, textLocation: 'Near central market', dci: 0.72, dciTier: 'high', dciValidity: 'VALID', dciUM: 0.30, infraType: 'Residential', undpTier: 'Completely damaged', timestamp: getRelativeTimestamp(1), noCoords: true }
+  ];
+
+  function getColorForDCI(dci) {
+    if (dci >= 0.70) return '#f0a500';
+    if (dci >= 0.40) return '#e87c1e';
+    return '#e84040';
+  }
+
   async function loadDemoData() {
     reports = DEMO_REPORTS.map(validateReport);
-    document.getElementById('loadStatus').innerHTML = `🎮 Loaded ${reports.length} demo reports. Use these to test the simulator.`;
+    document.getElementById('loadStatus').innerHTML = `🎮 Loaded ${reports.length} demo reports with relative timestamps.`;
     showSummary();
     initMap();
     runSimulation();
     document.getElementById('clearDataBtn').style.display = 'inline-block';
+    saveSimulationState();
   }
 
-  // Clear data (G-11)
   function clearData() {
     if (confirm('Clear all loaded data? This cannot be undone.')) {
       reports = [];
       allocationResult = [];
-      if (map) {
-        if (markerCluster) map.removeLayer(markerCluster);
-        markerCluster = null;
+      if (map && markerCluster) {
+        markerCluster.clearLayers();
       }
       document.getElementById('summaryCard').style.display = 'none';
       document.getElementById('controlsCard').style.display = 'none';
       document.getElementById('resultsCard').style.display = 'none';
       document.getElementById('loadStatus').innerHTML = '';
       document.getElementById('clearDataBtn').style.display = 'none';
+      defaultDCIWarningsShown = false;
       toast('Data cleared');
     }
   }
 
-  // Load from file
   async function loadFromFile(input) {
     const file = input.files[0];
     if (!file) return;
@@ -794,12 +1228,17 @@
       try {
         const data = JSON.parse(e.target.result);
         let rawReports = Array.isArray(data) ? data : (data.reports || []);
+        if (rawReports.length > 5000) {
+          toast(`⚠️ Large dataset (${rawReports.length} reports). May affect performance.`, 5000, true);
+        }
         reports = rawReports.map(validateReport);
         document.getElementById('loadStatus').innerHTML = `✅ Loaded ${reports.length} reports from file.`;
+        checkDefaultDCIValues();
         showSummary();
         initMap();
         runSimulation();
         document.getElementById('clearDataBtn').style.display = 'inline-block';
+        saveSimulationState();
       } catch (err) {
         toast('Invalid JSON file');
         console.error(err);
@@ -808,14 +1247,13 @@
     reader.readAsText(file);
   }
 
-  // Load from IndexedDB with better error handling (G-02)
   async function loadFromIndexedDB() {
     try {
       const db = await new Promise((resolve, reject) => {
         const req = indexedDB.open('veritas-db', 1);
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject('IndexedDB error');
-        req.onupgradeneeded = () => {}; // Handle version changes gracefully
+        req.onupgradeneeded = () => {};
       });
       
       if (!db.objectStoreNames.contains('reports')) {
@@ -836,12 +1274,18 @@
         return;
       }
       
+      if (all.length > 5000) {
+        toast(`⚠️ Large dataset (${all.length} reports). May affect performance.`, 5000, true);
+      }
+      
       reports = all.map(validateReport);
       document.getElementById('loadStatus').innerHTML = `✅ Loaded ${reports.length} reports from VERITAS database.`;
+      checkDefaultDCIValues();
       showSummary();
       initMap();
       runSimulation();
       document.getElementById('clearDataBtn').style.display = 'inline-block';
+      saveSimulationState();
     } catch (err) {
       console.error(err);
       toast('Could not load from IndexedDB. Try uploading a JSON file instead.');
@@ -866,24 +1310,6 @@
     document.getElementById('controlsCard').style.display = 'block';
   }
 
-  function initMap() {
-    if (map) map.remove();
-    map = L.map('simulateMap').setView([0, 20], 2);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-    markerCluster = L.markerClusterGroup();
-    map.addLayer(markerCluster);
-  }
-
-  // G-06: Handle reports without coordinates
-  function getReportLocation(report) {
-    if (report.lat && report.lng) {
-      return { lat: report.lat, lng: report.lng, hasCoords: true };
-    }
-    return { lat: null, lng: null, hasCoords: false, textLocation: report.textLocation || 'No location provided' };
-  }
-
   function updateMapWithFiltered() {
     if (!map || !markerCluster) return;
     markerCluster.clearLayers();
@@ -895,10 +1321,8 @@
     const withCoords = filtered.filter(r => r.lat && r.lng);
     const withoutCoords = filtered.filter(r => !r.lat || !r.lng);
     
-    // Show warning for reports without coordinates (G-06)
+    let warningEl = document.getElementById('noCoordsWarning');
     if (withoutCoords.length > 0) {
-      const warningMsg = `⚠️ ${withoutCoords.length} report(s) have no GPS coordinates and cannot be displayed on the map. They are still included in allocation.`;
-      let warningEl = document.getElementById('noCoordsWarning');
       if (!warningEl) {
         warningEl = document.createElement('div');
         warningEl.id = 'noCoordsWarning';
@@ -906,24 +1330,20 @@
         warningEl.style.marginTop = '12px';
         document.getElementById('simulateMap').parentNode.insertBefore(warningEl, document.getElementById('simulateMap').nextSibling);
       }
-      warningEl.innerHTML = warningMsg;
+      warningEl.innerHTML = `⚠️ ${withoutCoords.length} report(s) have no GPS coordinates and cannot be displayed on the map. They are still included in allocation.`;
       warningEl.style.display = 'block';
-    } else {
-      const warningEl = document.getElementById('noCoordsWarning');
-      if (warningEl) warningEl.style.display = 'none';
+    } else if (warningEl) {
+      warningEl.style.display = 'none';
     }
     
     withCoords.forEach(r => {
       const color = getColorForDCI(r.dci);
       const validityBadge = r.dciValidity === 'SUSPENDED' ? '🔴 SUSPENDED' : (r.dciValidity === 'DEGRADED' ? '🟡 DEGRADED' : '🟢 VALID');
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="width:12px;height:12px;background:${color};border-radius:50%;border:1px solid #000;"></div>`,
-        iconSize: [12,12]
-      });
+      const ci = `±${Math.round((r.dciUM || 0.3) * 100)}%`;
+      const icon = getMarkerIcon(r.infraType, color);
       const marker = L.marker([r.lat, r.lng], { icon }).bindPopup(`
         <b>${r.undpTier}</b> · ${r.infraType}<br>
-        DCI: ${r.dci.toFixed(3)}<br>
+        DCI: ${r.dci.toFixed(3)} ${ci}<br>
         Validity: ${validityBadge}<br>
         UM: ${Math.round((r.dciUM || 0) * 100)}%<br>
         ${new Date(r.timestamp).toLocaleString()}
@@ -931,25 +1351,36 @@
       markerCluster.addLayer(marker);
     });
     
-    if (withCoords.length > 0) {
+    if (withCoords.length > 0 && !lastMapBounds) {
       const group = L.featureGroup(withCoords.map(r => L.marker([r.lat, r.lng])));
       map.fitBounds(group.getBounds().pad(0.1));
     }
   }
 
-  // G-06: Get priority score with conflict resolution
   function resolveConflicts(candidates) {
     const conflictMode = document.querySelector('input[name="conflict"]:checked').value;
     if (conflictMode === 'highest') {
       return candidates;
     }
-    // Flag conflicts for human review - mark them as review required regardless of DCI
     return candidates.map(c => ({
       ...c,
       dciTier: 'review',
       dciValidity: 'SUSPENDED',
       conflictFlagged: true
     }));
+  }
+
+  // I-10: Excluded reports summary
+  function updateExcludedSummary(filteredCount) {
+    const total = reports.length;
+    const excluded = total - filteredCount;
+    const summaryDiv = document.getElementById('excludedSummary');
+    if (excluded > 0) {
+      summaryDiv.innerHTML = `📊 Excluded: ${excluded} report(s) filtered out by DCI threshold or infrastructure priorities.`;
+      summaryDiv.style.display = 'block';
+    } else {
+      summaryDiv.style.display = 'none';
+    }
   }
 
   function runSimulation() {
@@ -961,29 +1392,28 @@
     btn.innerHTML = '<span class="spinner"></span> Simulating...';
     btn.disabled = true;
     
-    // Use setTimeout to allow UI to update (G-10)
+    const threshold = parseFloat(document.getElementById('dciThreshold').value);
+    checkExtremeThreshold(threshold);
+    checkDiscriminationWarning();
+    saveSimulationState();
+    
     setTimeout(() => {
       try {
-        const threshold = parseFloat(document.getElementById('dciThreshold').value);
         const resourceCount = parseInt(document.getElementById('resourceCount').value);
         const priorities = Array.from(document.querySelectorAll('#priorityFilters input:checked')).map(cb => cb.value);
         const order = document.querySelector('input[name="order"]:checked').value;
 
         let candidates = reports.filter(r => r.dci >= threshold && priorities.includes(r.infraType));
-        
-        // Apply conflict resolution (G-08)
+        updateExcludedSummary(candidates.length);
         candidates = resolveConflicts(candidates);
 
-        // Sort by chosen order
         if (order === 'weighted') {
-          // G-05: Weighted by validity status
           candidates.sort((a, b) => getPriorityScore(b) - getPriorityScore(a));
         } else if (order === 'dci') {
           candidates.sort((a, b) => b.dci - a.dci);
         } else if (order === 'freshness') {
           candidates.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         } else if (order === 'certus') {
-          // G-07: CERTUS native (DCI × freshness decay)
           candidates.sort((a, b) => {
             const scoreA = (a.dci || 0.5) * getFreshnessWeight(a.timestamp);
             const scoreB = (b.dci || 0.5) * getFreshnessWeight(b.timestamp);
@@ -992,7 +1422,6 @@
         }
 
         allocationResult = candidates.slice(0, resourceCount);
-
         updateMapWithFiltered();
 
         const listDiv = document.getElementById('allocationList');
@@ -1002,10 +1431,11 @@
           listDiv.innerHTML = allocationResult.map((r, idx) => {
             const validityClass = r.dciValidity === 'SUSPENDED' ? 'suspended' : (r.dciValidity === 'DEGRADED' ? 'degraded' : '');
             const conflictFlag = r.conflictFlagged ? ' ⚠️ CONFLICT' : '';
+            const ci = `±${Math.round((r.dciUM || 0.3) * 100)}%`;
             return `
               <div class="allocation-item ${validityClass}">
                 <span>${idx+1}. ${r.undpTier} · ${r.infraType}${conflictFlag}</span>
-                <span>DCI ${r.dci.toFixed(3)} | ${r.dciValidity || 'UNKNOWN'}</span>
+                <span>DCI ${r.dci.toFixed(3)} ${ci} | ${r.dciValidity || 'UNKNOWN'}</span>
               </div>
             `;
           }).join('');
@@ -1013,6 +1443,7 @@
 
         document.getElementById('resultsCard').style.display = 'block';
         document.getElementById('exportPlanBtn').style.display = 'inline-block';
+        document.getElementById('exportMinimalBtn').style.display = 'inline-block';
         document.getElementById('certifyPlanBtn').style.display = 'inline-block';
         toast(`Simulation complete. ${allocationResult.length} reports allocated.`);
       } catch (err) {
@@ -1026,11 +1457,17 @@
     }, 50);
   }
 
+  // I-13: Export with sensitive data warning (full)
   function exportPlan() {
     if (!allocationResult.length) {
       toast('No allocation to export');
       return;
     }
+    
+    if (!confirm('This export contains report UUIDs. If these can be linked to identities, you may be exporting personal data. Continue?')) {
+      return;
+    }
+    
     const plan = {
       generated: new Date().toISOString(),
       parameters: {
@@ -1067,7 +1504,46 @@
     toast('Plan exported');
   }
 
-  // G-17: Fixed STP endpoint (local API)
+  // I-14: Anonymized export (minimal, no UUIDs)
+  function exportPlanMinimal() {
+    if (!allocationResult.length) {
+      toast('No allocation to export');
+      return;
+    }
+    
+    const plan = {
+      generated: new Date().toISOString(),
+      parameters: {
+        dciThreshold: parseFloat(document.getElementById('dciThreshold').value),
+        resourceCount: parseInt(document.getElementById('resourceCount').value),
+        priorities: Array.from(document.querySelectorAll('#priorityFilters input:checked')).map(cb => cb.value),
+        order: document.querySelector('input[name="order"]:checked').value,
+        conflictMode: document.querySelector('input[name="conflict"]:checked').value
+      },
+      deployment: allocationResult.map((r, idx) => ({
+        id: idx + 1,
+        lat: r.lat,
+        lng: r.lng,
+        infrastructure: r.infraType,
+        damage: r.undpTier,
+        dci: r.dci,
+        dciValidity: r.dciValidity,
+        timestamp: r.timestamp
+      }))
+    };
+    const dataStr = JSON.stringify(plan, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `deployment-plan-anonymized-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('Anonymized plan exported (no UUIDs)');
+  }
+
   async function certifyPlan() {
     if (!allocationResult.length) {
       toast('No allocation to certify');
@@ -1101,7 +1577,6 @@
     btn.disabled = true;
     
     try {
-      // FIX: Use local API endpoint (G-17)
       const response = await fetch('/api/stp-seal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1125,33 +1600,91 @@
     }
   }
 
-  function toast(msg) {
+  function toast(msg, duration = 3000, isWarning = false) {
     const container = document.getElementById('toastContainer');
     const el = document.createElement('div');
-    el.className = 'toast';
+    el.className = 'toast' + (isWarning ? ' warning' : '');
     el.textContent = msg;
     container.appendChild(el);
     setTimeout(() => {
       el.style.opacity = '0';
       el.style.transition = 'opacity 0.3s';
       setTimeout(() => el.remove(), 300);
-    }, 2500);
+    }, duration);
   }
 
-  // UI event listeners
+  // Event listeners
   document.getElementById('dciThreshold').addEventListener('input', (e) => {
     document.getElementById('thresholdVal').textContent = parseFloat(e.target.value).toFixed(2);
+    saveSimulationState();
+    checkExtremeThreshold(parseFloat(e.target.value));
+    debouncedRunSimulation();
   });
   document.getElementById('resourceCount').addEventListener('input', (e) => {
     document.getElementById('resourceVal').textContent = e.target.value;
+    saveSimulationState();
+    debouncedRunSimulation();
+  });
+  document.querySelectorAll('#priorityFilters input').forEach(cb => {
+    cb.addEventListener('change', () => {
+      saveSimulationState();
+      checkDiscriminationWarning();
+      debouncedRunSimulation();
+    });
+  });
+  document.querySelectorAll('input[name="order"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      saveSimulationState();
+      debouncedRunSimulation();
+    });
+  });
+  document.querySelectorAll('input[name="conflict"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      saveSimulationState();
+      debouncedRunSimulation();
+    });
+  });
+  document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+  document.getElementById('runSimulation').addEventListener('click', runSimulation);
+
+  // I-11: Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'Enter') {
+      e.preventDefault();
+      if (document.getElementById('runSimulation').disabled === false) {
+        runSimulation();
+      }
+    }
+    if (e.ctrlKey && e.key === 's') {
+      e.preventDefault();
+      exportPlan();
+    }
+    if (e.ctrlKey && e.key === 'e') {
+      e.preventDefault();
+      if (allocationResult.length) certifyPlan();
+    }
+    if (e.ctrlKey && e.key === 'a') {
+      e.preventDefault();
+      selectAllPriorities();
+    }
+    if (e.ctrlKey && e.key === 'd') {
+      e.preventDefault();
+      deselectAllPriorities();
+    }
   });
 
-  // G-01: Service Worker registration for offline capability
+  // Service Worker registration
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
       .then(reg => console.log('[CERTUS.AI] SW registered:', reg.scope))
       .catch(err => console.warn('[CERTUS.AI] SW registration failed:', err));
   }
+
+  // Initialize
+  loadSimulationState();
+  initTheme();
+  checkDiscriminationWarning();
+  initTooltips();
 
   // ==================== BACKGROUND CANVAS ====================
   const canvas = document.getElementById('hero-canvas');
