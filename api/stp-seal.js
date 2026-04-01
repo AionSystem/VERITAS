@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import https from 'https';
-import { getTemplate, detectTemplate, validateTemplateRequirements, renderIssueBody } from './templates/index.js';
+import { getTemplate, detectTemplate, validateTemplateRequirements, renderIssueBody } from './templates/index.mjs';
 
 // ============================================================
 // CONFIGURATION
@@ -217,6 +217,9 @@ async function ghRequest(path, method, body, timeoutMs = 15000) {
 
 async function createGitHubIssueForSeal(templateKey, entry, stamp, metadata) {
   const template = getTemplate(templateKey);
+  if (!template) {
+    throw new Error(`Template not found for key: ${templateKey}`);
+  }
   const title = `[${template.name}] ${entry.substring(0, 80)}${entry.length > 80 ? '...' : ''}`;
   const body = renderIssueBody(template, metadata, stamp, entry);
   
@@ -303,66 +306,78 @@ export default async function handler(req, res) {
   }
 
   try {
-  const { entry, type, sessionId, userId, fields } = req.body;
-  
-  if (!entry || typeof entry !== 'string' || !entry.trim()) {
-    return res.status(400).json({ error: 'EMPTY_ENTRY', message: 'Entry text is required' });
-  }
-  
-  if (entry.length > MAX_ENTRY_SIZE) {
-    return res.status(413).json({ error: 'PAYLOAD_TOO_LARGE', message: `Entry exceeds ${MAX_ENTRY_SIZE / 1024}KB` });
-  }
-  
-  const now = new Date();
-  const unixUtc = Math.floor(now.getTime() / 1000);
-  const gregorian = gregorianString(now);
-  const hebrew = hebrewString(now);
-  const dreamspell = dreamspellString(now);
-  
-  const finalEntry = entry.trim() + `\n\nServer Timestamp: ${now.toISOString()}`;
-  
-  // Select template with fallback
-  let templateKey = '07'; // default
-  let template = null;
-  
-  try {
-    templateKey = selectTemplate(finalEntry, type);
-    template = getTemplate(templateKey);
+    const { entry, type, sessionId, userId, fields } = req.body;
     
-    // If template is still null, force to GENERAL-TRACE
-    if (!template) {
-      console.warn(`[STP] Template ${templateKey} not found, falling back to 07`);
+    if (!entry || typeof entry !== 'string' || !entry.trim()) {
+      return res.status(400).json({ error: 'EMPTY_ENTRY', message: 'Entry text is required' });
+    }
+    
+    if (entry.length > MAX_ENTRY_SIZE) {
+      return res.status(413).json({ error: 'PAYLOAD_TOO_LARGE', message: `Entry exceeds ${MAX_ENTRY_SIZE / 1024}KB` });
+    }
+    
+    const now = new Date();
+    const unixUtc = Math.floor(now.getTime() / 1000);
+    const gregorian = gregorianString(now);
+    const hebrew = hebrewString(now);
+    const dreamspell = dreamspellString(now);
+    
+    const finalEntry = entry.trim() + `\n\nServer Timestamp: ${now.toISOString()}`;
+    
+    // Select template with fallback
+    let templateKey = '07'; // default
+    let template = null;
+    
+    try {
+      templateKey = selectTemplate(finalEntry, type);
+      template = getTemplate(templateKey);
+      
+      // If template is still null, force to GENERAL-TRACE
+      if (!template) {
+        console.warn(`[STP] Template ${templateKey} not found, falling back to 07`);
+        templateKey = '07';
+        template = getTemplate('07');
+      }
+    } catch (err) {
+      console.error('[STP] Template detection error:', err);
       templateKey = '07';
       template = getTemplate('07');
     }
-  } catch (err) {
-    console.error('[STP] Template detection error:', err);
-    templateKey = '07';
-    template = getTemplate('07');
-  }
-  
-  // Prepare form data for validation
-  const formData = { fields: fields || {}, sessionId, userId };
-  
-  // Validate template requirements (with error handling)
-  let validation = { valid: true, missing: [] };
-  try {
-    validation = validateTemplateRequirements(template, formData);
-  } catch (err) {
-    console.error('[STP] Validation error:', err);
-    validation = { valid: true, missing: [] };
-  }
-  
-  if (!validation.valid) {
-    return res.status(400).json({
-      success: false,
-      error: 'VALIDATION_FAILED',
-      missing_requirements: validation.missing,
-      message: 'Template requirements not met',
-      template_id: template.id,
-      template_name: template.name
-    });
-  }
+    
+    // Final check - if still no template, return error
+    if (!template) {
+      console.error('[STP] CRITICAL: No template available, even fallback failed');
+      return res.status(500).json({
+        success: false,
+        error: 'TEMPLATE_SYSTEM_FAILURE',
+        message: 'Template system unavailable. Please check template files.',
+        request_id: requestId
+      });
+    }
+    
+    // Prepare form data for validation
+    const formData = { fields: fields || {}, sessionId, userId };
+    
+    // Validate template requirements (with error handling)
+    let validation = { valid: true, missing: [] };
+    try {
+      validation = validateTemplateRequirements(template, formData);
+    } catch (err) {
+      console.error('[STP] Validation error:', err);
+      validation = { valid: true, missing: [] };
+    }
+    
+    if (!validation.valid) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_FAILED',
+        missing_requirements: validation.missing,
+        message: 'Template requirements not met',
+        template_id: template.id,
+        template_name: template.name,
+        request_id: requestId
+      });
+    }
     
     const seal = computeSealExact(finalEntry, gregorian, hebrew, dreamspell, unixUtc);
     const ledgerFile = ledgerFileName(templateKey, gregorian, seal);
