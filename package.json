@@ -8,8 +8,7 @@
     "url": "https://aionsystem.github.io/VERITAS"
   },
   "license": "GPL-3.0",
-  "type": "module",
-  "main": "api/stp-seal.js",
+  "private": false,
   "scripts": {
     "dev": "vercel dev",
     "build": "echo 'No build step required'",
@@ -38,6 +37,10 @@
   "bugs": {
     "url": "https://github.com/AionSystem/VERITAS/issues"
   },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/veritas"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0"
   },
@@ -47,14 +50,6 @@
   "engines": {
     "node": ">=18.x"
   },
-  "funding": {
-    "type": "opencollective",
-    "url": "https://opencollective.com/veritas"
-  },
-  "private": false,
-  "publishConfig": {
-    "access": "public"
-  },
   "files": [
     "public/",
     "api/",
@@ -62,6 +57,8 @@
     "docs/",
     "model/",
     "LICENSE",
+    "COMMERCIAL-LICENSE.md",
+    "NOTICE",
     "README.md",
     "CERTUS.md",
     "VERITAS_UNDP_COMPLIANCE.md",
