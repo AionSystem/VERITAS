@@ -1,10 +1,6 @@
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import https from 'https';
-
-// ============================================================
-// TEMPLATE LOADING (preserving original structure)
-// ============================================================
 import { getTemplate, detectTemplate, validateTemplateRequirements, renderIssueBody } from './templates/index.js';
 
 // ============================================================
@@ -129,7 +125,7 @@ function computeSealExact(entry, gregorian, hebrew, dreamspell, unixUtc) {
 }
 
 // ============================================================
-// TEMPLATE SELECTION (using imported functions)
+// TEMPLATE SELECTION
 // ============================================================
 function selectTemplate(entry, contextType) {
   const template = detectTemplate(entry, contextType);
@@ -202,12 +198,15 @@ async function ghRequest(path, method, body, timeoutMs = 15000) {
 async function createGitHubIssueForSeal(templateKey, entry, stamp, metadata) {
   const template = getTemplate(templateKey);
   const title = `[${template.name}] ${entry.substring(0, 80)}${entry.length > 80 ? '...' : ''}`;
-  const body = renderIssueBody(template, metadata.fields || {}, stamp, entry);
+  const body = renderIssueBody(template, metadata, stamp, entry);
+  
+  const labels = [template.id];
+  if (template.category) labels.push(template.category);
   
   const { data: issue } = await ghRequest('/repos/AionSystem/SOVEREIGN-TRACE-PROTOCOL/issues', 'POST', { 
     title, 
     body, 
-    labels: [template.id, template.category]
+    labels
   });
   
   return issue.html_url;
@@ -262,7 +261,7 @@ export default async function handler(req, res) {
       service: 'STP-Seal',
       version: 'FROZEN-2.0',
       timestamp: new Date().toISOString(),
-      templates_loaded: Object.keys(require('./templates/index.js').TEMPLATES || {}).length,
+      templates_loaded: Object.keys(TEMPLATES).length,
       endpoints: ['/api/stp-seal', '/api/health']
     });
   }
@@ -308,15 +307,19 @@ export default async function handler(req, res) {
     const templateKey = selectTemplate(finalEntry, type);
     const template = getTemplate(templateKey);
     
-    // Validate template requirements (if any)
+    // Prepare form data for validation and rendering
     const formData = { fields: fields || {}, sessionId, userId };
+    
+    // Validate template requirements
     const validation = validateTemplateRequirements(template, formData);
     if (!validation.valid) {
       return res.status(400).json({
         success: false,
         error: 'VALIDATION_FAILED',
         missing_requirements: validation.missing,
-        message: 'Template requirements not met'
+        message: 'Template requirements not met',
+        template_id: template.id,
+        template_name: template.name
       });
     }
     
@@ -353,7 +356,7 @@ export default async function handler(req, res) {
     if (process.env.GITHUB_TOKEN) {
       try {
         [issueUrl, ledgerPath] = await Promise.all([
-          createGitHubIssueForSeal(templateKey, finalEntry, stamp, { sessionId, userId, fields }),
+          createGitHubIssueForSeal(templateKey, finalEntry, stamp, formData),
           createLedgerFileForSeal(ledgerFile, ledgerData)
         ]);
       } catch (err) {
@@ -368,6 +371,7 @@ export default async function handler(req, res) {
           seal,
           entry: finalEntry,
           template: templateKey,
+          template_name: template.name,
           gregorian,
           hebrew,
           dreamspell,
@@ -397,9 +401,9 @@ export default async function handler(req, res) {
       issue_url: issueUrl,
       ledger_path: ledgerPath,
       github_error: githubError,
+      validation_passed: validation.valid,
       retention_days: RETENTION_DAYS,
       jurisdiction: JURISDICTION,
-      validation_passed: validation.valid,
       request_id: requestId
     });
 
