@@ -852,14 +852,21 @@ const CERTUS = {
   // REPUTATION SCORING
   // ══════════════════════════════════════════════════════════════════════════
   _updateReputation(reporterId, reportOutcome) {
-    let reputation = this._reputationStore.get(reporterId) || {
-      score: 0,
-      verified_reports: 0,
-      false_reports: 0,
-      banned: false,
-      ban_reason: null
-    };
-
+  // Add this guard
+  if (!reporterId) {
+    console.warn('[CERTUS] No reporter ID provided, skipping reputation update');
+    return { score: 0, banned: false };
+  }
+  
+  let reputation = this._reputationStore.get(reporterId) || {
+    score: 0,
+    verified_reports: 0,
+    false_reports: 0,
+    banned: false,
+    ban_reason: null
+  };
+  // ... rest of function
+}
     if (reputation.banned) return reputation;
 
     if (reportOutcome === 'VERIFIED') {
