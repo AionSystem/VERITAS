@@ -1,7 +1,11 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const TEMPLATES = {};
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export const TEMPLATES = {};
 
 // Load all template JSON files
 const templateFiles = [
@@ -19,13 +23,15 @@ const templateFiles = [
   '12-auditor-application.json',
   '13-integrity-violation.json',
   '14-near-miss.json',
-  '15-veritas-report.json',      // ← New
-  '16-veritas-export.json'       // ← New
+  '15-veritas-report.json',
+  '16-veritas-export.json'
 ];
 
 for (const file of templateFiles) {
   try {
-    const template = require(`./${file}`);
+    const templatePath = path.join(__dirname, file);
+    const templateContent = fs.readFileSync(templatePath, 'utf8');
+    const template = JSON.parse(templateContent);
     TEMPLATES[template.id] = template;
     console.log(`Loaded template: ${template.id} - ${template.name}`);
   } catch (err) {
@@ -33,11 +39,11 @@ for (const file of templateFiles) {
   }
 }
 
-function getTemplate(id) {
-  return TEMPLATES[id] || TEMPLATES['07']; // Default to GENERAL-TRACE
+export function getTemplate(id) {
+  return TEMPLATES[id] || TEMPLATES['07'];
 }
 
-function detectTemplate(entry, contextType = null) {
+export function detectTemplate(entry, contextType = null) {
   if (contextType && TEMPLATES[contextType]) {
     return TEMPLATES[contextType];
   }
@@ -57,7 +63,7 @@ function detectTemplate(entry, contextType = null) {
   return TEMPLATES['07'];
 }
 
-function validateTemplateRequirements(template, body) {
+export function validateTemplateRequirements(template, body) {
   const missing = [];
   
   if (template.requires_docusign && !body.docusign_completed) {
@@ -80,9 +86,11 @@ function validateTemplateRequirements(template, body) {
   }
   
   // Check required fields
-  for (const field of template.fields) {
-    if (field.required && !body[field.id]) {
-      missing.push(`Field "${field.label}" is required`);
+  if (template.fields) {
+    for (const field of template.fields) {
+      if (field.required && !body[field.id] && !body.fields?.[field.id]) {
+        missing.push(`Field "${field.label}" is required`);
+      }
     }
   }
   
@@ -92,8 +100,14 @@ function validateTemplateRequirements(template, body) {
   };
 }
 
-function renderIssueBody(template, formData) {
+export function renderIssueBody(template, formData, stamp, entry) {
   let body = '';
+  
+  // Add template header
+  body += `# ${template.name}\n`;
+  body += `**Template ID:** ${template.id}\n`;
+  body += `**Category:** ${template.category || 'General'}\n\n`;
+  body += `---\n\n`;
   
   // Add legal notice
   if (template.legal_notice) {
@@ -101,28 +115,34 @@ function renderIssueBody(template, formData) {
     body += template.legal_notice.content.join('\n') + '\n\n---\n\n';
   }
   
+  // Add triple-time stamp
+  if (stamp) {
+    body += `## 📅 Triple-Time Stamp\n\n`;
+    body += `| Calendar | Value |\n`;
+    body += `|----------|-------|\n`;
+    body += `| Gregorian | ${stamp.gregorian} |\n`;
+    body += `| Hebrew | ${stamp.hebrew} |\n`;
+    body += `| Dreamspell | ${stamp.dreamspell} |\n`;
+    body += `| Unix UTC | ${stamp.unixUtc} |\n\n`;
+    
+    body += `## 🔒 STP Seal\n\n`;
+    body += `**Seal:** \`${stamp.seal}\`\n`;
+    body += `**Ledger File:** \`${stamp.ledgerFile}\`\n\n`;
+  }
+  
+  // Add original entry
+  if (entry) {
+    body += `## 📝 Original Entry\n\n`;
+    body += `\`\`\`\n${entry}\n\`\`\`\n\n`;
+  }
+  
   // Add fields
-  for (const field of template.fields) {
-    const value = formData[field.id];
-    if (value) {
-      if (field.type === 'checkboxes') {
-        body += `### ${field.label}\n`;
-        const checkedValues = Array.isArray(value) ? value : [value];
-        for (const option of field.options) {
-          if (checkedValues.includes(option) || (typeof value === 'string' && value.includes(option))) {
-            body += `- ✅ ${option}\n`;
-          }
-        }
-        body += '\n';
-      } else if (field.type === 'upload') {
-        body += `### ${field.label}\n`;
-        body += `[Evidence files attached - see GitHub assets]\n\n`;
-      } else if (field.type === 'dropdown') {
-        body += `### ${field.label}\n`;
-        body += `${value}\n\n`;
-      } else {
-        body += `### ${field.label}\n`;
-        body += `${value}\n\n`;
+  const data = formData?.fields || formData || {};
+  if (Object.keys(data).length > 0) {
+    body += `## 📋 Submission Data\n\n`;
+    for (const [key, value] of Object.entries(data)) {
+      if (value && key !== 'entry' && key !== 'type') {
+        body += `**${key}:** ${value}\n\n`;
       }
     }
   }
@@ -131,18 +151,10 @@ function renderIssueBody(template, formData) {
   if (template.after_submit) {
     body += `---\n\n## What Happens Next\n\n`;
     for (const step of template.after_submit.steps) {
-      body += `${step}\n`;
+      body += `- ${step}\n`;
     }
     body += `\n---\n\n${template.after_submit.footer}`;
   }
   
   return body;
 }
-
-module.exports = {
-  TEMPLATES,
-  getTemplate,
-  detectTemplate,
-  validateTemplateRequirements,
-  renderIssueBody
-};
