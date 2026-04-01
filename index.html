@@ -962,37 +962,92 @@ async function submitReport() {
   }
 }
 function showConfirmation(report, certus) {
-  // Add this guard
-  if (!certus || !certus.dci) {
+  console.log('[VERITAS] showConfirmation called', { report, certus });
+  
+  // CRITICAL FIX: Check if certus is valid
+  if (!certus || typeof certus !== 'object') {
     console.error('[VERITAS] Invalid certus result:', certus);
-    toast('Error displaying confirmation');
+    toast('Error: Invalid score result. Please try again.');
     return;
   }
-  document.getElementById('reportForm').style.display='none';
-  const screen=document.getElementById('confirmScreen');
-  screen.classList.add('show');
-  const scoreEl=document.getElementById('confirmDciScore');
-  scoreEl.textContent=certus.dci.toFixed(2);
-  scoreEl.className=`dci-score-large ${certus.tier}`;
-  const badge=document.getElementById('confirmDciBadge');
-  badge.textContent=safeTierLabel(certus.tier);
-  badge.className=`dci-tier-badge ${certus.tier}`;
-  let umEl=document.getElementById('confirmDciUM');
-  if (!umEl){ umEl=document.createElement('div'); umEl.id='confirmDciUM'; umEl.style.cssText='font-family:var(--mono);font-size:10px;margin:10px 0;'; badge.insertAdjacentElement('afterend',umEl); }
-  const umPct=Math.round(certus.dci_uncertainty_mass*100);
-  const vc=certus.dci_validity_status==='VALID'?'#4ade80':certus.dci_validity_status==='DEGRADED'?'#f0a500':'#ff4d4d';
-  umEl.innerHTML=`Uncertainty Mass: ${umPct}% · <span style="color:${vc}">${certus.dci_validity_status}</span>`;
-  let swEl=document.getElementById('confirmStrengths');
-  if (!swEl){ swEl=document.createElement('div'); swEl.id='confirmStrengths'; swEl.style.cssText='margin-top:12px;font-size:10px;text-align:left;'; umEl.insertAdjacentElement('afterend',swEl); }
-  let swHtml='';
-  if(certus.dci_strengths&&certus.dci_strengths.length) swHtml+='<div style="color:var(--edu);">✅ '+certus.dci_strengths.join('</div><div style="color:var(--edu);">✅ ')+'</div>';
-  if(certus.dci_weaknesses&&certus.dci_weaknesses.length) swHtml+='<div style="color:#ffc947;margin-top:6px;">⚠️ '+certus.dci_weaknesses.join('</div><div style="color:#ffc947;">⚠️ ')+'</div>';
-  swEl.innerHTML=swHtml;
-  const nearbyCount=findNearby(STATE.reports,report.lat,report.lng,50).length;
-  const msgDiv=document.getElementById('engagementMessage');
-  if(certus.dci_flags?.cor_contradiction) msgDiv.innerHTML=`⚠️ ${nearbyCount} nearby reports disagree. Human verification recommended.`;
-  else if(certus.dci_validity_status==='SUSPENDED') msgDiv.innerHTML=`⚠️ This report has high uncertainty. Field verification required before acting.`;
-  else msgDiv.innerHTML=nearbyCount>0?`✅ Corroborated by ${nearbyCount} other report${nearbyCount!==1?'s':''}. Reliable signal.`:`📢 You are the first report in this area. Share the app to build corroboration.`;
+  
+  // Check if dci exists
+  if (certus.dci === undefined || certus.dci === null) {
+    console.error('[VERITAS] Missing dci in certus:', certus);
+    toast('Error: Missing confidence score. Please try again.');
+    return;
+  }
+  
+  try {
+    document.getElementById('reportForm').style.display = 'none';
+    const screen = document.getElementById('confirmScreen');
+    screen.classList.add('show');
+    
+    // DCI Score
+    const scoreEl = document.getElementById('confirmDciScore');
+    scoreEl.textContent = certus.dci.toFixed(2);
+    scoreEl.className = `dci-score-large ${certus.tier || 'review'}`;
+    
+    // Badge
+    const badge = document.getElementById('confirmDciBadge');
+    const tierLabel = safeTierLabel(certus.tier || 'review');
+    badge.textContent = tierLabel;
+    badge.className = `dci-tier-badge ${certus.tier || 'review'}`;
+    
+    // Uncertainty Mass
+    let umEl = document.getElementById('confirmDciUM');
+    if (!umEl) {
+      umEl = document.createElement('div');
+      umEl.id = 'confirmDciUM';
+      umEl.style.cssText = 'font-family:var(--mono);font-size:10px;margin:10px 0;';
+      badge.insertAdjacentElement('afterend', umEl);
+    }
+    const umPct = Math.round((certus.dci_uncertainty_mass || 0.5) * 100);
+    const validityStatus = certus.dci_validity_status || 'DEGRADED';
+    const vc = validityStatus === 'VALID' ? '#4ade80' : 
+               validityStatus === 'DEGRADED' ? '#f0a500' : '#ff4d4d';
+    umEl.innerHTML = `Uncertainty Mass: ${umPct}% · <span style="color:${vc}">${validityStatus}</span>`;
+    
+    // Strengths and Weaknesses
+    let swEl = document.getElementById('confirmStrengths');
+    if (!swEl) {
+      swEl = document.createElement('div');
+      swEl.id = 'confirmStrengths';
+      swEl.style.cssText = 'margin-top:12px;font-size:10px;text-align:left;';
+      umEl.insertAdjacentElement('afterend', swEl);
+    }
+    let swHtml = '';
+    if (certus.dci_strengths && certus.dci_strengths.length) {
+      swHtml += '<div style="color:var(--edu);">✅ ' + certus.dci_strengths.join('</div><div style="color:var(--edu);">✅ ') + '</div>';
+    }
+    if (certus.dci_weaknesses && certus.dci_weaknesses.length) {
+      swHtml += '<div style="color:#ffc947;margin-top:6px;">⚠️ ' + certus.dci_weaknesses.join('</div><div style="color:#ffc947;">⚠️ ') + '</div>';
+    }
+    swEl.innerHTML = swHtml || '<div style="color:var(--muted);">No specific strengths or weaknesses identified.</div>';
+    
+    // Engagement message
+    const nearbyCount = findNearby(STATE.reports, report.lat, report.lng, 50).length;
+    const msgDiv = document.getElementById('engagementMessage');
+    if (certus.dci_flags?.cor_contradiction) {
+      msgDiv.innerHTML = `⚠️ ${nearbyCount} nearby reports disagree. Human verification recommended.`;
+    } else if (validityStatus === 'SUSPENDED') {
+      msgDiv.innerHTML = `⚠️ This report has high uncertainty. Field verification required before acting.`;
+    } else if (nearbyCount > 0) {
+      msgDiv.innerHTML = `✅ Corroborated by ${nearbyCount} other report${nearbyCount !== 1 ? 's' : ''}. Reliable signal.`;
+    } else {
+      msgDiv.innerHTML = `📢 You are the first report in this area. Share the app to build corroboration.`;
+    }
+    
+    console.log('[VERITAS] Confirmation displayed successfully');
+    
+  } catch (err) {
+    console.error('[VERITAS] Error in showConfirmation:', err);
+    toast('Error displaying results. Your report was saved.');
+    // Still show confirmation screen with basic info
+    document.getElementById('reportForm').style.display = 'none';
+    document.getElementById('confirmScreen').classList.add('show');
+    document.getElementById('confirmDciScore').textContent = certus.dci?.toFixed(2) || '—';
+  }
 }
 function resetReport() {
   STATE.photo=null; STATE.photoAiScore=null; STATE.photoAiConf=null;
