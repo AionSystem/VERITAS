@@ -1,15 +1,11 @@
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import https from 'https';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 // ============================================================
-// FILE PATHS FOR TEMPLATES
+// TEMPLATE LOADING (preserving original structure)
 // ============================================================
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { getTemplate, detectTemplate, validateTemplateRequirements, renderIssueBody } from './templates/index.js';
 
 // ============================================================
 // CONFIGURATION
@@ -43,175 +39,7 @@ function getSupabase() {
 }
 
 // ============================================================
-// TEMPLATE LOADING (from templates/index.js)
-// ============================================================
-const TEMPLATES = {};
-
-// Load all template JSON files from templates directory
-const templatesDir = path.join(__dirname, 'templates');
-const templateFiles = [
-  '01-ai-failure.json',
-  '02-research-priority.json',
-  '03-evidence-chain.json',
-  '04-creative-priority.json',
-  '05-clinical-record.json',
-  '06-scope-anchor.json',
-  '07-general-trace.json',
-  '08-foresight-seal.json',
-  '09-webeater-link.json',
-  '10-audit-request.json',
-  '11-audit-completion.json',
-  '12-auditor-application.json',
-  '13-integrity-violation.json',
-  '14-near-miss.json',
-  '15-veritas-report.json',
-  '16-veritas-export.json'
-];
-
-for (const file of templateFiles) {
-  try {
-    const templatePath = path.join(templatesDir, file);
-    if (fs.existsSync(templatePath)) {
-      const templateContent = fs.readFileSync(templatePath, 'utf8');
-      const template = JSON.parse(templateContent);
-      TEMPLATES[template.id] = template;
-      console.log(`[STP] Loaded template: ${template.id} - ${template.name}`);
-    } else {
-      console.warn(`[STP] Template file not found: ${file}`);
-    }
-  } catch (err) {
-    console.error(`[STP] Failed to load ${file}:`, err.message);
-  }
-}
-
-function getTemplate(id) {
-  return TEMPLATES[id] || TEMPLATES['07']; // Default to GENERAL-TRACE
-}
-
-function detectTemplateFromEntry(entry, contextType = null) {
-  // If specific template requested
-  if (contextType && TEMPLATES[contextType]) {
-    return TEMPLATES[contextType];
-  }
-  
-  const lowerEntry = (entry || '').toLowerCase();
-  
-  // Priority order (most severe first)
-  const priority = ['13', '05', '10', '11', '12', '01', '09', '06', '03', '08', '02', '04', '14', '15', '16'];
-  
-  for (const id of priority) {
-    const template = TEMPLATES[id];
-    if (template && template.triggers && template.triggers.some(t => lowerEntry.includes(t.toLowerCase()))) {
-      return template;
-    }
-  }
-  
-  return TEMPLATES['07'];
-}
-
-function validateTemplateRequirements(template, body) {
-  const missing = [];
-  
-  if (template.requires_docusign && !body.docusign_completed) {
-    missing.push('DocuSign verification required');
-  }
-  if (template.requires_identity && !body.identity_verified) {
-    missing.push('Identity verification required');
-  }
-  if (template.requires_phi_gate && !body.phi_gate_confirmed) {
-    missing.push('PHI gate confirmation required');
-  }
-  if (template.requires_stripe && !body.stripe_payment_id) {
-    missing.push('Stripe payment ID required');
-  }
-  if (template.requires_prior_seal && !body.prior_seal_hash) {
-    missing.push('Prior seal hash required (Webeater Link)');
-  }
-  if (template.requires_auditor_badge && !body.auditor_badge) {
-    missing.push('Auditor badge required');
-  }
-  
-  // Check required fields from template
-  if (template.fields) {
-    for (const field of template.fields) {
-      if (field.required && !body[field.id] && !body.fields?.[field.id]) {
-        missing.push(`Field "${field.label}" is required`);
-      }
-    }
-  }
-  
-  return {
-    valid: missing.length === 0,
-    missing
-  };
-}
-
-function renderIssueBody(template, formData, stamp, entry) {
-  let body = '';
-  
-  // Add template header
-  body += `# ${template.name}\n`;
-  body += `**Template ID:** ${template.id}\n`;
-  body += `**Category:** ${template.category}\n\n`;
-  body += `---\n\n`;
-  
-  // Add legal notice if present
-  if (template.legal_notice) {
-    body += `## ${template.legal_notice.title}\n\n`;
-    body += template.legal_notice.content.join('\n') + '\n\n---\n\n';
-  }
-  
-  // Add triple-time stamp (always included)
-  body += `## 📅 Triple-Time Stamp\n\n`;
-  body += `| Calendar | Value |\n`;
-  body += `|----------|-------|\n`;
-  body += `| Gregorian | ${stamp.gregorian} |\n`;
-  body += `| Hebrew | ${stamp.hebrew} |\n`;
-  body += `| Dreamspell | ${stamp.dreamspell} |\n`;
-  body += `| Unix UTC | ${stamp.unixUtc} |\n\n`;
-  
-  // Add the entry/seal info
-  body += `## 🔒 STP Seal\n\n`;
-  body += `**Seal:** \`${stamp.seal}\`\n`;
-  body += `**Ledger File:** \`${stamp.ledgerFile}\`\n\n`;
-  
-  // Add original entry
-  body += `## 📝 Original Entry\n\n`;
-  body += `\`\`\`\n${entry}\n\`\`\`\n\n`;
-  
-  // Add form fields if present
-  if (formData.fields || formData) {
-    body += `## 📋 Submission Data\n\n`;
-    const data = formData.fields || formData;
-    for (const [key, value] of Object.entries(data)) {
-      if (value && key !== 'entry' && key !== 'type') {
-        body += `**${key}:** ${value}\n\n`;
-      }
-    }
-  }
-  
-  // Add after-submit steps
-  if (template.after_submit) {
-    body += `---\n\n## What Happens Next\n\n`;
-    for (const step of template.after_submit.steps) {
-      body += `- ${step}\n`;
-    }
-    body += `\n---\n\n${template.after_submit.footer}`;
-  }
-  
-  // Add server metadata
-  body += `\n\n---\n\n## ⚙️ Metadata\n\n`;
-  body += `- **Sealed by:** VERITAS API\n`;
-  body += `- **Protocol:** Sovereign Trace Protocol\n`;
-  body += `- **Jurisdiction:** ${JURISDICTION}\n`;
-  body += `- **Terms Version:** ${TERMS_VERSION}\n`;
-  body += `- **Sealed at:** ${new Date().toISOString()}\n`;
-  
-  return body;
-}
-
-// ============================================================
-// TIME STAMP FUNCTIONS (kept from original)
+// TIME STAMP FUNCTIONS
 // ============================================================
 const GREGORIAN_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -300,8 +128,16 @@ function computeSealExact(entry, gregorian, hebrew, dreamspell, unixUtc) {
   return crypto.createHash('sha256').update(`{${parts.join(',')}}`, 'utf8').digest('hex');
 }
 
+// ============================================================
+// TEMPLATE SELECTION (using imported functions)
+// ============================================================
+function selectTemplate(entry, contextType) {
+  const template = detectTemplate(entry, contextType);
+  return template.id;
+}
+
 function ledgerFileName(templateKey, gregorian, seal) {
-  const template = TEMPLATES[templateKey] || TEMPLATES['07'];
+  const template = getTemplate(templateKey);
   const label = template.name.replace(/\s+/g, '-').toUpperCase();
   const dateStr = gregorian.replace(/[,\s]+/g, '-').replace(/[^A-Z0-9\-]/gi, '');
   return `STP-${label}-${dateStr}-${seal.substring(0, 6).toUpperCase()}.json`;
@@ -363,14 +199,15 @@ async function ghRequest(path, method, body, timeoutMs = 15000) {
   }
 }
 
-async function createGitHubIssueForSeal(template, entry, stamp, metadata, formData) {
+async function createGitHubIssueForSeal(templateKey, entry, stamp, metadata) {
+  const template = getTemplate(templateKey);
   const title = `[${template.name}] ${entry.substring(0, 80)}${entry.length > 80 ? '...' : ''}`;
-  const body = renderIssueBody(template, formData, stamp, entry);
+  const body = renderIssueBody(template, metadata.fields || {}, stamp, entry);
   
   const { data: issue } = await ghRequest('/repos/AionSystem/SOVEREIGN-TRACE-PROTOCOL/issues', 'POST', { 
     title, 
     body, 
-    labels: [template.category, template.id]
+    labels: [template.id, template.category]
   });
   
   return issue.html_url;
@@ -425,8 +262,7 @@ export default async function handler(req, res) {
       service: 'STP-Seal',
       version: 'FROZEN-2.0',
       timestamp: new Date().toISOString(),
-      templates_loaded: Object.keys(TEMPLATES).length,
-      templates: Object.keys(TEMPLATES),
+      templates_loaded: Object.keys(require('./templates/index.js').TEMPLATES || {}).length,
       endpoints: ['/api/stp-seal', '/api/health']
     });
   }
@@ -468,33 +304,32 @@ export default async function handler(req, res) {
     
     const finalEntry = entry.trim() + `\n\nServer Timestamp: ${now.toISOString()}`;
     
-    // Detect template from entry or explicit type
-    const template = detectTemplateFromEntry(finalEntry, type);
-    const formData = { fields: fields || {}, sessionId, userId };
+    // Select template using imported function
+    const templateKey = selectTemplate(finalEntry, type);
+    const template = getTemplate(templateKey);
     
-    // Validate template requirements
+    // Validate template requirements (if any)
+    const formData = { fields: fields || {}, sessionId, userId };
     const validation = validateTemplateRequirements(template, formData);
     if (!validation.valid) {
       return res.status(400).json({
         success: false,
         error: 'VALIDATION_FAILED',
         missing_requirements: validation.missing,
-        message: 'Template requirements not met',
-        required_fields: template.fields?.filter(f => f.required).map(f => ({ id: f.id, label: f.label })) || []
+        message: 'Template requirements not met'
       });
     }
     
     const seal = computeSealExact(finalEntry, gregorian, hebrew, dreamspell, unixUtc);
-    const ledgerFile = ledgerFileName(template.id, gregorian, seal);
+    const ledgerFile = ledgerFileName(templateKey, gregorian, seal);
     
     const stamp = { gregorian, hebrew, dreamspell, unixUtc, seal, ledgerFile };
     
     const ledgerData = {
       protocol: 'SOVEREIGN-TRACE-PROTOCOL',
       stamp_version: 'FROZEN-2.0',
-      template: template.id,
+      template: templateKey,
       template_name: template.name,
-      template_category: template.category,
       entry: finalEntry,
       fields: fields || {},
       gregorian,
@@ -518,7 +353,7 @@ export default async function handler(req, res) {
     if (process.env.GITHUB_TOKEN) {
       try {
         [issueUrl, ledgerPath] = await Promise.all([
-          createGitHubIssueForSeal(template, finalEntry, stamp, { sessionId, userId }, formData),
+          createGitHubIssueForSeal(templateKey, finalEntry, stamp, { sessionId, userId, fields }),
           createLedgerFileForSeal(ledgerFile, ledgerData)
         ]);
       } catch (err) {
@@ -532,8 +367,7 @@ export default async function handler(req, res) {
         await getSupabase().from('stp_seals').insert({
           seal,
           entry: finalEntry,
-          template: template.id,
-          template_name: template.name,
+          template: templateKey,
           gregorian,
           hebrew,
           dreamspell,
@@ -557,9 +391,8 @@ export default async function handler(req, res) {
       hebrew,
       dreamspell,
       unix_utc: unixUtc,
-      template: template.id,
+      template: templateKey,
       template_name: template.name,
-      template_category: template.category,
       ledger_file: ledgerFile,
       issue_url: issueUrl,
       ledger_path: ledgerPath,
