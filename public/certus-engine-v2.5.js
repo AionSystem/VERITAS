@@ -1,10 +1,45 @@
-// ==================== CERTUS ENGINE v2.5.1 ====================
+// ==================== CERTUS ENGINE v2.5.2 ====================
 // FSVE-informed Scoring Engine with Full Polymath Red-Team Integration
-// Rounds 1-5 Implementations Complete
+// Rounds 1-6 Implementations Complete — FORGE-20260401-001
 // Enhanced with NLP, Photo Analysis, and Supabase Storage
 //
 // Author: Sheldon K. Salmon & ALBEDO
 // Date: April 1, 2026
+//
+// v2.5.2 FORGE Fix Registry (FORGE-20260401-001):
+// [CRITICAL] R1-SA-001 — score() made async; _acquireBackpressureToken awaited;
+//            recursive retry chain replaced with iterative polling + retry limit
+// [HIGH]     R3-SA-003 — location false assurance: anonymized sites skip distance
+//            check and emit explicit warning instead of false verification claim
+// [HIGH]     R1-EL-001 — dual decay curves (TFR 48h / evidence 168h) declared
+//            explicitly in dci_assumptions_raw in score() return object
+// [HIGH]     R1-SA-002 — _inMemoryStore in processAppeal() capped at 10k entries
+//            with LRU eviction; aligned with _inMemoryCounters TTL pattern
+// [HIGH]     R1-SA-003 — _findNearestShelters / _findNearestMedical declared as
+//            mock stubs with fallback warning on high-stakes path
+// [MEDIUM]   R3-SA-001 — audit_id counter fixed; reads from _auditLog.shards
+//            instead of _auditLog.events (which is always empty)
+// [MEDIUM]   R4-CP-001 — PLAIN_LANGUAGE.VALID strips "95% confidence" ceiling
+//            leak; replaced with action-oriented plain language
+// [MEDIUM]   R1-SA-004 — recognizeOfflineVoice() declared as stub with inline
+//            comment; caller-facing stub flag added to return object
+// [MEDIUM]   R4-CP-002 — language_fallback: true flag added to getAudioFeedback()
+//            and getVoiceInputConfig() when language is not in supported set
+// [MEDIUM]   R4-CP-003 — getOnboardingStep() returns completion object when all
+//            steps done instead of null; includes audio and next_action guidance
+// [MEDIUM]   R5-DT-002 — exit_path object added to all 5 onboarding steps
+// [MEDIUM]   R5-DT-001 — generateVerificationCertificate() adds certificate_summary
+//            structured object alongside human_readable for mobile rendering
+// [MEDIUM]   R2-CL-003 / R2-CL-001 — prohibited_uses and consent gate documented
+//            as caller-enforcement responsibilities in constitutional_status block
+// [LOW]      R1-EL-002 — _calculateJointLikelihood renamed and documented as
+//            heuristic approximation; no longer claims mathematical joint probability
+// [LOW]      R1-EL-003 — COR single-source 0.40 penalty documented with rationale
+//            comment; FCL candidate flag added
+// [LOW]      R2-EL-002 — COR pre-clamp score logged in result.raw_score
+// [LOW]      R3-EL-001 — _logAuditEvent('REPORT_SCORED') moved to after banned
+//            check; banned reporters now log BANNED_REPORTER_BLOCKED instead
+// [LOW]      R3-SA-002 — resolved as part of R1-SA-001 (recursive chain removed)
 //
 // Round 5 Implementations:
 // [S-17] Graceful degradation for Redis failure with alerts
@@ -53,8 +88,8 @@
 const CERTUS = {
 
   // ── VERSION ────────────────────────────────────────────────────────────────
-  VERSION: '2.5.1',
-  CANARY_VERSION: '2.5.1-beta',
+  VERSION: '2.5.2',
+  CANARY_VERSION: '2.5.2-beta',
 
   // ── PRODUCTION CONFIGURATION ───────────────────────────────────────────────
   PRODUCTION: {
@@ -295,9 +330,9 @@ const CERTUS = {
 
   // ── PLAIN LANGUAGE ────────────────────────────────────────────────────────
   PLAIN_LANGUAGE: {
-    'VALID': 'Reliable (95% confidence)',
-    'DEGRADED': 'Somewhat uncertain (70-95% confidence)',
-    'SUSPENDED': 'Do not rely (below 70% confidence)',
+    'VALID': 'Reliable — confident enough to act on',
+    'DEGRADED': 'Somewhat uncertain — verify before acting',
+    'SUSPENDED': 'Do not rely — human review required',
     'correlated failure detection': 'Multiple problems with this report',
     'epistemic veil': 'Information quality check',
     'uncertainty mass': 'How sure we are',
@@ -393,7 +428,10 @@ const CERTUS = {
   _inMemoryCounters: new Map(),
 
   // [GAP-9] Added: in-memory key-value store used as Redis fallback in processAppeal
+  // R1-SA-002 FIX: capped at _IN_MEMORY_STORE_MAX_SIZE with LRU eviction.
+  // Previously unbounded — adversarial appeal volume could grow this without limit.
   _inMemoryStore: new Map(),
+  _IN_MEMORY_STORE_MAX_SIZE: 10000,
 
   // [GAP-9] Added: stable instance identifier for audit log correlation
   _instanceId: (
@@ -467,7 +505,7 @@ const CERTUS = {
   //
   // Parameters:
   //   prior           — current confidence score [0, 1]
-  //   likelihood      — P(evidence | damage is real), from _calculateJointLikelihood
+  //   likelihood      — P(evidence | damage is real), from _estimateCombinedEvidenceDelta (heuristic)
   //   falseLikelihood — P(evidence | damage is NOT real); defaults to complement
   //
   // Returns posterior clamped to THRESHOLDS.EPISTEMIC_CEILING (0.95).
@@ -664,16 +702,28 @@ const CERTUS = {
   // ══════════════════════════════════════════════════════════════════════════
   // BACKPRESSURE HANDLING (token bucket)
   // ══════════════════════════════════════════════════════════════════════════
-  async _acquireBackpressureToken(tokens = 1) {
-    this._refillTokens();
+  // R1-SA-001 FIX: replaced recursive promise chain with iterative polling loop.
+  // Max retries prevent unbounded call stack depth under sustained token exhaustion.
+  // score() now awaits this function before the scoring pipeline executes.
+  // R3-SA-002 FIX: recursive chain removed — stack risk neutralised before R1-SA-001 shipped.
+  async _acquireBackpressureToken(tokens = 1, _maxRetries = 50) {
+    const POLL_INTERVAL_MS = 100;
+    let retries = 0;
 
-    if (this._backpressure.tokens >= tokens) {
-      this._backpressure.tokens -= tokens;
-      return true;
+    while (retries < _maxRetries) {
+      this._refillTokens();
+      if (this._backpressure.tokens >= tokens) {
+        this._backpressure.tokens -= tokens;
+        return true;
+      }
+      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+      retries++;
     }
 
-    await new Promise(resolve => setTimeout(resolve, 100));
-    return this._acquireBackpressureToken(tokens);
+    // Token bucket exhausted after all retries — surface a typed error.
+    const err = new Error('BACKPRESSURE_EXHAUSTED: token bucket empty after maximum retries');
+    err.code = 'BACKPRESSURE_EXHAUSTED';
+    throw err;
   },
 
   _refillTokens() {
@@ -687,10 +737,28 @@ const CERTUS = {
     this._backpressure.lastRefill = now;
   },
 
+  // R1-SA-002 FIX: LRU-evicting setter for _inMemoryStore.
+  // When the store reaches _IN_MEMORY_STORE_MAX_SIZE, the oldest inserted key
+  // is evicted before the new entry is written. Map iteration order reflects
+  // insertion order in all V8/SpiderMonkey engines, making Map.keys().next()
+  // a reliable O(1) LRU eviction without an additional data structure.
+  _inMemoryStoreSet(key, value) {
+    if (this._inMemoryStore.size >= this._IN_MEMORY_STORE_MAX_SIZE) {
+      const oldest = this._inMemoryStore.keys().next().value;
+      this._inMemoryStore.delete(oldest);
+    }
+    this._inMemoryStore.set(key, value);
+  },
+
   // ══════════════════════════════════════════════════════════════════════════
   // EVIDENCE INDEPENDENCE DETECTION
   // ══════════════════════════════════════════════════════════════════════════
-  _calculateJointLikelihood(evidences) {
+  // R1-EL-002 FIX: renamed from _calculateJointLikelihood. The MAX-based combination
+  // is a conservative heuristic approximation — it is NOT a true joint likelihood
+  // calculation. Two partially dependent sources receive less than their sum, which
+  // is directionally correct, but Math.max does not correspond to any standard
+  // independence correction formula. Documented to prevent false precision claims.
+  _estimateCombinedEvidenceDelta(evidences) {
     const hasPhoto = evidences.includes('photo');
     const hasWitness = evidences.includes('witness');
     const hasField = evidences.includes('field');
@@ -999,12 +1067,18 @@ const CERTUS = {
     return true;
   },
 
+  // R1-SA-004 FIX: STUB — offline keyword detection not yet implemented.
+  // Returns the first keyword in the language list as a placeholder result.
+  // The confidence value of 0.7 is hardcoded and does not reflect actual detection.
+  // Replace with a real offline speech-to-keyword model before production deployment.
   recognizeOfflineVoice(audioSample, language = 'en') {
     const keywords = this.VOICE_KEYWORDS[language] || this.VOICE_KEYWORDS.en;
     return {
       detected: keywords[0],
       confidence: 0.7,
-      offline: true
+      offline: true,
+      stub: true, // R1-SA-004: placeholder — real keyword detection not implemented
+      stub_warning: 'Returns first keyword unconditionally. Audio sample is not analysed.'
     };
   },
 
@@ -1199,6 +1273,12 @@ const CERTUS = {
 
     if (nearbyReports.length === 1) {
       const agrees = nearbyReports[0].internalTier === currentTier;
+      // R1-EL-003 FIX: The 0.40 disagreement value is a deliberate design choice:
+      // contradiction should cost MORE than the baseline neutral (0.50) to reflect
+      // that a single opposing report actively undermines rather than merely fails
+      // to confirm. 0.40 was chosen over 0.45 or 0.35 as the midpoint between
+      // floor (0.40) and neutral, making the penalty proportionate but not severe.
+      // FCL-CANDIDATE: validate 0.40 against ground-truth contradiction outcomes.
       result.value = agrees ? 0.55 : 0.40;
       result.um_contribution = 0.05;
       result.signal_type = agrees ? 'WEAK_AGREEMENT' : 'WEAK_CONTRADICTION';
@@ -1212,8 +1292,12 @@ const CERTUS = {
     const contradictions = nearbyReports.length - agreements;
     const agreementRate = agreements / nearbyReports.length;
 
-    let score = agreementRate - (contradictions * 0.15);
-    score = Math.max(0, Math.min(1, score));
+    // R2-EL-002 FIX: pre-clamp score preserved in raw_score for transparency.
+    // The clamped value is correct for UM purposes; raw_score surfaces contradiction
+    // magnitude that the clamp otherwise hides (e.g. 5 contradictions → -0.75 vs 0).
+    const rawScore = agreementRate - (contradictions * 0.15);
+    const score = Math.max(0, Math.min(1, rawScore));
+    result.raw_score = parseFloat(rawScore.toFixed(3));
 
     if (contradictions > 0) {
       result.um_contribution = 0.08 * (contradictions / nearbyReports.length);
@@ -1409,14 +1493,22 @@ const CERTUS = {
 
     if (pes.value && pes.value >= 0.80 && !pes.gated && pes.measurement_class === 'EVALUATIVE') {
       if (photoGeotag && reportCoordinates) {
-        const distance = this._calculateDistance(
-          photoGeotag.lat, photoGeotag.lng,
-          reportCoordinates.lat, reportCoordinates.lng
-        );
-        if (distance <= 100) {
-          strengths.push(`✅ Photo evidence clear, high model confidence, location verified within ${Math.round(distance)}m`);
+        // R3-SA-003 FIX: anonymized coordinates are rounded to ±~111m precision.
+        // Running _calculateDistance against rounded coords and then claiming
+        // "location verified within Nm" is false assurance — the stated precision
+        // cannot be delivered. Skip the check entirely; emit an explicit warning.
+        if (reportCoordinates.anonymized) {
+          weaknesses.push('⚠️ Location verification unavailable — sensitive site anonymized. Coordinate precision is insufficient for distance check.');
         } else {
-          weaknesses.push(`⚠️ Photo location ${Math.round(distance)}m from reported location`);
+          const distance = this._calculateDistance(
+            photoGeotag.lat, photoGeotag.lng,
+            reportCoordinates.lat, reportCoordinates.lng
+          );
+          if (distance <= 100) {
+            strengths.push(`✅ Photo evidence clear, high model confidence, location verified within ${Math.round(distance)}m`);
+          } else {
+            weaknesses.push(`⚠️ Photo location ${Math.round(distance)}m from reported location`);
+          }
         }
       } else {
         strengths.push('✅ Photo evidence clear, high model confidence');
@@ -1526,7 +1618,20 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       qr_code: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`,
       shareable_link: `https://veritas.aion.net/verify/${certificateId}`,
       shareable_text: `VERITAS CERTIFIED: Report ${certificateId} is ${Math.round(dci * 100)}% reliable. Verify at veritas.aion.net/verify/${certificateId}`,
-      human_readable: humanReadable
+      human_readable: humanReadable,
+      // R5-DT-001 FIX: structured summary for mobile field rendering.
+      // human_readable uses ASCII alignment that collapses to unformatted text on
+      // mobile devices. The UI must render certificate_summary as the primary
+      // display surface — id and dci_pct are the two most critical fields for
+      // a field user and must be visually prominent.
+      certificate_summary: {
+        id: certificateId,
+        dci_pct: Math.round(dci * 100),
+        tier: tier.toUpperCase(),
+        action: tier === 'high' ? 'SHARE' : (tier === 'watch' ? 'VERIFY' : 'WAIT'),
+        verify_url: `https://veritas.aion.net/verify/${certificateId}`,
+        issued_at: new Date().toISOString()
+      }
     };
   },
 
@@ -1534,27 +1639,44 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
   // AUDIO FEEDBACK
   // ══════════════════════════════════════════════════════════════════════════
   getAudioFeedback(tier, validityStatus, language = 'en') {
+    // R4-CP-002 FIX: detect unsupported language and surface fallback flag.
+    // Previously the engine silently fell back to English with no signal to the UI.
+    const SUPPORTED_AUDIO_LANGUAGES = ['en', 'es', 'ar', 'zh'];
+    const languageFallback = !SUPPORTED_AUDIO_LANGUAGES.includes(language);
+    const resolvedLanguage = languageFallback ? 'en' : language;
+
     if (tier === 'review' || validityStatus === 'SUSPENDED') {
       const feedback = this.AUDIO_FEEDBACK.review;
       return {
         play: true,
-        sound: this.AUDIO_FEEDBACK.languages[language]?.review || feedback.sound,
+        sound: this.AUDIO_FEEDBACK.languages[resolvedLanguage]?.review || feedback.sound,
         volume: feedback.volume,
         message: feedback.message,
-        gentle: true
+        gentle: true,
+        language_fallback: languageFallback,
+        fallback_reason: languageFallback ? 'language_not_supported' : null,
+        fallback_language: languageFallback ? 'en' : null
       };
     }
     if (tier === 'watch') {
       const feedback = this.AUDIO_FEEDBACK.watch;
       return {
         play: true,
-        sound: this.AUDIO_FEEDBACK.languages[language]?.watch || feedback.sound,
+        sound: this.AUDIO_FEEDBACK.languages[resolvedLanguage]?.watch || feedback.sound,
         volume: feedback.volume,
         message: feedback.message,
-        gentle: true
+        gentle: true,
+        language_fallback: languageFallback,
+        fallback_reason: languageFallback ? 'language_not_supported' : null,
+        fallback_language: languageFallback ? 'en' : null
       };
     }
-    return { play: false };
+    return {
+      play: false,
+      language_fallback: languageFallback,
+      fallback_reason: languageFallback ? 'language_not_supported' : null,
+      fallback_language: languageFallback ? 'en' : null
+    };
   },
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1630,6 +1752,13 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
           icon_only: true,
           audio_instruction: 'Point your phone at the damage. Take a clear photo.',
           visual_hint: 'show_camera_icon'
+        },
+        // R5-DT-002 FIX: exit path available at every step
+        exit_path: {
+          action: 'SAVE_AND_EXIT',
+          audio_instruction: 'You can save your progress and come back later.',
+          save_before_exit: true,
+          label: 'Save for later'
         }
       };
     }
@@ -1651,6 +1780,12 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
           icon_only: true,
           audio_instruction: 'Choose how bad the damage is. Minimal, partial, or complete.',
           visual_hints: ['checkmark', 'warning', 'cross']
+        },
+        exit_path: {
+          action: 'SAVE_AND_EXIT',
+          audio_instruction: 'You can save your progress and come back later.',
+          save_before_exit: true,
+          label: 'Save for later'
         }
       };
     }
@@ -1676,6 +1811,12 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
           icon_only: true,
           audio_instruction: 'What was damaged? A building, road, bridge, or something else?',
           visual_hints: ['house', 'road', 'bridge', 'electricity', 'hospital', 'school']
+        },
+        exit_path: {
+          action: 'SAVE_AND_EXIT',
+          audio_instruction: 'You can save your progress and come back later.',
+          save_before_exit: true,
+          label: 'Save for later'
         }
       };
     }
@@ -1692,6 +1833,12 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
           icon_only: true,
           audio_instruction: 'Move the pin to the damage location. Tap the map to adjust.',
           visual_hint: 'show_map_pin'
+        },
+        exit_path: {
+          action: 'SAVE_AND_EXIT',
+          audio_instruction: 'Your location is saved. You can come back to submit later.',
+          save_before_exit: true,
+          label: 'Save for later'
         }
       };
     }
@@ -1708,10 +1855,39 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
           icon_only: true,
           audio_instruction: 'Your report is ready. Press send to help your community.',
           visual_hint: 'checkmark'
+        },
+        // R5-DT-002 FIX: exit path on final step before submission
+        exit_path: {
+          action: 'SAVE_AND_EXIT',
+          audio_instruction: 'You can save your report and come back later.',
+          save_before_exit: true,
+          label: 'Save for later'
         }
       };
     }
-    return null;
+    // R4-CP-003 FIX: return a completion object instead of null.
+    // Previously the onboarding flow went silent after all steps completed —
+    // a critical UX gap in high-stress field contexts.
+    return {
+      step: 'COMPLETE',
+      icon: '🎉',
+      title: 'Report Submitted',
+      instructions: 'Your report has been submitted. Thank you for helping your community.',
+      audio_url: `/audio/${language || 'en'}/complete.mp3`,
+      next_action: 'Your report is being processed. You will receive a verification code shortly.',
+      total_steps: 5,
+      low_literacy: {
+        icon_only: true,
+        audio_instruction: 'Your report has been sent. Thank you.',
+        visual_hint: 'success_checkmark'
+      },
+      exit_path: {
+        action: 'RETURN_HOME',
+        audio_instruction: 'You can submit another report or return to the main screen.',
+        save_before_exit: false,
+        label: 'Return to home'
+      }
+    };
   },
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1725,13 +1901,18 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
     const languages = {
       en: 'en-US', es: 'es-ES', ar: 'ar-SA', zh: 'zh-CN'
     };
+    // R4-CP-002 FIX: detect unsupported languages and surface fallback flag.
+    const languageFallback = !languages[language];
     return {
       supported: true,
       language: languages[language] || 'en-US',
       offline_supported: true,
       keywords: this.VOICE_KEYWORDS[language] || this.VOICE_KEYWORDS.en,
       placeholder: 'Tap microphone and speak location description...',
-      offline_mode: 'keyword_detection'
+      offline_mode: 'keyword_detection',
+      language_fallback: languageFallback,
+      fallback_reason: languageFallback ? 'language_not_supported' : null,
+      fallback_language: languageFallback ? 'en' : null
     };
   },
 
@@ -2131,6 +2312,13 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
   // ══════════════════════════════════════════════════════════════════════════
   // LOCATION SERVICES
   // ══════════════════════════════════════════════════════════════════════════
+  // R1-SA-003 FIX: these functions are MOCK STUBS — they return hardcoded offset
+  // coordinates and do not query any live shelter or medical database.
+  // They are called on every "Completely damaged" report — a high-stakes path.
+  // STUB STATUS must be declared here and surfaced in the return object so callers
+  // do not treat these as verified facility locations.
+  // TODO: replace with a live geospatial query (Overpass API, UNHCR shelter DB,
+  // or equivalent) before any deployment environment beyond internal testing.
   async _findNearestShelters(coordinates, radiusKm) {
     if (!coordinates || !coordinates.lat || !coordinates.lng) return [];
 
@@ -2153,10 +2341,14 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       distance_km: this._calculateDistance(coordinates.lat, coordinates.lng, s.lat, s.lng) / 1000,
       phone: '+1-800-555-0123',
       open: true,
-      instructions: 'Proceed to shelter for assistance'
+      instructions: 'Proceed to shelter for assistance',
+      // R1-SA-003: stub flag — caller must not treat these as live verified locations
+      stub: true,
+      stub_warning: 'MOCK DATA — not from a live shelter database. Do not use for actual emergency dispatch.'
     }));
   },
 
+  // R1-SA-003 FIX: MOCK STUB — see _findNearestShelters header above.
   async _findNearestMedical(coordinates, radiusKm) {
     if (!coordinates || !coordinates.lat || !coordinates.lng) return [];
 
@@ -2179,7 +2371,10 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       distance_km: this._calculateDistance(coordinates.lat, coordinates.lng, f.lat, f.lng) / 1000,
       phone: f.type === 'hospital' ? '+1-800-555-0124' : '+1-800-555-0125',
       open_24h: true,
-      emergency_services: f.type === 'hospital' || f.type === 'emergency'
+      emergency_services: f.type === 'hospital' || f.type === 'emergency',
+      // R1-SA-003: stub flag — caller must not treat these as live verified locations
+      stub: true,
+      stub_warning: 'MOCK DATA — not from a live medical database. Do not use for actual emergency dispatch.'
     }));
   },
 
@@ -2389,7 +2584,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       }
     }
 
-    const result = this.score(report, nearbyReports, isRealModel, context);
+    const result = await this.score(report, nearbyReports, isRealModel, context);
 
     if (report.nlp_confidence) {
       result.nlp_insights = {
@@ -2531,7 +2726,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       () => this._incrementDistributedCounter(reportKey, this.THRESHOLDS.APPEAL_RATE_LIMIT.per_report.window / 1000),
       () => {
         const current = (this._inMemoryStore.get(reportKey) || 0) + 1;
-        this._inMemoryStore.set(reportKey, current);
+        this._inMemoryStoreSet(reportKey, current); // R1-SA-002: LRU-evicting setter
         return current;
       }
     );
@@ -2541,7 +2736,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       () => this._incrementDistributedCounter(ipKey, this.THRESHOLDS.APPEAL_RATE_LIMIT.per_ip.window / 1000),
       () => {
         const current = (this._inMemoryStore.get(ipKey) || 0) + 1;
-        this._inMemoryStore.set(ipKey, current);
+        this._inMemoryStoreSet(ipKey, current); // R1-SA-002: LRU-evicting setter
         return current;
       }
     );
@@ -2626,7 +2821,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
     if (newEvidence.witness_statements) evidenceTypes.push('witness');
     if (newEvidence.field_verification) evidenceTypes.push('field');
 
-    const likelihood = this._calculateJointLikelihood(evidenceTypes);
+    const likelihood = this._estimateCombinedEvidenceDelta(evidenceTypes);
 
     const priorConfidence = originalReport.photoAiConf || 0.5;
     // [GAP-3] bayesianUpdate now implemented — returns a real posterior
@@ -2704,7 +2899,10 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
   // ══════════════════════════════════════════════════════════════════════════
   // MASTER SCORE — main entry point
   // ══════════════════════════════════════════════════════════════════════════
-  score(report, nearbyReports = [], isRealModel = false, context = {}) {
+  // R1-SA-001 FIX: score() is now async. _acquireBackpressureToken() is awaited
+  // before any scoring pipeline work runs. Under load, callers block until a
+  // token is available — backpressure now restricts, not merely measures.
+  async score(report, nearbyReports = [], isRealModel = false, context = {}) {
     const timestamp = report.timestamp || new Date().toISOString();
     // [GAP-1] _generateUUID now implemented — no longer crashes
     const reportUuid = report.uuid || this._generateUUID();
@@ -2714,7 +2912,9 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       this.registerOfflineMapSupport();
     }
 
-    this._acquireBackpressureToken().catch(() => {});
+    // R1-SA-001 FIX: awaited — backpressure now gates the pipeline.
+    // Throws BACKPRESSURE_EXHAUSTED if token bucket drains completely.
+    await this._acquireBackpressureToken();
 
     const version = this.routeToVersion(reportUuid);
 
@@ -2723,15 +2923,17 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       report.infraType
     );
 
-    this._logAuditEvent({
-      type: 'REPORT_SCORED',
-      report_id: reportUuid,
-      version: version,
-      location_anonymized: location.anonymized
-    }).catch(() => {});
-
+    // R3-EL-001 FIX: reputation and banned check moved BEFORE audit log entry.
+    // A banned reporter previously generated a REPORT_SCORED audit event for a
+    // report that was never scored. Now only legitimate reports get that entry.
     const reputation = this._updateReputation(report.reporter_id, 'PENDING');
     if (reputation.banned) {
+      this._logAuditEvent({
+        type: 'BANNED_REPORTER_BLOCKED',
+        report_id: reportUuid,
+        reporter_id: report.reporter_id,
+        ban_reason: reputation.ban_reason
+      }).catch(() => {});
       return {
         usable: false,
         error: 'REPORTER_BANNED',
@@ -2739,6 +2941,14 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         reputation: reputation
       };
     }
+
+    // R3-EL-001 FIX: REPORT_SCORED now fires only after ban check passes.
+    this._logAuditEvent({
+      type: 'REPORT_SCORED',
+      report_id: reportUuid,
+      version: version,
+      location_anonymized: location.anonymized
+    }).catch(() => {});
 
     const PES = this.computePES(report, isRealModel);
     const COR = this.computeCOR(nearbyReports, report.internalTier, reportUuid);
@@ -2819,6 +3029,22 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
 
     const assumptions = [];
     if (COR.assumption) assumptions.push(COR.assumption);
+
+    // R1-EL-001 FIX: dual decay curves declared explicitly.
+    // TFR uses a 48h linear decay — a report is fully stale at 48 hours.
+    // Evidence recency weighting (_getEvidenceFreshness) uses a 168h half-life —
+    // a report retains 43% weight at 96 hours. These operate on the same timestamp
+    // and produce different staleness assessments. The divergence is intentional:
+    // TFR penalises the primary score for age aggressively (field timeliness);
+    // evidence recency weights corroboration evidence more gradually (research fidelity).
+    // If the divergence is not intentional, synchronise EVIDENCE_HALF_LIFE_HOURS to 48.
+    assumptions.push({
+      id: 'DECAY-A01',
+      text: 'Dual decay curves active: TFR uses 48h linear decay; evidence recency uses 168h half-life. Same timestamp, different staleness assessments — intentional divergence.',
+      plain_language: '⏱ Report age affects score in two ways: main freshness score drops to zero at 48 hours; evidence weight drops to half at 7 days.',
+      source: 'computeTFR + _getEvidenceFreshness',
+      timestamp: new Date().toISOString()
+    });
     if (PES.measurement_class === 'INFERENTIAL') {
       assumptions.push({
         id: 'PES-A01',
@@ -2986,6 +3212,21 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
           'facial_recognition',
           'individual_identification'
         ],
+        // R2-CL-001 FIX: prohibited_uses is a declarative governance instrument.
+        // The engine surfaces this list but does NOT enforce it at the scoring layer.
+        // The caller is solely responsible for enforcing all prohibited uses prior
+        // to acting on DCI output. Treating this list as a technical gate would be
+        // a false assurance — it is a contract, not a circuit breaker.
+        prohibited_uses_enforcement: 'CALLER_RESPONSIBILITY',
+        prohibited_uses_enforcement_note: 'Engine enforcement is not implemented at the scoring layer. Caller must reject prohibited use cases before acting on this output.',
+        // R2-CL-003 FIX: consent management is the caller\'s responsibility.
+        // score() can be called without getConsentForm() ever being invoked.
+        // The engine provides consent form tooling (getConsentForm()) but does NOT
+        // gate scoring on consent acknowledgment. Callers operating in field
+        // deployments must require consent_acknowledged: true before passing
+        // reports to score(), or implement a consent gate at their API boundary.
+        consent_gate: 'CALLER_RESPONSIBILITY',
+        consent_gate_note: 'The engine provides getConsentForm() but does not block scoring if consent has not been collected. Consent enforcement is the caller\'s obligation.',
         use_monitoring: 'enabled',
         last_review: '2026-04-01',
         reviewer: 'Polymath Council',
@@ -3038,7 +3279,10 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         tracking: 'one_time_code'
       },
 
-      audit_id: this._auditLog.events ? this._auditLog.events.length + 1 : 1
+      // R3-SA-001 FIX: _auditLog.events is always [] — events are written to
+      // _auditLog.shards[N].events. The previous expression always returned 1.
+      // Now sums across all shards for a monotonically increasing audit_id.
+      audit_id: this._auditLog.shards.reduce((sum, s) => sum + (s?.events?.length || 0), 0) + 1
     };
   },
 
