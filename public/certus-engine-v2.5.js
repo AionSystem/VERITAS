@@ -852,10 +852,10 @@ const CERTUS = {
   // REPUTATION SCORING
   // ══════════════════════════════════════════════════════════════════════════
   _updateReputation(reporterId, reportOutcome) {
-  // Add this guard
+  // Guard for missing reporter ID
   if (!reporterId) {
-    console.warn('[CERTUS] No reporter ID provided, skipping reputation update');
-    return { score: 0, banned: false };
+    console.warn('[CERTUS] No reporter ID, skipping reputation');
+    return { score: 0, banned: false, verified_reports: 0, false_reports: 0 };
   }
   
   let reputation = this._reputationStore.get(reporterId) || {
@@ -865,28 +865,26 @@ const CERTUS = {
     banned: false,
     ban_reason: null
   };
-  // ... rest of function
-}
-    if (reputation.banned) return reputation;
 
-    if (reportOutcome === 'VERIFIED') {
-      reputation.score += this.THRESHOLDS.REPUTATION.VERIFIED_BONUS;
-      reputation.verified_reports++;
-    } else if (reportOutcome === 'FALSE') {
-      reputation.score -= this.THRESHOLDS.REPUTATION.FALSE_REPORT_PENALTY;
-      reputation.false_reports++;
-    }
+  if (reputation.banned) return reputation;
 
-    if (reputation.score < this.THRESHOLDS.REPUTATION.BAN_THRESHOLD) {
-      reputation.banned = true;
-      reputation.ban_reason = 'Multiple false reports';
-    }
+  if (reportOutcome === 'VERIFIED') {
+    reputation.score += this.THRESHOLDS.REPUTATION.VERIFIED_BONUS;
+    reputation.verified_reports++;
+  } else if (reportOutcome === 'FALSE') {
+    reputation.score -= this.THRESHOLDS.REPUTATION.FALSE_REPORT_PENALTY;
+    reputation.false_reports++;
+  }
 
-    this._reputationStore.set(reporterId, reputation);
-    this.updateReputationStorage(reporterId, reputation).catch(console.warn);
-    return reputation;
-  },
+  if (reputation.score < this.THRESHOLDS.REPUTATION.BAN_THRESHOLD) {
+    reputation.banned = true;
+    reputation.ban_reason = 'Multiple false reports';
+  }
 
+  this._reputationStore.set(reporterId, reputation);
+  this.updateReputationStorage(reporterId, reputation).catch(console.warn);
+  return reputation;
+},
   // ══════════════════════════════════════════════════════════════════════════
   // DATA MINIMIZATION for sensitive locations
   // ══════════════════════════════════════════════════════════════════════════
