@@ -502,35 +502,35 @@
     </div>
   </div>
      <!-- RESCUE VIEW -->
-  <div class="veritas-view" id="viewRescue">
-    <div class="emergency-hero" style="text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #ff4d4d 0%, #cc0000 100%); border-radius: 20px; margin-bottom: 30px;">
-      <div style="font-size: 80px;">🆘</div>
-      <h1 style="color: white; font-size: 32px; margin: 20px 0;">I NEED RESCUE</h1>
-      <p style="color: rgba(255,255,255,0.9); margin-bottom: 30px;">Tap the button below if you are trapped or need emergency assistance. Your location and photo will be sent to rescue teams.</p>
-      <button id="emergencyButton" onclick="sendEmergencySignal()" style="background: white; color: #ff4d4d; font-size: 28px; padding: 20px 40px; border: none; border-radius: 60px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-        🚨 SEND RESCUE SIGNAL 🚨
-      </button>
+<div class="veritas-view" id="viewRescue">
+  <div class="emergency-hero" style="text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #ff4d4d 0%, #cc0000 100%); border-radius: 20px; margin-bottom: 30px;">
+    <div style="font-size: 80px;">🆘</div>
+    <h1 style="color: white; font-size: 32px; margin: 20px 0;" data-i18n="rescue_title">I NEED RESCUE</h1>
+    <p style="color: rgba(255,255,255,0.9); margin-bottom: 30px;" data-i18n="rescue_description">Tap the button below if you are trapped or need emergency assistance. Your location and photo will be sent to rescue teams.</p>
+    <button id="emergencyButton" onclick="sendEmergencySignal()" style="background: white; color: #ff4d4d; font-size: 28px; padding: 20px 40px; border: none; border-radius: 60px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 20px rgba(0,0,0,0.3);" data-i18n="rescue_button">
+      🚨 SEND RESCUE SIGNAL 🚨
+    </button>
+  </div>
+  
+  <div class="info-card" style="background: var(--surface); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+    <h3 data-i18n="location_status_title">📍 Your Location Status</h3>
+    <p id="lastLocationStatus" style="font-family: monospace; font-size: 12px; color: var(--amber); margin-top: 8px;" data-i18n="location_status_placeholder">Acquiring GPS...</p>
+    <div style="font-size: 12px; color: var(--muted); margin-top: 8px;">
+      <span data-i18n="gps_label">📡 GPS: </span><span id="gpsStatus" data-i18n="gps_waiting">Waiting for signal</span>
     </div>
-    
-    <div class="info-card" style="background: var(--surface); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-      <h3>📍 Your Location Status</h3>
-      <p id="lastLocationStatus" style="font-family: monospace; font-size: 12px; color: var(--amber); margin-top: 8px;">Acquiring GPS...</p>
-      <div style="font-size: 12px; color: var(--muted); margin-top: 8px;">
-        <span>📡 GPS: </span><span id="gpsStatus">Waiting for signal</span>
-      </div>
-    </div>
-    
-    <div class="info-card" style="background: var(--surface); border-radius: 12px; padding: 20px;">
-      <h3>📋 What to Do While Waiting</h3>
-      <ul style="margin-top: 12px; list-style: none;">
-        <li style="margin-bottom: 12px;">✅ Stay where you are if it's safe</li>
-        <li style="margin-bottom: 12px;">✅ Conserve phone battery (reduce brightness)</li>
-        <li style="margin-bottom: 12px;">✅ Take a photo of your surroundings</li>
-        <li style="margin-bottom: 12px;">✅ If you move, your last location is still saved</li>
-        <li style="margin-bottom: 12px;">✅ Signal works offline — will send when connected</li>
-      </ul>
-    </div>
-  </div>  
+  </div>
+  
+  <div class="info-card" style="background: var(--surface); border-radius: 12px; padding: 20px;">
+    <h3 data-i18n="waiting_advice_title">📋 What to Do While Waiting</h3>
+    <ul style="margin-top: 12px; list-style: none;">
+      <li style="margin-bottom: 12px;" data-i18n="waiting_advice_1">✅ Stay where you are if it's safe</li>
+      <li style="margin-bottom: 12px;" data-i18n="waiting_advice_2">✅ Conserve phone battery (reduce brightness)</li>
+      <li style="margin-bottom: 12px;" data-i18n="waiting_advice_3">✅ Take a photo of your surroundings</li>
+      <li style="margin-bottom: 12px;" data-i18n="waiting_advice_4">✅ If you move, your last location is still saved</li>
+      <li style="margin-bottom: 12px;" data-i18n="waiting_advice_5">✅ Signal works offline — will send when connected</li>
+    </ul>
+  </div>
+</div> 
   <div class="triple-time">
     <div class="time-cell"><div class="time-sys">Gregorian</div><div class="time-val loading" id="tt-gregorian">· · ·</div></div>
     <div class="time-cell"><div class="time-sys">13 Moon · Dreamspell</div><div class="time-val loading" id="tt-dreamspell">· · ·</div></div>
@@ -1736,7 +1736,8 @@ async function stampWithSTP() {
   const datasetHash = await computeHash(datasetStr);
   const timestamp = new Date().toISOString();
   
-  const entry = `VERITAS Export\nTimestamp: ${timestamp}\nReports: ${reports.length}\nDataset SHA-256: ${datasetHash}`;
+  // Use TEMPLATE 16 for VERITAS Export
+  const entry = `VERITAS Export\nTimestamp: ${timestamp}\nReports: ${reports.length}\nDataset SHA-256: ${datasetHash}\nPowered by CERTUS Engine v2.5`;
   
   const btn = document.getElementById('stpSealBtn');
   const originalText = btn.textContent;
@@ -1744,39 +1745,45 @@ async function stampWithSTP() {
   btn.disabled = true;
   
   try {
-    // Try STP API but don't fail if it doesn't work
     const response = await fetchWithTimeout('https://veritas-flax-eta.vercel.app/api/stp-seal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         entry: entry,
-        type: '07',
+        type: '16', // ← VERITAS-EXPORT
         sessionId: 'veritas-export-' + timestamp,
-        userId: null
+        userId: null,
+        fields: {
+          reports_count: reports.length,
+          dataset_hash: datasetHash,
+          export_timestamp: timestamp
+        }
       })
-    }).catch(() => null);
+    });
     
-    let sealData = null;
-    if (response && response.ok) {
-      sealData = await response.json();
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
     
-    // Create local seal even if API fails
+    const seal = await response.json();
+    if (!seal.success) throw new Error(seal.error || 'Seal failed');
+    
+    // Success – store seal with GitHub info
     currentSTPSeal = {
-      seal: datasetHash,
+      ...seal,
       datasetHash,
       reportsCount: reports.length,
       exportTimestamp: timestamp,
-      local: !sealData,
-      note: sealData ? 'Sealed with STP service' : 'Local seal only - API unavailable'
+      local: false
     };
     
     displaySTPSeal(currentSTPSeal);
-    toast(sealData ? 'STP seal created successfully!' : 'Local seal created (API unavailable)');
+    toast('✅ STP seal created and uploaded to GitHub!');
     
   } catch (err) {
     console.error('[VERITAS] STP seal error:', err);
-    // Still create a local seal
+    // Still create a local seal as fallback
     currentSTPSeal = {
       seal: datasetHash,
       datasetHash,
@@ -1786,7 +1793,7 @@ async function stampWithSTP() {
       error: err.message
     };
     displaySTPSeal(currentSTPSeal);
-    toast(`Local seal created. API error: ${err.message}`);
+    toast(`⚠️ Local seal only. GitHub error: ${err.message}`);
   } finally {
     btn.textContent = originalText;
     btn.disabled = false;
@@ -1803,7 +1810,7 @@ function displaySTPSeal(seal) {
     '<span style="color:#ff4d4d;">Not created (check GitHub token)</span>';
   
   const ledgerLink = seal.ledger_path ? 
-    `<a href="https://github.com/AionSystem/SOVEREIGN-TRACE-PROTOCOL/blob/main/${seal.ledger_path}" target="_blank" style="color:var(--amber);">View Ledger File</a>` : 
+    `<a href="https://github.com/AionSystem/VERITAS/ledger ${seal.ledger_path}" target="_blank" style="color:var(--amber);">View Ledger File</a>` : 
     '<span style="color:#ffc947;">Not uploaded</span>';
   
   contentDiv.innerHTML = `
