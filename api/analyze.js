@@ -3,7 +3,7 @@ export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   try {
     const { image, infrastructureType } = req.body;
     
-    // Get API key from environment variable
+    // IMPORTANT: Get API key from environment variable
     const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
     
     if (!OPENROUTER_API_KEY) {
@@ -24,13 +24,20 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'API key not configured' });
     }
     
+    console.log('API Key found, length:', OPENROUTER_API_KEY.length);
+    
     const prompt = `Analyze this damage photo. Respond with ONLY JSON:
 {
   "damage_level": "minimal" or "partial" or "complete",
   "confidence": 0.0-1.0
 }`;
     
-    console.log('Calling OpenRouter with model: anthropic/claude-3.5-sonnet');
+    // Use a working model - these are confirmed working:
+    // 'meta-llama/llama-3.2-11b-vision-instruct:free' (free)
+    // 'openai/gpt-4o-mini' (paid)
+    // 'anthropic/claude-3-haiku' (paid)
+    
+    console.log('Calling OpenRouter with model: meta-llama/llama-3.2-11b-vision-instruct:free');
     
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -41,7 +48,7 @@ export default async function handler(req, res) {
         'X-Title': 'VERITAS Damage Assessment'
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet',
+        model: 'meta-llama/llama-3.2-11b-vision-instruct:free', // Working free model
         messages: [{
           role: 'user',
           content: [
@@ -54,6 +61,8 @@ export default async function handler(req, res) {
       })
     });
     
+    console.log('OpenRouter response status:', response.status);
+    
     if (!response.ok) {
       const errorText = await response.text();
       console.error('OpenRouter API error:', response.status, errorText);
@@ -64,7 +73,7 @@ export default async function handler(req, res) {
     }
     
     const data = await response.json();
-    console.log('OpenRouter response received');
+    console.log('OpenRouter response received successfully');
     
     // Check if response has the expected structure
     if (!data.choices || !data.choices[0] || !data.choices[0].message) {
@@ -104,7 +113,7 @@ export default async function handler(req, res) {
       confidence: result.confidence,
       score: result.damage_level === 'complete' ? 0.9 : 
              result.damage_level === 'partial' ? 0.6 : 0.3,
-      model: 'claude-3.5-sonnet'
+      model: 'llama-3.2-11b-vision'
     });
     
   } catch (error) {
