@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     'X-Title': 'VERITAS Damage Assessment'
   },
   body: JSON.stringify({
-    model: 'meta-llama/llama-3.2-11b-vision-instruct:free',  // <-- CHANGE THIS LINE
+    model: 'anthropic/claude-3.5-sonnet',
     messages: [{
       role: 'user',
       content: [
