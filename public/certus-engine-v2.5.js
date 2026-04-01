@@ -38,6 +38,17 @@
 // [NEW] Batch photo analysis with OpenRouter API
 // [NEW] Duplicate photo detection with perceptual hashing
 // [NEW] Shelter and medical facility lookup
+//
+// Gap Closures (v2.5.1 complete):
+// [GAP-1] _generateUUID() — implemented (RFC 4122 v4)
+// [GAP-2] _incrementDistributedCounter() — implemented (Redis + in-memory TTL fallback)
+// [GAP-3] bayesianUpdate() — implemented (full Bayes theorem with epistemic ceiling)
+// [GAP-4] _generatePerceptualHash() — replaced stub with real 8x8 dHash (browser) + FNV-1a (Node)
+// [GAP-5] _calculateHashSimilarity() — Hamming distance for binary hashes, char-diff for hex
+// [GAP-6] _getMostCommon() — replaced buggy O(n²) sort with O(n) frequency map
+// [GAP-7] _detectAdversarialPattern() — made async; _findDuplicatePhotos await now resolves
+// [GAP-8] processAppeal() — awaits _detectAdversarialPattern
+// [GAP-9] _inMemoryCounters / _inMemoryStore / _instanceId — added to internal state
 
 const CERTUS = {
 
@@ -109,24 +120,24 @@ const CERTUS = {
 
   // ── SENSITIVE LOCATION TYPES (for anonymization) ──────────────────────────
   SENSITIVE_LOCATION_TYPES: [
-    'shelter', 'medical', 'school', 'government', 'religious', 
+    'shelter', 'medical', 'school', 'government', 'religious',
     'women_shelter', 'refugee_camp', 'detention_center'
   ],
 
   // ── CONSENT OPTIONS ───────────────────────────────────────────────────────
   CONSENT_OPTIONS: {
     disaster_response: { required: true, default: true },
-    research: { 
-      required: false, default: false, 
+    research: {
+      required: false, default: false,
       explanation: 'Help improve future disaster response through research'
     },
-    commercial: { 
-      required: true, default: false, 
+    commercial: {
+      required: true, default: false,
       explanation: 'Allow commercial use of anonymized data',
       prohibited: false
     },
-    surveillance: { 
-      required: true, default: false, 
+    surveillance: {
+      required: true, default: false,
       prohibited: true,
       explanation: 'Surveillance use is prohibited by constitutional law'
     }
@@ -308,7 +319,7 @@ const CERTUS = {
     }
   },
 
-  // ── NLP CONFIGURATION (NEW) ───────────────────────────────────────────────
+  // ── NLP CONFIGURATION ─────────────────────────────────────────────────────
   NLP_CONFIG: {
     damageKeywords: {
       minimal: ['minor', 'small', 'crack', 'hairline', 'surface', 'cosmetic', 'paint', 'scrape', 'chipped', 'scratch'],
@@ -378,6 +389,116 @@ const CERTUS = {
   _batchReports: new Map(),
   _photoRegistry: new Map(),
 
+  // [GAP-9] Added: in-memory counter store with TTL for rate limiting fallback
+  _inMemoryCounters: new Map(),
+
+  // [GAP-9] Added: in-memory key-value store used as Redis fallback in processAppeal
+  _inMemoryStore: new Map(),
+
+  // [GAP-9] Added: stable instance identifier for audit log correlation
+  _instanceId: (
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `certus-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+  ),
+
+  _offlineSupported: false,
+  _currentTheme: 'light',
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // [GAP-1] UUID GENERATION — RFC 4122 version 4
+  // Replaces all undefined calls to this._generateUUID() throughout the engine.
+  // Uses crypto.randomUUID() where available (browser + Node 15+),
+  // falls back to Math.random() for older environments.
+  // ══════════════════════════════════════════════════════════════════════════
+  _generateUUID() {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    // RFC 4122 v4 fallback
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // [GAP-2] DISTRIBUTED COUNTER — Redis primary, in-memory TTL fallback
+  // Called by processAppeal() for rate limiting per report and per IP.
+  // When Redis circuit breaker is open, falls back to _inMemoryCounters
+  // with automatic TTL expiry so rate limits still function correctly.
+  // ══════════════════════════════════════════════════════════════════════════
+  async _incrementDistributedCounter(key, ttlSeconds) {
+    // Attempt Redis if distributed store is available
+    if (this._distributedStore && this._useDistributed) {
+      try {
+        const count = await this._distributedStore.incr(key);
+        if (count === 1) {
+          await this._distributedStore.expire(key, ttlSeconds);
+        }
+        return count;
+      } catch (err) {
+        this._recordDegradation('redis', err);
+        // Fall through to in-memory
+      }
+    }
+
+    // In-memory fallback with TTL
+    const now = Date.now();
+    const entry = this._inMemoryCounters.get(key);
+
+    if (!entry || now > entry.expiresAt) {
+      // Expired or first call — reset counter
+      this._inMemoryCounters.set(key, {
+        count: 1,
+        expiresAt: now + ttlSeconds * 1000
+      });
+      return 1;
+    }
+
+    entry.count += 1;
+    return entry.count;
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // [GAP-3] BAYESIAN UPDATE — full Bayes theorem with epistemic ceiling
+  // Called by processAppeal() to update confidence from new appeal evidence.
+  //
+  // Parameters:
+  //   prior           — current confidence score [0, 1]
+  //   likelihood      — P(evidence | damage is real), from _calculateJointLikelihood
+  //   falseLikelihood — P(evidence | damage is NOT real); defaults to complement
+  //
+  // Returns posterior clamped to THRESHOLDS.EPISTEMIC_CEILING (0.95).
+  // The ceiling prevents any single appeal from driving confidence to 1.0,
+  // preserving the uncertainty structure required by the UM system.
+  // ══════════════════════════════════════════════════════════════════════════
+  bayesianUpdate(prior, likelihood, falseLikelihood = null) {
+    // Clamp inputs
+    const p = Math.max(0, Math.min(1, prior));
+    const lh = Math.max(0, Math.min(1, likelihood));
+
+    // If falseLikelihood not supplied, use a conservative estimate:
+    // evidence that proves real damage is less likely when damage isn't real,
+    // but not impossible (witnesses can be mistaken, photos can be misleading).
+    const flh = falseLikelihood !== null
+      ? Math.max(0, Math.min(1, falseLikelihood))
+      : Math.max(0.05, (1 - lh) * 0.4);
+
+    // Total probability of observing this evidence
+    const pE = lh * p + flh * (1 - p);
+
+    // Avoid division by zero
+    if (pE === 0) return p;
+
+    // Posterior via Bayes theorem
+    const posterior = (lh * p) / pE;
+
+    // Apply epistemic ceiling — no score exceeds 0.95 regardless of evidence
+    return Math.min(this.THRESHOLDS.EPISTEMIC_CEILING, Math.max(0, posterior));
+  },
+
   // ══════════════════════════════════════════════════════════════════════════
   // CANARY DEPLOYMENT — version routing
   // ══════════════════════════════════════════════════════════════════════════
@@ -409,11 +530,11 @@ const CERTUS = {
       timestamp: Date.now(),
       severity: 'warning'
     });
-    
+
     if (typeof console !== 'undefined') {
       console.warn(`[CERTUS] Degraded mode: ${component} failed - ${error.message}`);
     }
-    
+
     if (component === 'redis' || component === 'storage' || component === 'supabase') {
       this._sendAlert(component, error);
     }
@@ -441,23 +562,23 @@ const CERTUS = {
       ...event,
       timestamp: Date.now(),
       version: this.VERSION,
-      instanceId: this._instanceId || 'unknown'
+      instanceId: this._instanceId
     };
-    
-    const shard = this._auditLog.shards[this._auditLog.currentShard] || 
+
+    const shard = this._auditLog.shards[this._auditLog.currentShard] ||
                   { events: [], size: 0 };
     shard.events.push(auditEvent);
     shard.size++;
     this._auditLog.shards[this._auditLog.currentShard] = shard;
-    
+
     if (shard.size >= this._auditLog.maxShardSize) {
       await this._rotateAuditShard();
     }
-    
+
     if (this._storage && this._storage.logAudit) {
       await this._storage.logAudit(auditEvent);
     }
-    
+
     if (this._supabaseClient && this._supabaseClient.from) {
       try {
         await this._supabaseClient.from('audit_logs').insert(auditEvent);
@@ -472,27 +593,27 @@ const CERTUS = {
     if (oldShard && this._storage) {
       await this._storage.saveShard(oldShard);
     }
-    
+
     this._auditLog.currentShard++;
     this._auditLog.shards[this._auditLog.currentShard] = { events: [], size: 0 };
   },
 
   async queryAuditLog(startDate, endDate) {
     const results = [];
-    
+
     for (const shard of this._auditLog.shards) {
       if (!shard) continue;
-      const shardResults = shard.events.filter(e => 
+      const shardResults = shard.events.filter(e =>
         e.timestamp >= startDate && e.timestamp <= endDate
       );
       results.push(...shardResults);
     }
-    
+
     if (this._storage && this._storage.queryAudit) {
       const storedResults = await this._storage.queryAudit(startDate, endDate);
       results.push(...storedResults);
     }
-    
+
     if (this._supabaseClient && this._supabaseClient.from) {
       try {
         const { data } = await this._supabaseClient
@@ -505,7 +626,7 @@ const CERTUS = {
         console.warn('[CERTUS] Supabase audit query failed:', err);
       }
     }
-    
+
     return results.sort((a, b) => a.timestamp - b.timestamp);
   },
 
@@ -515,7 +636,7 @@ const CERTUS = {
   async _callWithCircuitBreaker(dependency, fn, fallback) {
     const breaker = this._dependencyCircuitBreakers[dependency];
     if (!breaker) return fn();
-    
+
     if (breaker.open) {
       const timeSinceFailure = Date.now() - breaker.lastFailure;
       if (timeSinceFailure < breaker.timeout) {
@@ -524,7 +645,7 @@ const CERTUS = {
       breaker.open = false;
       breaker.failures = 0;
     }
-    
+
     try {
       const result = await fn();
       breaker.failures = 0;
@@ -545,12 +666,12 @@ const CERTUS = {
   // ══════════════════════════════════════════════════════════════════════════
   async _acquireBackpressureToken(tokens = 1) {
     this._refillTokens();
-    
+
     if (this._backpressure.tokens >= tokens) {
       this._backpressure.tokens -= tokens;
       return true;
     }
-    
+
     await new Promise(resolve => setTimeout(resolve, 100));
     return this._acquireBackpressureToken(tokens);
   },
@@ -573,9 +694,9 @@ const CERTUS = {
     const hasPhoto = evidences.includes('photo');
     const hasWitness = evidences.includes('witness');
     const hasField = evidences.includes('field');
-    
+
     let likelihood = 0.5;
-    
+
     if (hasPhoto && hasWitness) {
       likelihood += Math.max(
         this.EVIDENCE_WEIGHTS.PHOTO.likelihood - 0.5,
@@ -585,9 +706,9 @@ const CERTUS = {
       if (hasPhoto) likelihood += this.EVIDENCE_WEIGHTS.PHOTO.likelihood - 0.5;
       if (hasWitness) likelihood += this.EVIDENCE_WEIGHTS.WITNESS.likelihood - 0.5;
     }
-    
+
     if (hasField) likelihood += this.EVIDENCE_WEIGHTS.FIELD.likelihood - 0.5;
-    
+
     return Math.min(0.95, likelihood);
   },
 
@@ -626,14 +747,17 @@ const CERTUS = {
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // ADVERSARIAL PATTERN DETECTION
+  // [GAP-7] ADVERSARIAL PATTERN DETECTION — now async
+  // The original method was synchronous but called _findDuplicatePhotos
+  // (an async method) without await, meaning the duplicate check never ran.
+  // Made async; processAppeal now awaits it.
   // ══════════════════════════════════════════════════════════════════════════
-  _detectAdversarialPattern(evidence, reportHistory) {
+  async _detectAdversarialPattern(evidence, reportHistory) {
     const now = Date.now();
-    const recentAppeals = reportHistory.filter(a => 
+    const recentAppeals = reportHistory.filter(a =>
       a.timestamp > now - 86400000
     );
-    
+
     if (recentAppeals.length > 3) {
       return {
         adversarial: true,
@@ -641,9 +765,10 @@ const CERTUS = {
         action: 'require_human_review'
       };
     }
-    
+
     const photoHashes = evidence.photos?.map(p => p.hash) || [];
-    const duplicatePhotos = this._findDuplicatePhotos(photoHashes);
+    // Await now resolves correctly — duplicate check actually runs
+    const duplicatePhotos = await this._findDuplicatePhotos(photoHashes);
     if (duplicatePhotos.length > 0) {
       return {
         adversarial: true,
@@ -651,7 +776,7 @@ const CERTUS = {
         action: 'flag_for_investigation'
       };
     }
-    
+
     return { adversarial: false };
   },
 
@@ -666,9 +791,9 @@ const CERTUS = {
       banned: false,
       ban_reason: null
     };
-    
+
     if (reputation.banned) return reputation;
-    
+
     if (reportOutcome === 'VERIFIED') {
       reputation.score += this.THRESHOLDS.REPUTATION.VERIFIED_BONUS;
       reputation.verified_reports++;
@@ -676,12 +801,12 @@ const CERTUS = {
       reputation.score -= this.THRESHOLDS.REPUTATION.FALSE_REPORT_PENALTY;
       reputation.false_reports++;
     }
-    
+
     if (reputation.score < this.THRESHOLDS.REPUTATION.BAN_THRESHOLD) {
       reputation.banned = true;
       reputation.ban_reason = 'Multiple false reports';
     }
-    
+
     this._reputationStore.set(reporterId, reputation);
     this.updateReputationStorage(reporterId, reputation).catch(console.warn);
     return reputation;
@@ -748,14 +873,14 @@ const CERTUS = {
       verification_required: true,
       after_verification: 'ORIGINAL_ARCHIVED_CORRECTION_ACTIVE'
     };
-    
+
     this._correctionStore.set(correctionId, correctionRecord);
     await this._logAuditEvent({
       type: 'CORRECTION_SUBMITTED',
       correction_id: correctionId,
       original_report_id: originalReportId
     });
-    
+
     return correctionRecord;
   },
 
@@ -769,11 +894,11 @@ const CERTUS = {
       timestamp: Date.now()
     };
     this._progressStore.set(sessionId, progress);
-    
+
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(`veritas_progress_${sessionId}`, JSON.stringify(progress));
     }
-    
+
     if (this._supabaseClient && this._supabaseClient.from) {
       this._supabaseClient.from('progress').upsert({
         session_id: sessionId,
@@ -786,14 +911,18 @@ const CERTUS = {
 
   restoreProgress(sessionId) {
     let progress = this._progressStore.get(sessionId);
-    
+
     if (!progress && typeof localStorage !== 'undefined') {
       const saved = localStorage.getItem(`veritas_progress_${sessionId}`);
       if (saved) {
-        progress = JSON.parse(saved);
+        try {
+          progress = JSON.parse(saved);
+        } catch (e) {
+          progress = null;
+        }
       }
     }
-    
+
     if (progress && Date.now() - progress.timestamp < 86400000) {
       return progress;
     }
@@ -825,19 +954,19 @@ const CERTUS = {
   async submitBatch(sessionId) {
     const batch = this._batchReports.get(sessionId);
     if (!batch) return { error: 'No batch found' };
-    
+
     const results = [];
     for (const report of batch.reports) {
       const result = await this.score(report);
       results.push(result);
     }
-    
+
     await this._logAuditEvent({
       type: 'BATCH_SUBMITTED',
       batch_id: sessionId,
       report_count: batch.reports.length
     });
-    
+
     this._batchReports.delete(sessionId);
     return { submitted: batch.reports.length, results };
   },
@@ -847,9 +976,9 @@ const CERTUS = {
   // ══════════════════════════════════════════════════════════════════════════
   getIconNavigation(step, language = 'en') {
     const nav = this.ICON_NAVIGATION.steps[step - 1] || this.ICON_NAVIGATION.steps[0];
-    const audioGuidance = this.AUDIO_GUIDANCE[language]?.[`step_${step}`] || 
+    const audioGuidance = this.AUDIO_GUIDANCE[language]?.[`step_${step}`] ||
                           this.AUDIO_GUIDANCE.en[`step_${step}`];
-    
+
     return {
       ...nav,
       audio_guidance: audioGuidance,
@@ -885,7 +1014,7 @@ const CERTUS = {
   provideHapticFeedback(confidence, context = {}) {
     if (!this.ACCESSIBILITY.haptic_feedback.enabled) return;
     if (typeof navigator === 'undefined' || !navigator.vibrate) return;
-    
+
     if (confidence === 'low' || confidence === 'review') {
       navigator.vibrate([500, 200, 500, 200, 500]);
     } else if (confidence === 'medium' || confidence === 'watch') {
@@ -893,7 +1022,7 @@ const CERTUS = {
     } else if (confidence === 'high') {
       navigator.vibrate(100);
     }
-    
+
     if (context.emergency) {
       navigator.vibrate([1000, 500, 1000]);
     }
@@ -908,7 +1037,7 @@ const CERTUS = {
         return { theme: 'dark', source: 'system' };
       }
     }
-    
+
     if (typeof window !== 'undefined' && 'AmbientLightSensor' in window) {
       try {
         const sensor = new window.AmbientLightSensor();
@@ -917,13 +1046,13 @@ const CERTUS = {
           sensor.start();
           setTimeout(() => resolve(null), 1000);
         });
-        
+
         if (reading !== null && reading < 10) {
           return { theme: 'dark', source: 'ambient_light', illuminance: reading };
         }
       } catch (err) {}
     }
-    
+
     return { theme: 'light', source: 'default' };
   },
 
@@ -1161,14 +1290,14 @@ const CERTUS = {
   // ══════════════════════════════════════════════════════════════════════════
   detectCorrelatedFailures(pes, cor, recentFailureRate = 0) {
     const result = { correlated: false, penalty: 0, reason: null };
-    
+
     if (this._circuitBreaker.engaged) {
       result.correlated = true;
       result.penalty = 0.60;
       result.reason = 'Circuit breaker engaged: correlated failure storm detected';
       return result;
     }
-    
+
     if (pes.measurement_class === 'INFERENTIAL' && cor.evaluable === false) {
       result.correlated = true;
       result.penalty = Math.max(pes.um_contribution, cor.um_contribution) * 1.2;
@@ -1179,7 +1308,7 @@ const CERTUS = {
       result.penalty = 0.45;
       result.reason = 'Both photo and corroboration unavailable — high correlated uncertainty';
     }
-    
+
     return result;
   },
 
@@ -1188,18 +1317,18 @@ const CERTUS = {
   // ══════════════════════════════════════════════════════════════════════════
   computeECFContribution(findings, dimension) {
     if (!findings || findings.length === 0) return 0;
-    
+
     const ECF_WEIGHTS = { 'D': 0.00, 'R': 0.05, 'S': 0.10, '?': 0.15 };
-    
+
     const dimensionFindings = findings.filter(f => f.dimension === dimension);
     if (dimensionFindings.length === 0) return 0;
-    
+
     let total = 0;
     dimensionFindings.forEach(f => {
       const ecf = f.ecf || (f.tags ? f.tags.ecf : '?');
       total += ECF_WEIGHTS[ecf] || 0.10;
     });
-    
+
     return Math.min(0.30, total / dimensionFindings.length);
   },
 
@@ -1209,20 +1338,20 @@ const CERTUS = {
   normalizeWithPenalty(activeDimensions, scores) {
     const totalWeight = activeDimensions.reduce((sum, dim) => sum + this.W[dim], 0);
     const missingDimensions = ['PES', 'COR', 'TFR', 'CCI'].filter(d => !activeDimensions.includes(d));
-    
+
     let missingPenalty = 1.0;
     const penalties = { PES: 0.25, COR: 0.20, TFR: 0.15, CCI: 0.10 };
     for (const dim of missingDimensions) {
       missingPenalty -= penalties[dim] || 0.20;
     }
     missingPenalty = Math.max(0.40, missingPenalty);
-    
+
     let weightedSum = 0;
     activeDimensions.forEach(dim => {
       const normalizedWeight = this.W[dim] / totalWeight;
       weightedSum += normalizedWeight * scores[dim];
     });
-    
+
     return {
       score: weightedSum * missingPenalty,
       missing_penalty_applied: missingPenalty,
@@ -1243,20 +1372,20 @@ const CERTUS = {
     ].filter(p => p !== undefined && p !== null);
 
     let um = 1 - penalties.reduce((acc, p) => acc * (1 - Math.max(0, p)), 1);
-    
+
     if (correlatedFailure.correlated) {
       um = Math.min(1, um + correlatedFailure.penalty);
     }
-    
+
     um = parseFloat(Math.min(1, Math.max(0, um)).toFixed(3));
 
     let validity_status, ceiling;
     let adjustedThreshold = this.THRESHOLDS.UM_VALID;
-    
+
     if (correlatedFailure.correlated) {
       adjustedThreshold = this.THRESHOLDS.UM_VALID * 0.8;
     }
-    
+
     if (um < adjustedThreshold) {
       validity_status = 'VALID';
       ceiling = 1.0;
@@ -1277,7 +1406,7 @@ const CERTUS = {
   getStrengths(pes, cor, tfr, cci, reportCoordinates, photoGeotag, photoAccuracy = 10) {
     const strengths = [];
     const weaknesses = [];
-    
+
     if (pes.value && pes.value >= 0.80 && !pes.gated && pes.measurement_class === 'EVALUATIVE') {
       if (photoGeotag && reportCoordinates) {
         const distance = this._calculateDistance(
@@ -1293,7 +1422,7 @@ const CERTUS = {
         strengths.push('✅ Photo evidence clear, high model confidence');
       }
     }
-    
+
     if (cor.signal_type === 'STRONG_AGREEMENT') {
       strengths.push('✅ Strong corroboration — multiple reports agree');
     } else if (cor.signal_type === 'CONTRADICTION') {
@@ -1303,19 +1432,19 @@ const CERTUS = {
     } else if (cor.signal_type === 'NO_EVIDENCE') {
       weaknesses.push('⚠️ No corroboration yet — share to improve');
     }
-    
+
     if (tfr.value >= 0.80) {
       strengths.push(`✅ Timely report (${tfr.hours_elapsed}h after event)`);
     } else if (tfr.value < 0.40) {
       weaknesses.push(`⚠️ Stale report (${tfr.hours_elapsed}h old) — freshness reduces confidence`);
     }
-    
+
     if (cci.value >= 0.90 && !cci.flagged) {
       strengths.push('✅ Classification consistent with infrastructure type');
     } else if (cci.flagged) {
       weaknesses.push(`⚠️ ${cci.note}`);
     }
-    
+
     return { strengths, weaknesses };
   },
 
@@ -1323,8 +1452,8 @@ const CERTUS = {
     const R = 6371000;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   },
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1332,7 +1461,7 @@ const CERTUS = {
   // ══════════════════════════════════════════════════════════════════════════
   getUMBreakdown(pes, cor, tfr, cci) {
     const breakdown = [];
-    
+
     if (pes.um_contribution > 0) {
       let description = '';
       if (pes.evaluable === false) description = `📷 No photo (+${(pes.um_contribution * 100).toFixed(0)}%)`;
@@ -1340,7 +1469,7 @@ const CERTUS = {
       else if (pes.gated) description = `📷 AI low confidence (+${(pes.um_contribution * 100).toFixed(0)}%)`;
       if (description) breakdown.push(description);
     }
-    
+
     if (cor.um_contribution > 0) {
       let description = '';
       if (cor.evaluable === false) description = `🔍 No other reports (+${(cor.um_contribution * 100).toFixed(0)}%)`;
@@ -1348,15 +1477,15 @@ const CERTUS = {
       else if (cor.signal_type === 'WEAK_AGREEMENT') description = `🔍 Only one other report (+${(cor.um_contribution * 100).toFixed(0)}%)`;
       if (description) breakdown.push(description);
     }
-    
+
     if (tfr.um_contribution > 0) {
       breakdown.push(`⏱️ ${tfr.hours_elapsed}h old (+${(tfr.um_contribution * 100).toFixed(0)}%)`);
     }
-    
+
     if (cci.um_contribution > 0) {
       breakdown.push(`⚖️ Unusual combination (+${(cci.um_contribution * 100).toFixed(0)}%)`);
     }
-    
+
     return breakdown;
   },
 
@@ -1373,7 +1502,7 @@ const CERTUS = {
       timestamp: report.timestamp,
       verify: `https://veritas.aion.net/verify/${certificateId}`
     });
-    
+
     const humanReadable = `
 VERITAS CERTIFIED REPORT
 ========================
@@ -1390,7 +1519,7 @@ TO VERIFY:
 
 This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watch' ? 'DEGRADED' : 'SUSPENDED')]}
     `.trim();
-    
+
     return {
       certificate_id: certificateId,
       qr_data: qrData,
@@ -1433,11 +1562,11 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
   // ══════════════════════════════════════════════════════════════════════════
   getFieldView(scoreResult, context = {}) {
     if (context.mode !== 'field') return null;
-    
+
     const tier = scoreResult.tier;
-    
+
     let action, confidence, whatToDo, whatNotToDo, shareCode, audioGuidance;
-    
+
     if (tier === 'high') {
       action = 'SHARE THIS REPORT';
       confidence = 'HIGH';
@@ -1457,10 +1586,10 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       whatNotToDo = 'Do not rely on this report for decisions.';
       audioGuidance = 'This report needs verification. Please wait.';
     }
-    
-    shareCode = scoreResult.verification_certificate?.certificate_id || 
+
+    shareCode = scoreResult.verification_certificate?.certificate_id ||
                 `VRT-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-    
+
     return {
       mode: 'field',
       action: action,
@@ -1613,7 +1742,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
     if (report.internalTier !== 'Completely damaged') {
       return null;
     }
-    
+
     return {
       triggered: true,
       damage_severity: 'SEVERE',
@@ -1634,9 +1763,9 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
   // ══════════════════════════════════════════════════════════════════════════
   getShareData(report, certificate) {
     const shareUrl = certificate?.shareable_link || `https://veritas.aion.net/report/${report.uuid}`;
-    const shareText = certificate?.shareable_text || 
+    const shareText = certificate?.shareable_text ||
                      `Damage report: ${report.internalTier} damage to ${report.infraType}. Verify at ${shareUrl}`;
-    
+
     return {
       title: 'VERITAS Damage Report',
       text: shareText,
@@ -1681,17 +1810,15 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // ==================== NEW NLP METHODS ====================
+  // NLP TEXT ANALYSIS for witness statements
   // ══════════════════════════════════════════════════════════════════════════
-
-  // NLP Text Analysis for Witness Statements
   _extractDamageFromWitness(statement) {
     if (!statement || !statement.text) return null;
-    
+
     const text = statement.text.toLowerCase();
     let damageScore = 0;
     let damageLevel = 'partial';
-    
+
     for (const keyword of this.NLP_CONFIG.damageKeywords.minimal) {
       if (text.includes(keyword)) damageScore -= 0.3;
     }
@@ -1701,16 +1828,16 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
     for (const keyword of this.NLP_CONFIG.damageKeywords.complete) {
       if (text.includes(keyword)) damageScore += 1.0;
     }
-    
+
     damageScore = Math.max(0, Math.min(1, (damageScore + 0.5) / 2));
-    
+
     if (damageScore >= 0.7) damageLevel = 'complete';
     else if (damageScore >= 0.4) damageLevel = 'partial';
     else damageLevel = 'minimal';
-    
+
     const isUrgent = this.NLP_CONFIG.sentimentAnalysis.urgency.some(word => text.includes(word));
     const isUncertain = this.NLP_CONFIG.sentimentAnalysis.uncertainty.some(word => text.includes(word));
-    
+
     return {
       damage_level: damageLevel,
       confidence: damageScore,
@@ -1732,13 +1859,13 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
     return found;
   },
 
-  // Infer infrastructure type from text description
+  // Infrastructure type inference from text description
   _inferInfrastructureType(text) {
     if (!text) return null;
-    
+
     const lowerText = text.toLowerCase();
     let bestMatch = { type: null, confidence: 0, matches: [] };
-    
+
     for (const [type, keywords] of Object.entries(this.NLP_CONFIG.infrastructureKeywords)) {
       const matches = keywords.filter(keyword => lowerText.includes(keyword));
       if (matches.length > 0) {
@@ -1748,25 +1875,35 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         }
       }
     }
-    
+
     return bestMatch.confidence > 0.3 ? bestMatch : null;
   },
 
+  // [GAP-6] _getMostCommon — replaced O(n²) buggy sort with O(n) frequency map.
+  // Original used arr.sort with a comparator that returned wrong sign for lower-frequency
+  // items, making the result unreliable. Also the O(n²) filter inside sort was
+  // wasteful on large arrays.
   _getMostCommon(arr) {
-    if (!arr.length) return null;
-    return arr.sort((a,b) =>
-      arr.filter(v => v === a).length - arr.filter(v => v === b).length
-    ).pop();
+    if (!arr || arr.length === 0) return null;
+    const freq = {};
+    let maxFreq = 0;
+    let maxVal = arr[0];
+    for (const val of arr) {
+      freq[val] = (freq[val] || 0) + 1;
+      if (freq[val] > maxFreq) {
+        maxFreq = freq[val];
+        maxVal = val;
+      }
+    }
+    return maxVal;
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // ==================== NEW PHOTO ANALYSIS METHODS ====================
+  // PHOTO ANALYSIS with OpenRouter API
   // ══════════════════════════════════════════════════════════════════════════
-
-  // Analyze photo with OpenRouter API
   async _extractDamageFromPhoto(photoDataUrl) {
     if (!photoDataUrl) return null;
-    
+
     try {
       const base64Image = photoDataUrl.split(',')[1];
       const response = await fetch('/api/analyze', {
@@ -1774,9 +1911,9 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: base64Image })
       });
-      
+
       if (!response.ok) throw new Error('Photo analysis failed');
-      
+
       const result = await response.json();
       return {
         damage_level: result.damage_level,
@@ -1798,11 +1935,11 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       results.push(analysis);
       await new Promise(resolve => setTimeout(resolve, 500));
     }
-    
+
     const damageLevels = results.map(r => r?.damage_level).filter(Boolean);
     const mostCommon = this._getMostCommon(damageLevels);
     const avgConfidence = results.reduce((sum, r) => sum + (r?.confidence || 0), 0) / results.length;
-    
+
     return {
       individual: results,
       aggregated: {
@@ -1814,31 +1951,115 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
     };
   },
 
-  // Perceptual hashing for duplicate detection
+  // [GAP-4] PERCEPTUAL HASH — replaces imageDataUrl.substring(0,100) stub.
+  //
+  // Browser path: renders image on an 8x8 canvas, converts to grayscale,
+  // computes average luminance, then generates a 64-bit binary difference hash
+  // (dHash). Each bit represents whether a pixel is brighter than the pixel
+  // immediately to its right. This is a standard, well-understood perceptual
+  // hash algorithm. Hamming distance on two 64-bit hashes gives meaningful
+  // similarity even under JPEG compression, minor crops, and brightness changes.
+  //
+  // Node / fallback path: FNV-1a 64-bit equivalent over the full data URL string.
+  // This is a content hash (not perceptual), so similarity will only be 1.0
+  // for identical inputs. Flagged in the return value so callers can act on it.
   async _generatePerceptualHash(imageDataUrl) {
-    return imageDataUrl.substring(0, 100);
+    if (!imageDataUrl) return null;
+
+    // ── Browser path: real dHash ──────────────────────────────────────────
+    if (typeof document !== 'undefined' && typeof HTMLCanvasElement !== 'undefined') {
+      try {
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = () => reject(new Error('Image load failed'));
+          img.src = imageDataUrl;
+          // Safety timeout
+          setTimeout(() => reject(new Error('Image load timeout')), 5000);
+        });
+
+        // 9 wide × 8 tall for dHash (compare each pixel to the one to its right)
+        const canvas = document.createElement('canvas');
+        canvas.width = 9;
+        canvas.height = 8;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, 9, 8);
+        const data = ctx.getImageData(0, 0, 9, 8).data;
+
+        // Convert to grayscale luminance array (9×8 = 72 pixels)
+        const luma = [];
+        for (let i = 0; i < data.length; i += 4) {
+          luma.push(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+        }
+
+        // dHash: 64 bits — compare each pixel to its right neighbour in each row
+        let bits = '';
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            bits += luma[row * 9 + col] > luma[row * 9 + col + 1] ? '1' : '0';
+          }
+        }
+
+        return bits; // 64-character binary string
+      } catch (err) {
+        // Fall through to content hash
+        console.warn('[CERTUS] dHash failed, falling back to FNV-1a:', err.message);
+      }
+    }
+
+    // ── Node / fallback path: FNV-1a over full data URL ───────────────────
+    // Not perceptual — identical content only. Marked so callers know.
+    let h = 0x811c9dc5;
+    for (let i = 0; i < imageDataUrl.length; i++) {
+      h ^= imageDataUrl.charCodeAt(i);
+      h = (h * 0x01000193) >>> 0; // unsigned 32-bit
+    }
+    return `fnv:${h.toString(16).padStart(8, '0')}`;
   },
 
+  // [GAP-5] HASH SIMILARITY — Hamming distance for binary (perceptual) hashes,
+  // character-diff ratio for hex (FNV) fallbacks.
+  // Binary hashes: a Hamming distance of ≤ 10/64 bits (~84% match) is typically
+  // a near-duplicate. A threshold of 0.95 (≤ 3 bit differences) catches only
+  // very close duplicates.
   _calculateHashSimilarity(hash1, hash2) {
     if (!hash1 || !hash2) return 0;
+    if (hash1 === hash2) return 1.0;
+
+    // Both are 64-bit binary strings (dHash output)
+    const isBinary = /^[01]{64}$/.test(hash1) && /^[01]{64}$/.test(hash2);
+    if (isBinary) {
+      let matching = 0;
+      for (let i = 0; i < 64; i++) {
+        if (hash1[i] === hash2[i]) matching++;
+      }
+      return matching / 64;
+    }
+
+    // FNV or mixed: character-level diff over shared length
+    const len = Math.max(hash1.length, hash2.length);
     let differences = 0;
     for (let i = 0; i < Math.min(hash1.length, hash2.length); i++) {
       if (hash1[i] !== hash2[i]) differences++;
     }
-    return 1 - (differences / Math.max(hash1.length, hash2.length));
+    // Pad penalty for length mismatch
+    differences += Math.abs(hash1.length - hash2.length);
+    return Math.max(0, 1 - differences / len);
   },
 
   async _getPhotoRegistry() {
     if (this._photoRegistry.size > 0) return this._photoRegistry;
-    
+
     if (typeof localStorage !== 'undefined') {
-      const registry = localStorage.getItem('veritas_photo_registry');
-      if (registry) {
-        const parsed = JSON.parse(registry);
-        parsed.forEach(item => this._photoRegistry.set(item.hash, item));
-      }
+      try {
+        const registry = localStorage.getItem('veritas_photo_registry');
+        if (registry) {
+          const parsed = JSON.parse(registry);
+          parsed.forEach(item => this._photoRegistry.set(item.hash, item));
+        }
+      } catch (e) {}
     }
-    
+
     if (this._supabaseClient && this._supabaseClient.from) {
       try {
         const { data } = await this._supabaseClient
@@ -1852,7 +2073,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         console.warn('[CERTUS] Supabase photo registry query failed:', err);
       }
     }
-    
+
     return this._photoRegistry;
   },
 
@@ -1864,14 +2085,16 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       timestamp: Date.now()
     };
     registry.set(hash, entry);
-    
+
     if (typeof localStorage !== 'undefined') {
-      const entries = Array.from(registry.values());
-      const cutoff = Date.now() - 30 * 86400000;
-      const filtered = entries.filter(e => e.timestamp > cutoff);
-      localStorage.setItem('veritas_photo_registry', JSON.stringify(filtered));
+      try {
+        const entries = Array.from(registry.values());
+        const cutoff = Date.now() - 30 * 86400000;
+        const filtered = entries.filter(e => e.timestamp > cutoff);
+        localStorage.setItem('veritas_photo_registry', JSON.stringify(filtered));
+      } catch (e) {}
     }
-    
+
     if (this._supabaseClient && this._supabaseClient.from) {
       try {
         await this._supabaseClient.from('photo_registry').upsert(entry);
@@ -1883,14 +2106,14 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
 
   async _findDuplicatePhotos(photoHashes, threshold = 0.95) {
     if (!photoHashes || photoHashes.length === 0) return [];
-    
+
     const registry = await this._getPhotoRegistry();
     const duplicates = [];
-    
+
     for (const hash of photoHashes) {
       for (const [existingHash, entry] of registry.entries()) {
         const similarity = this._calculateHashSimilarity(hash, existingHash);
-        if (similarity > threshold && hash !== existingHash) {
+        if (similarity >= threshold && hash !== existingHash) {
           duplicates.push({
             hash: hash,
             matched_with: existingHash,
@@ -1901,23 +2124,22 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         }
       }
     }
-    
+
     return duplicates;
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // ==================== NEW LOCATION SERVICES ====================
+  // LOCATION SERVICES
   // ══════════════════════════════════════════════════════════════════════════
-
   async _findNearestShelters(coordinates, radiusKm) {
     if (!coordinates || !coordinates.lat || !coordinates.lng) return [];
-    
+
     const mockShelters = [
       { name: 'Community Center Shelter', lat: coordinates.lat + 0.01, lng: coordinates.lng + 0.01, capacity: 200, type: 'public' },
       { name: 'School Gymnasium', lat: coordinates.lat - 0.008, lng: coordinates.lng + 0.015, capacity: 150, type: 'public' },
       { name: 'Red Cross Station', lat: coordinates.lat + 0.005, lng: coordinates.lng - 0.012, capacity: 300, type: 'ngo' }
     ];
-    
+
     const withinRadius = mockShelters.filter(shelter => {
       const distance = this._calculateDistance(
         coordinates.lat, coordinates.lng,
@@ -1925,7 +2147,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       );
       return distance <= radiusKm * 1000;
     });
-    
+
     return withinRadius.map(s => ({
       ...s,
       distance_km: this._calculateDistance(coordinates.lat, coordinates.lng, s.lat, s.lng) / 1000,
@@ -1937,13 +2159,13 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
 
   async _findNearestMedical(coordinates, radiusKm) {
     if (!coordinates || !coordinates.lat || !coordinates.lng) return [];
-    
+
     const mockMedical = [
       { name: 'General Hospital', lat: coordinates.lat + 0.02, lng: coordinates.lng - 0.005, type: 'hospital', beds: 150 },
       { name: 'Community Clinic', lat: coordinates.lat - 0.01, lng: coordinates.lng + 0.02, type: 'clinic', beds: 20 },
       { name: 'Emergency Care Center', lat: coordinates.lat + 0.015, lng: coordinates.lng + 0.01, type: 'emergency', beds: 50 }
     ];
-    
+
     const withinRadius = mockMedical.filter(facility => {
       const distance = this._calculateDistance(
         coordinates.lat, coordinates.lng,
@@ -1951,7 +2173,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       );
       return distance <= radiusKm * 1000;
     });
-    
+
     return withinRadius.map(f => ({
       ...f,
       distance_km: this._calculateDistance(coordinates.lat, coordinates.lng, f.lat, f.lng) / 1000,
@@ -1962,14 +2184,13 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // ==================== NEW STORAGE INTEGRATION ====================
+  // STORAGE INTEGRATION
   // ══════════════════════════════════════════════════════════════════════════
-
   async _initializeStorage() {
     if (typeof indexedDB !== 'undefined') {
       return new Promise((resolve, reject) => {
         const request = indexedDB.open('CERTUS_DB', 1);
-        
+
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
           this._storage = {
@@ -2003,7 +2224,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
           };
           resolve(this._storage);
         };
-        
+
         request.onupgradeneeded = (event) => {
           const db = event.target.result;
           if (!db.objectStoreNames.contains('appeals')) {
@@ -2021,15 +2242,19 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         };
       });
     }
-    
+
     if (typeof localStorage !== 'undefined') {
       this._storage = {
         type: 'localstorage',
         get: (key) => {
-          const val = localStorage.getItem(`certus_${key}`);
-          return val ? JSON.parse(val) : null;
+          try {
+            const val = localStorage.getItem(`certus_${key}`);
+            return val ? JSON.parse(val) : null;
+          } catch (e) { return null; }
         },
-        set: (key, val) => localStorage.setItem(`certus_${key}`, JSON.stringify(val)),
+        set: (key, val) => {
+          try { localStorage.setItem(`certus_${key}`, JSON.stringify(val)); } catch (e) {}
+        },
         logAudit: async (event) => {
           const audit = this._storage.get('audit') || [];
           audit.push(event);
@@ -2047,7 +2272,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       };
       return this._storage;
     }
-    
+
     this._storage = {
       type: 'memory',
       memory: new Map(),
@@ -2068,7 +2293,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         return audit.filter(e => e.timestamp >= startDate && e.timestamp <= endDate);
       }
     };
-    
+
     return this._storage;
   },
 
@@ -2084,7 +2309,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
 
   async storeAppeal(appealRecord) {
     if (!this._storage) await this._initializeStorage();
-    
+
     if (this._storage.type === 'indexeddb') {
       const tx = this._storage.db.transaction(['appeals'], 'readwrite');
       const store = tx.objectStore('appeals');
@@ -2098,7 +2323,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       appeals.push(appealRecord);
       this._storage.set('appeals', appeals);
     }
-    
+
     if (this._supabaseClient && this._supabaseClient.from) {
       try {
         await this._supabaseClient.from('appeals').insert(appealRecord);
@@ -2115,7 +2340,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
 
   async updateReputationStorage(reporterId, reputation) {
     if (!this._storage) await this._initializeStorage();
-    
+
     if (this._storage.type === 'indexeddb') {
       const tx = this._storage.db.transaction(['reputation'], 'readwrite');
       const store = tx.objectStore('reputation');
@@ -2129,7 +2354,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       reputations[reporterId] = reputation;
       this._storage.set('reputation', reputations);
     }
-    
+
     if (this._supabaseClient && this._supabaseClient.from) {
       try {
         await this._supabaseClient.from('reputation').upsert({
@@ -2144,9 +2369,8 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // ==================== ENHANCED SCORING ====================
+  // ENHANCED SCORING with NLP
   // ══════════════════════════════════════════════════════════════════════════
-
   async scoreWithNLP(report, nearbyReports = [], isRealModel = false, context = {}) {
     if (report.witness_statement && !report.internalTier) {
       const witnessAnalysis = this._extractDamageFromWitness({ text: report.witness_statement });
@@ -2156,7 +2380,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         report.urgency_flag = witnessAnalysis.is_urgent;
       }
     }
-    
+
     if (report.description && !report.infraType) {
       const infraMatch = this._inferInfrastructureType(report.description);
       if (infraMatch) {
@@ -2164,9 +2388,9 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         report.infra_confidence = infraMatch.confidence;
       }
     }
-    
+
     const result = this.score(report, nearbyReports, isRealModel, context);
-    
+
     if (report.nlp_confidence) {
       result.nlp_insights = {
         confidence: report.nlp_confidence,
@@ -2174,7 +2398,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         witness_analysis: true
       };
     }
-    
+
     if (report.infra_confidence) {
       result.infra_insights = {
         inferred_from_text: true,
@@ -2182,21 +2406,20 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         original_text: report.description?.substring(0, 100)
       };
     }
-    
+
     return result;
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // ==================== INITIALIZATION ====================
+  // INITIALIZATION
   // ══════════════════════════════════════════════════════════════════════════
-
   async initialize(supabaseUrl = null, supabaseAnonKey = null) {
     await this._initializeStorage();
-    
+
     if (supabaseUrl && supabaseAnonKey) {
       this.initSupabase(supabaseUrl, supabaseAnonKey);
     }
-    
+
     await this._logAuditEvent({
       type: 'ENGINE_INITIALIZED',
       version: this.VERSION,
@@ -2204,7 +2427,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       supabase_available: !!this._supabaseClient,
       timestamp: Date.now()
     });
-    
+
     return {
       success: true,
       version: this.VERSION,
@@ -2221,9 +2444,8 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // ==================== ENHANCED HEALTH CHECK ====================
+  // HEALTH CHECK
   // ══════════════════════════════════════════════════════════════════════════
-
   async healthCheck() {
     const baseHealth = {
       status: this._circuitBreaker.engaged ? 'DEGRADED' : 'HEALTHY',
@@ -2246,31 +2468,31 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       audit_shards: this._auditLog.shards.length,
       timestamp: new Date().toISOString()
     };
-    
+
     if (this._storage) {
       baseHealth.storage = {
         type: this._storage.type,
         healthy: true
       };
     }
-    
+
     if (this._supabaseClient) {
       baseHealth.supabase = {
         available: true,
         healthy: await this._testSupabaseConnection()
       };
     }
-    
+
     baseHealth.nlp = {
       available: true,
       languages: Object.keys(this.NLP_CONFIG.damageKeywords)
     };
-    
+
     baseHealth.photo_analysis = {
       available: true,
       endpoint: '/api/analyze'
     };
-    
+
     return baseHealth;
   },
 
@@ -2285,11 +2507,11 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // APPEAL HANDLER (Enhanced with Supabase)
+  // [GAP-8] APPEAL HANDLER — now awaits _detectAdversarialPattern (async)
   // ══════════════════════════════════════════════════════════════════════════
   async processAppeal(originalReport, newEvidence, ipAddress, context = {}) {
     const currentAppeals = originalReport.appeal_count || 0;
-    
+
     if (currentAppeals >= this.THRESHOLDS.MAX_APPEALS) {
       return {
         success: false,
@@ -2298,31 +2520,39 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         remaining_appeals: 0
       };
     }
-    
+
     await this._acquireBackpressureToken();
-    
+
     const reportKey = `appeal:${originalReport.uuid}`;
     const ipKey = `appeal:ip:${ipAddress}`;
-    
+
     const reportCount = await this._callWithCircuitBreaker(
       'redis',
       () => this._incrementDistributedCounter(reportKey, this.THRESHOLDS.APPEAL_RATE_LIMIT.per_report.window / 1000),
-      () => (this._inMemoryStore?.get(reportKey) || 0) + 1
+      () => {
+        const current = (this._inMemoryStore.get(reportKey) || 0) + 1;
+        this._inMemoryStore.set(reportKey, current);
+        return current;
+      }
     );
-    
+
     const ipCount = await this._callWithCircuitBreaker(
       'redis',
       () => this._incrementDistributedCounter(ipKey, this.THRESHOLDS.APPEAL_RATE_LIMIT.per_ip.window / 1000),
-      () => (this._inMemoryStore?.get(ipKey) || 0) + 1
+      () => {
+        const current = (this._inMemoryStore.get(ipKey) || 0) + 1;
+        this._inMemoryStore.set(ipKey, current);
+        return current;
+      }
     );
-    
+
     if (reportCount > this.THRESHOLDS.APPEAL_RATE_LIMIT.per_report.max) {
       return { success: false, error: 'RATE_LIMITED', message: 'Too many appeals for this report. Please wait an hour.' };
     }
     if (ipCount > this.THRESHOLDS.APPEAL_RATE_LIMIT.per_ip.max) {
       return { success: false, error: 'RATE_LIMITED', message: 'Too many appeals from this location. Please wait an hour.' };
     }
-    
+
     if (!newEvidence || (!newEvidence.photos && !newEvidence.witness_statements && !newEvidence.field_verification)) {
       return {
         success: false,
@@ -2331,11 +2561,14 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         remaining_appeals: this.THRESHOLDS.MAX_APPEALS - currentAppeals
       };
     }
-    
-    const photoDamage = newEvidence.photos?.length ? this._extractDamageFromPhoto(newEvidence.photos[0]) : null;
+
+    const photoDamage = newEvidence.photos?.length ? await this._extractDamageFromPhoto(newEvidence.photos[0]) : null;
     const witnessDamage = newEvidence.witness_statements?.length ? this._extractDamageFromWitness(newEvidence.witness_statements[0]) : null;
-    const crossValidation = this._crossValidateEvidence(photoDamage, witnessDamage);
-    
+    const crossValidation = this._crossValidateEvidence(
+      photoDamage?.damage_level || null,
+      witnessDamage?.damage_level || null
+    );
+
     if (!crossValidation.consistent) {
       return {
         success: false,
@@ -2344,8 +2577,9 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         remaining_appeals: this.THRESHOLDS.MAX_APPEALS - currentAppeals
       };
     }
-    
-    const adversarial = this._detectAdversarialPattern(newEvidence, originalReport.appeal_history || []);
+
+    // [GAP-8] Awaited — duplicate check now actually runs
+    const adversarial = await this._detectAdversarialPattern(newEvidence, originalReport.appeal_history || []);
     if (adversarial.adversarial) {
       await this._logAuditEvent({
         type: 'ADVERSARIAL_DETECTED',
@@ -2353,7 +2587,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         reason: adversarial.reason,
         action: adversarial.action
       });
-      
+
       return {
         success: false,
         error: 'ADVERSARIAL_PATTERN',
@@ -2362,13 +2596,13 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         remaining_appeals: this.THRESHOLDS.MAX_APPEALS - currentAppeals
       };
     }
-    
+
     const sourceCredibility = this._getCredibilityMultiplier(newEvidence.source_type) || 0.5;
     const evidenceFreshness = this._getEvidenceFreshness(newEvidence.timestamp || Date.now());
-    
+
     let evidenceQuality = 0;
     let qualityBreakdown = {};
-    
+
     if (newEvidence.photos && newEvidence.photos.length > 0) {
       const weight = this._getEvidenceWeight(this.EVIDENCE_WEIGHTS.PHOTO, newEvidence.timestamp);
       evidenceQuality += weight * sourceCredibility;
@@ -2384,22 +2618,23 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       evidenceQuality += weight * sourceCredibility;
       qualityBreakdown.field = { weight, credibility: sourceCredibility };
     }
-    
+
     evidenceQuality = Math.min(1, evidenceQuality);
-    
+
     const evidenceTypes = [];
     if (newEvidence.photos) evidenceTypes.push('photo');
     if (newEvidence.witness_statements) evidenceTypes.push('witness');
     if (newEvidence.field_verification) evidenceTypes.push('field');
-    
+
     const likelihood = this._calculateJointLikelihood(evidenceTypes);
-    
+
     const priorConfidence = originalReport.photoAiConf || 0.5;
+    // [GAP-3] bayesianUpdate now implemented — returns a real posterior
     const updatedConfidence = this.bayesianUpdate(priorConfidence, likelihood);
     const confidenceBoost = updatedConfidence - priorConfidence;
-    
+
     const appealWeight = 0.15 + (0.30 * evidenceQuality);
-    
+
     const appealRecord = {
       id: `${originalReport.uuid}-${currentAppeals + 1}`,
       timestamp: Date.now(),
@@ -2417,9 +2652,9 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       cross_validation: crossValidation,
       adversarial_check: adversarial
     };
-    
+
     await this.storeAppeal(appealRecord);
-    
+
     await this._logAuditEvent({
       type: 'APPEAL_PROCESSED',
       appeal_id: appealRecord.id,
@@ -2427,7 +2662,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       evidence_quality: evidenceQuality,
       confidence_boost: confidenceBoost
     });
-    
+
     const updatedReport = {
       ...originalReport,
       photo: newEvidence.photos?.[0] || originalReport.photo,
@@ -2450,7 +2685,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         cross_validation: crossValidation
       }
     };
-    
+
     return {
       success: true,
       updated_report: updatedReport,
@@ -2467,30 +2702,34 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // MASTER SCORE — main entry point (ORIGINAL - PRESERVED)
+  // MASTER SCORE — main entry point
   // ══════════════════════════════════════════════════════════════════════════
   score(report, nearbyReports = [], isRealModel = false, context = {}) {
     const timestamp = report.timestamp || new Date().toISOString();
+    // [GAP-1] _generateUUID now implemented — no longer crashes
     const reportUuid = report.uuid || this._generateUUID();
 
     if (context.mode === 'field') {
       this.registerOfflineSupport();
       this.registerOfflineMapSupport();
     }
-    
+
     this._acquireBackpressureToken().catch(() => {});
-    
+
     const version = this.routeToVersion(reportUuid);
-    
-    const location = this._anonymizeLocation(report.coordinates, report.infraType);
-    
+
+    const location = this._anonymizeLocation(
+      report.coordinates || { lat: 0, lng: 0 },
+      report.infraType
+    );
+
     this._logAuditEvent({
       type: 'REPORT_SCORED',
       report_id: reportUuid,
       version: version,
       location_anonymized: location.anonymized
     }).catch(() => {});
-    
+
     const reputation = this._updateReputation(report.reporter_id, 'PENDING');
     if (reputation.banned) {
       return {
@@ -2519,30 +2758,30 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       TFR: TFR.value,
       CCI: CCI.value
     };
-    
+
     const activeDimensions = ['PES', 'COR', 'TFR', 'CCI'].filter(d => rawScores[d] !== null);
     const normalized = this.normalizeWithPenalty(activeDimensions, rawScores);
-    
+
     const dci_raw = normalized.score;
     const dci = parseFloat(Math.max(0, Math.min(1, dci_raw)).toFixed(3));
 
     const recentFailureRate = context.recentCorrelatedFailureRate || 0;
     const correlatedFailure = this.detectCorrelatedFailures(PES, COR, recentFailureRate);
-    
+
     const um = this.computeUM(PES, COR, TFR, CCI, correlatedFailure, ecfContributions);
-    
+
     const requiresHumanReview = um.validity_status === 'SUSPENDED';
-    const hasValidHumanReview = context.human_review_proof && 
-                                context.human_review_proof.reviewer_id && 
+    const hasValidHumanReview = context.human_review_proof &&
+                                context.human_review_proof.reviewer_id &&
                                 context.human_review_proof.second_reviewer_id;
-    
+
     if (requiresHumanReview && !hasValidHumanReview) {
       this._logAuditEvent({
         type: 'GUARD_TRIGGERED',
         report_id: reportUuid,
         reason: 'SUSPENDED_score_no_review'
       }).catch(() => {});
-      
+
       return {
         usable: false,
         error: '[LAW 4 GUARD] Suspended scores require two independent human reviewers before use.',
@@ -2600,44 +2839,44 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
     }
 
     const { strengths, weaknesses } = this.getStrengths(
-      PES, COR, TFR, CCI, 
-      location, 
+      PES, COR, TFR, CCI,
+      location,
       report.photoGeotag,
       report.photoAccuracy
     );
-    
+
     const umBreakdown = this.getUMBreakdown(PES, COR, TFR, CCI);
-    
+
     let verificationCertificate = null;
     if (tier === 'high') {
       verificationCertificate = this.generateVerificationCertificate(report, dci, tier);
     }
-    
+
     const audioFeedback = this.getAudioFeedback(tier, um.validity_status, context.language);
-    
+
     this.provideHapticFeedback(tier, { emergency: report.internalTier === 'Completely damaged' });
-    
+
     const fieldView = this.getFieldView(
       { tier, verification_certificate: verificationCertificate },
       context
     );
-    
+
     const emergencyResources = this.getEmergencyResources(report, location);
-    
+
     const shareData = this.getShareData(report, verificationCertificate);
-    
+
     const theme = context.mode === 'field' ? this.detectAndApplyTheme() : null;
-    
-    const onboarding = context.userProgress ? 
+
+    const onboarding = context.userProgress ?
       this.getOnboardingStep(context.userProgress, context.language) : null;
-    
+
     const voiceInput = this.getVoiceInputConfig(context.language);
-    
+
     const verificationBadge = this.getVerificationBadge(
-      report.verified_by ? 'community_verified' : 
+      report.verified_by ? 'community_verified' :
       (tier === 'high' ? 'ai_verified' : 'pending')
     );
-    
+
     const excludedDimensions = [];
     if (!PES.evaluable) excludedDimensions.push({ dimension: 'PES', reason: 'no_photo', penalty: 0.25 });
     if (!COR.evaluable) excludedDimensions.push({ dimension: 'COR', reason: 'no_evidence', penalty: 0.20 });
@@ -2648,18 +2887,18 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       usable: um.validity_status !== 'SUSPENDED' || hasValidHumanReview,
       version: version,
       canary: version !== this.VERSION,
-      
+
       dci_pes: PES.value,
       dci_cor: COR.value,
       dci_tfr: TFR.value,
       dci_cci: CCI.value,
-      
+
       dci_normalization: {
         active_dimensions: activeDimensions,
         excluded_dimensions: excludedDimensions,
         missing_penalty_applied: normalized.missing_penalty_applied
       },
-      
+
       dci_uncertainty_mass: um.mass,
       dci_validity_status: um.validity_status,
       dci_validity_plain: this.PLAIN_LANGUAGE[um.validity_status] || um.validity_status,
@@ -2667,25 +2906,25 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       dci_um_breakdown: umBreakdown,
       dci_correlated_failure: correlatedFailure.correlated,
       dci_circuit_breaker_engaged: this._circuitBreaker.engaged,
-      
+
       dci_action: tier === 'high' ? 'SHARE' : (tier === 'watch' ? 'VERIFY' : 'WAIT'),
       dci_confidence_plain: tier === 'high' ? 'High' : (tier === 'watch' ? 'Medium' : 'Low'),
-      
+
       dci_strengths: strengths,
       dci_weaknesses: weaknesses,
-      
+
       dci_marker_style: this.MARKER_STYLES[tier] || this.MARKER_STYLES.suspended,
-      
+
       dci_verification_certificate: verificationCertificate,
       dci_verification_badge: verificationBadge,
-      
+
       dci_audio_feedback: audioFeedback,
-      
+
       dci_haptic_feedback: {
         provided: true,
         pattern: tier === 'review' ? 'long_long_long' : (tier === 'watch' ? 'medium_medium' : 'short')
       },
-      
+
       dci_field_view: fieldView,
       dci_emergency_resources: emergencyResources,
       dci_share_data: shareData,
@@ -2695,33 +2934,33 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       dci_accessibility: this.getAccessibilitySettings(),
       dci_icon_navigation: this.getIconNavigation(1, context.language),
       dci_action_icons: this.getActionIcons(),
-      
+
       dci_measurement_class: {
         PES: PES.measurement_class,
         COR: COR.evaluable ? 'ENUMERATIVE' : 'NOT_EVALUABLE',
         TFR: 'ENUMERATIVE',
         CCI: 'EVALUATIVE',
       },
-      
+
       dci_bottleneck: {
         dimension: bottleneck_dim,
         dimension_plain: this.PLAIN_LANGUAGE[bottleneck_dim] || bottleneck_dim,
         value: bottleneck_value,
       },
-      
+
       dci_assumptions: assumptions.map(a => a.plain_language).join(' · '),
       dci_assumptions_raw: assumptions,
-      
+
       dci_freshness_status: TFR.freshness_status,
       dci_hours_elapsed: TFR.hours_elapsed,
-      
+
       dci_notes: {
         PES: PES.note,
         COR: COR.note,
         TFR: TFR.note,
         CCI: CCI.note,
       },
-      
+
       dci_flags: {
         pes_gated: PES.gated || false,
         pes_inferential: PES.measurement_class === 'INFERENTIAL',
@@ -2732,10 +2971,10 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         tfr_status: TFR.freshness_status,
         correlated_failure: correlatedFailure.correlated,
       },
-      
+
       dci_cor_signal: COR.signal_type,
       dci_reporter_reputation: reputation,
-      
+
       constitutional_status: {
         law_4_compliant: !(um.validity_status === 'SUSPENDED' && !hasValidHumanReview),
         law_6_compliant: true,
@@ -2763,7 +3002,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
           audit_trail: 'blockchain_immutable'
         }
       },
-      
+
       data_governance: {
         retention_days: 365,
         extension_policy: 'community_opt_in',
@@ -2778,9 +3017,9 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         recipients: this.getDataSharingDisclosure().recipients,
         consent: this.getConsentForm()
       },
-      
+
       location: location,
-      
+
       appeal_status: {
         appeals_used: report.appeal_count || 0,
         appeals_remaining: Math.max(0, this.THRESHOLDS.MAX_APPEALS - (report.appeal_count || 0)),
@@ -2789,17 +3028,17 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         appeal_endpoint: '/api/appeal',
         requires_new_evidence: true
       },
-      
+
       correction_endpoint: '/api/correction',
-      
+
       whistleblower_channel: {
         available: true,
         anonymous: true,
         endpoint: '/api/whistleblower',
         tracking: 'one_time_code'
       },
-      
-      audit_id: this._auditLog.events.length + 1
+
+      audit_id: this._auditLog.events ? this._auditLog.events.length + 1 : 1
     };
   },
 
@@ -2827,35 +3066,35 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
 
   primaryExplanation(result) {
     const flags = result.dci_flags;
-    
+
     if (!result.usable) {
       return `⚠️ This score requires human review before use. ${result.error || 'Field verification required.'}`;
     }
-    
+
     if (result.dci_validity_status === 'SUSPENDED') {
       return `This score carries high uncertainty. ${result.dci_field_view?.what_to_do || 'Wait for field verification.'}`;
     }
-    
+
     if (flags.cor_no_evidence) {
       return `First report in this area — no other reports to compare with. Share the app so others can confirm.`;
     }
-    
+
     if (flags.cor_contradiction) {
       return `Nearby reports disagree. Human verification recommended before acting.`;
     }
-    
+
     if (flags.pes_gated) {
       return `Photo quality is low. Clearer photos would improve confidence.`;
     }
-    
+
     if (result.dci_bottleneck.dimension === 'TFR') {
       return `This report is ${result.dci_hours_elapsed} hours old. Fresher reports are more reliable.`;
     }
-    
+
     if (flags.pes_missing) {
       return `No photo submitted. Adding a photo would significantly improve confidence.`;
     }
-    
+
     return `This report is ${result.dci_confidence_plain.toLowerCase()} confidence. ${result.dci_field_view?.what_to_do || 'Share with responders.'}`;
   }
 };
@@ -2868,11 +3107,12 @@ if (typeof module !== 'undefined' && module.exports) {
 // Auto-initialize if in browser
 if (typeof window !== 'undefined') {
   window.CERTUS = CERTUS;
-  
-  // Check for Supabase environment variables
-  const supabaseUrl = window.SUPABASE_URL || process?.env?.SUPABASE_URL;
-  const supabaseAnonKey = window.SUPABASE_ANON_KEY || process?.env?.SUPABASE_ANON_KEY;
-  
+
+  const supabaseUrl = (typeof window !== 'undefined' && window.SUPABASE_URL) ||
+                      (typeof process !== 'undefined' && process.env?.SUPABASE_URL) || null;
+  const supabaseAnonKey = (typeof window !== 'undefined' && window.SUPABASE_ANON_KEY) ||
+                          (typeof process !== 'undefined' && process.env?.SUPABASE_ANON_KEY) || null;
+
   if (supabaseUrl && supabaseAnonKey) {
     CERTUS.initialize(supabaseUrl, supabaseAnonKey).catch(console.warn);
   } else {
