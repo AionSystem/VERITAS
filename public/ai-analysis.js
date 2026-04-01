@@ -4,7 +4,7 @@
 
 const AI_ANALYSIS = {
   // UPDATE THIS URL WITH YOUR ACTUAL VERCEL API ENDPOINT
-  API_URL: 'https://veritas-flax-eta.vercel.app/api/openrouter',
+  API_URL: 'https://veritas-flax-eta.vercel.app/analyze',
   
   // Analyze a photo by calling your Vercel backend
   async analyzePhoto(imageDataUrl, infrastructureType = null) {
