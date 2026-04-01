@@ -301,9 +301,19 @@ export default async function handler(req, res) {
     
     const finalEntry = entry.trim() + `\n\nServer Timestamp: ${now.toISOString()}`;
     
-    // Select template using imported function
-    const templateKey = selectTemplate(finalEntry, type);
-    const template = getTemplate(templateKey);
+    // In the main handler, after selectTemplate:
+const templateKey = selectTemplate(finalEntry, type);
+const template = getTemplate(templateKey);
+
+// Add this check
+if (!template) {
+  return res.status(400).json({
+    success: false,
+    error: 'TEMPLATE_NOT_FOUND',
+    message: `No template found for key: ${templateKey}`,
+    entry_preview: finalEntry.substring(0, 200)
+  });
+}
     
     // Prepare form data for validation
     const formData = { fields: fields || {}, sessionId, userId };
