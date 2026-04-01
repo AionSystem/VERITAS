@@ -305,12 +305,13 @@ export default async function handler(req, res) {
 const templateKey = selectTemplate(finalEntry, type);
 const template = getTemplate(templateKey);
 
-// Add this check
+// ADD THIS GUARD
 if (!template) {
+  console.error(`[STP] Template not found for key: ${templateKey}`);
   return res.status(400).json({
     success: false,
     error: 'TEMPLATE_NOT_FOUND',
-    message: `No template found for key: ${templateKey}`,
+    message: `Template with key "${templateKey}" not found. Available: ${Object.keys(getTemplate('all')).join(', ')}`,
     entry_preview: finalEntry.substring(0, 200)
   });
 }
