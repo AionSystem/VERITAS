@@ -1499,14 +1499,21 @@ let lastKnownLocation = null;
 let locationTrackingInterval = null;
 
 function startLocationTracking() {
-  if (!navigator.geolocation) {
-    document.getElementById('gpsStatus').innerHTML = '❌ GPS not supported';
+  const gpsStatusEl = document.getElementById('gpsStatus');
+  const lastLocationEl = document.getElementById('lastLocationStatus');
+  
+  if (!gpsStatusEl || !lastLocationEl) {
+    console.warn('[VERITAS] Location status elements not ready yet');
     return;
   }
   
-  document.getElementById('gpsStatus').innerHTML = '📍 Acquiring GPS...';
+  if (!navigator.geolocation) {
+    gpsStatusEl.innerHTML = '❌ GPS not supported';
+    return;
+  }
   
-  // Get initial location
+  gpsStatusEl.innerHTML = '📍 Acquiring GPS...';
+  
   navigator.geolocation.getCurrentPosition(
     pos => {
       lastKnownLocation = {
@@ -1516,16 +1523,15 @@ function startLocationTracking() {
         timestamp: Date.now()
       };
       updateLocationStatus();
-      document.getElementById('gpsStatus').innerHTML = '✅ GPS locked';
+      gpsStatusEl.innerHTML = '✅ GPS locked';
     },
     err => {
       console.warn('GPS error:', err);
-      document.getElementById('gpsStatus').innerHTML = '⚠️ GPS unavailable - using last known';
+      gpsStatusEl.innerHTML = '⚠️ GPS unavailable - using last known';
     },
     { enableHighAccuracy: true, timeout: 10000 }
   );
   
-  // Track location every 30 seconds
   if (locationTrackingInterval) clearInterval(locationTrackingInterval);
   locationTrackingInterval = setInterval(() => {
     navigator.geolocation.getCurrentPosition(
