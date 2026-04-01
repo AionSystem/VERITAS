@@ -1500,15 +1500,26 @@ function displaySTPSeal(seal) {
   const displayDiv = document.getElementById('stpSealDisplay');
   const contentDiv = document.getElementById('stpSealContent');
   displayDiv.style.display = 'block';
+  
+  const issueLink = seal.issue_url ? 
+    `<a href="${seal.issue_url}" target="_blank" style="color:var(--amber);">View on GitHub</a>` : 
+    '<span style="color:#ff4d4d;">Not created (check GitHub token)</span>';
+  
+  const ledgerLink = seal.ledger_path ? 
+    `<a href="https://github.com/AionSystem/SOVEREIGN-TRACE-PROTOCOL/blob/main/${seal.ledger_path}" target="_blank" style="color:var(--amber);">View Ledger File</a>` : 
+    '<span style="color:#ffc947;">Not uploaded</span>';
+  
   contentDiv.innerHTML = `
-    <div><strong>Seal ID:</strong> ${seal.ledger_file || seal.seal_id || '—'}</div>
-    <div><strong>SHA-256:</strong> <code>${seal.seal}</code></div>
-    <div><strong>📅 Gregorian:</strong> ${seal.gregorian}</div>
-    <div><strong>🌑 Hebrew:</strong> ${seal.hebrew}</div>
-    <div><strong>🌀 Dreamspell:</strong> ${seal.dreamspell}</div>
+    <div><strong>Seal ID:</strong> ${seal.seal ? seal.seal.substring(0, 16) + '...' : '—'}</div>
+    <div><strong>SHA-256:</strong> <code>${seal.seal || seal.datasetHash}</code></div>
+    <div><strong>📅 Gregorian:</strong> ${seal.gregorian || new Date().toLocaleDateString()}</div>
+    <div><strong>🌑 Hebrew:</strong> ${seal.hebrew || '—'}</div>
+    <div><strong>🌀 Dreamspell:</strong> ${seal.dreamspell || '—'}</div>
     <div><strong>📦 Dataset SHA-256:</strong> <code>${seal.datasetHash}</code></div>
     <div><strong>Reports sealed:</strong> ${seal.reportsCount}</div>
-    <div><strong>Issue URL:</strong> <a href="${seal.issue_url}" target="_blank">${seal.issue_url || '—'}</a></div>
+    <div><strong>GitHub Issue:</strong> ${issueLink}</div>
+    <div><strong>Ledger File:</strong> ${ledgerLink}</div>
+    ${seal.local ? '<div style="color:#ffc947;">⚠️ Local seal only - GitHub token may not be configured</div>' : ''}
     <div><small>Verify: recompute SHA-256 of exported file and compare to Dataset SHA-256 above.</small></div>
   `;
 }
