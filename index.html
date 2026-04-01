@@ -1413,17 +1413,19 @@ if(hamburger&&mobileNav){
 }
 
 // ==================== SERVICE WORKER ====================
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/sw.js')
-    .then(reg=>console.log('[VERITAS] SW registered:',reg.scope))
-    .catch(err=>console.warn('[VERITAS] SW registration failed:',err));
-}
-
-// FIX #7 — photo trigger
-function triggerPhotoCapture(){
-  const input=document.getElementById('photoInput');
-  if(input) input.click();
-  else toast('Photo input not found');
+if ('serviceWorker' in navigator) {
+  // Check if sw.js exists before registering
+  fetch('/sw.js', { method: 'HEAD' })
+    .then(response => {
+      if (response.ok) {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('[VERITAS] SW registered:', reg.scope))
+          .catch(err => console.warn('[VERITAS] SW registration failed:', err));
+      } else {
+        console.log('[VERITAS] sw.js not found, skipping service worker');
+      }
+    })
+    .catch(() => console.log('[VERITAS] Cannot check sw.js, skipping'));
 }
 
 // ==================== INITIALISATION ====================
