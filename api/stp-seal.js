@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import https from 'https';
+import { getTemplate, detectTemplate, validateTemplateRequirements, renderIssueBody } from './templates/index.js';
 
 // ============================================================
 // CONFIGURATION
@@ -124,38 +125,16 @@ function computeSealExact(entry, gregorian, hebrew, dreamspell, unixUtc) {
 }
 
 // ============================================================
-// TEMPLATE SELECTION (Hardcoded - Working Version)
+// TEMPLATE SELECTION (Now using imported functions)
 // ============================================================
-const SEAL_TEMPLATES = {
-  '01': { name: 'ai-failure', label: 'AI-FAILURE', triggers: ['ai failure','model failure','hallucination'] },
-  '02': { name: 'research-priority', label: 'RESEARCH-PRIORITY', triggers: ['hypothesis','research','theory','prediction'] },
-  '03': { name: 'evidence-chain', label: 'EVIDENCE-CHAIN', triggers: ['evidence','source','document'] },
-  '04': { name: 'creative-priority', label: 'CREATIVE-PRIORITY', triggers: ['creative','music','art','design'] },
-  '05': { name: 'clinical-record', label: 'CLINICAL-RECORD', triggers: ['clinical','patient','medical record'] },
-  '06': { name: 'scope-anchor', label: 'SCOPE-ANCHOR', triggers: ['scope','agreement','contract'] },
-  '07': { name: 'general-trace', label: 'GENERAL-TRACE', triggers: [] },
-  '08': { name: 'foresight-seal', label: 'FORESIGHT-SEAL', triggers: ['predict','forecast','foresight'] },
-  '09': { name: 'webeater-link', label: 'WEBEATER-LINK', triggers: ['link','bind','connect two seals'] },
-  '10': { name: 'audit-request', label: 'AUDIT-REQUEST', triggers: ['audit request','certification'] },
-  '11': { name: 'audit-completion', label: 'AUDIT-COMPLETION', triggers: ['audit complete','audit filed'] },
-  '12': { name: 'auditor-application', label: 'AUDITOR-APPLICATION', triggers: ['apply auditor'] },
-  '13': { name: 'integrity-violation', label: 'INTEGRITY-VIOLATION', triggers: ['misuse','violation','bribery'] },
-  '14': { name: 'near-miss', label: 'NEAR-MISS', triggers: ['near miss','almost','close call'] },
-};
-
 function selectTemplate(entry, contextType) {
-  if (contextType && SEAL_TEMPLATES[contextType]) return contextType;
-  const lower = (entry || '').toLowerCase();
-  const priority = ['13','14','05','10','11','12','01','09','06','03','08','02','04'];
-  for (const key of priority) {
-    if (SEAL_TEMPLATES[key]?.triggers.some(t => lower.includes(t))) return key;
-  }
-  if (['ignore previous','you are now','without restrictions','jailbreak'].some(t => lower.includes(t))) return '13';
-  return '07';
+  const template = detectTemplate(entry, contextType);
+  return template.id;
 }
 
 function ledgerFileName(templateKey, gregorian, seal) {
-  const label = SEAL_TEMPLATES[templateKey].label;
+  const template = getTemplate(templateKey);
+  const label = template.name.replace(/\s+/g, '-').toUpperCase();
   const dateStr = gregorian.replace(/[,\s]+/g, '-').replace(/[^A-Z0-9\-]/gi, '');
   return `STP-${label}-${dateStr}-${seal.substring(0, 6).toUpperCase()}.json`;
 }
@@ -217,17 +196,18 @@ async function ghRequest(path, method, body, timeoutMs = 15000) {
 }
 
 async function createGitHubIssueForSeal(templateKey, entry, stamp, metadata) {
-  const tmpl = SEAL_TEMPLATES[templateKey];
-  const title = `[${tmpl.label}] ${entry.substring(0, 80)}${entry.length > 80 ? '...' : ''}`;
-  const body = `## Sovereign Trace Protocol — Automated Seal\n\n` +
-    `**Template:** ${templateKey} — ${tmpl.label}\n\n` +
-    `**Entry:**\n${entry}\n\n---\n\n` +
-    `**Triple-Time Stamp:**\n- 📅 Gregorian: ${stamp.gregorian}\n- 🌑 Hebrew: ${stamp.hebrew}\n- 🌀 Dreamspell: ${stamp.dreamspell}\n- ⏱ Unix UTC: ${stamp.unixUtc}\n\n` +
-    `**🔒 Seal:** \`${stamp.seal}\`\n\n---\n\n` +
-    (metadata.sessionId ? `**Session:** ${metadata.sessionId}\n` : '') +
-    (metadata.userId ? `**User:** ${metadata.userId}\n` : '') +
-    `**Ledger File:** \`${stamp.ledgerFile}\`\n\n*Sealed by AION AI Assistant*`;
-  const { data: issue } = await ghRequest('/repos/AionSystem/SOVEREIGN-TRACE-PROTOCOL/issues', 'POST', { title, body, labels: [tmpl.name] });
+  const template = getTemplate(templateKey);
+  const title = `[${template.name}] ${entry.substring(0, 80)}${entry.length > 80 ? '...' : ''}`;
+  const body = renderIssueBody(template, metadata, stamp, entry);
+  
+  const labels = [template.id];
+  if (template.category) labels.push(template.category);
+  
+  const { data: issue } = await ghRequest('/repos/AionSystem/SOVEREIGN-TRACE-PROTOCOL/issues', 'POST', { 
+    title, 
+    body, 
+    labels
+  });
   return issue.html_url;
 }
 
@@ -280,7 +260,6 @@ export default async function handler(req, res) {
       service: 'STP-Seal',
       version: 'FROZEN-2.0',
       timestamp: new Date().toISOString(),
-      templates_loaded: Object.keys(SEAL_TEMPLATES).length,
       endpoints: ['/api/stp-seal', '/api/health']
     });
   }
@@ -304,7 +283,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { entry, type, sessionId, userId } = req.body;
+    const { entry, type, sessionId, userId, fields } = req.body;
     
     if (!entry || typeof entry !== 'string' || !entry.trim()) {
       return res.status(400).json({ error: 'EMPTY_ENTRY', message: 'Entry text is required' });
@@ -321,8 +300,29 @@ export default async function handler(req, res) {
     const dreamspell = dreamspellString(now);
     
     const finalEntry = entry.trim() + `\n\nServer Timestamp: ${now.toISOString()}`;
-    const seal = computeSealExact(finalEntry, gregorian, hebrew, dreamspell, unixUtc);
+    
+    // Select template using imported function
     const templateKey = selectTemplate(finalEntry, type);
+    const template = getTemplate(templateKey);
+    
+    // Prepare form data for validation
+    const formData = { fields: fields || {}, sessionId, userId };
+    
+    // Validate template requirements
+    const validation = validateTemplateRequirements(template, formData);
+    if (!validation.valid) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_FAILED',
+        missing_requirements: validation.missing,
+        message: 'Template requirements not met',
+        template_id: template.id,
+        template_name: template.name,
+        required_fields: template.fields?.filter(f => f.required).map(f => ({ id: f.id, label: f.label })) || []
+      });
+    }
+    
+    const seal = computeSealExact(finalEntry, gregorian, hebrew, dreamspell, unixUtc);
     const ledgerFile = ledgerFileName(templateKey, gregorian, seal);
     
     const stamp = { gregorian, hebrew, dreamspell, unixUtc, seal, ledgerFile };
@@ -331,8 +331,9 @@ export default async function handler(req, res) {
       protocol: 'SOVEREIGN-TRACE-PROTOCOL',
       stamp_version: 'FROZEN-2.0',
       template: templateKey,
-      template_name: SEAL_TEMPLATES[templateKey].label,
+      template_name: template.name,
       entry: finalEntry,
+      fields: fields || {},
       gregorian,
       hebrew,
       dreamspell,
@@ -354,7 +355,7 @@ export default async function handler(req, res) {
     if (process.env.GITHUB_TOKEN) {
       try {
         [issueUrl, ledgerPath] = await Promise.all([
-          createGitHubIssueForSeal(templateKey, finalEntry, stamp, { sessionId, userId }),
+          createGitHubIssueForSeal(templateKey, finalEntry, stamp, formData),
           createLedgerFileForSeal(ledgerFile, ledgerData)
         ]);
       } catch (err) {
@@ -369,12 +370,14 @@ export default async function handler(req, res) {
           seal,
           entry: finalEntry,
           template: templateKey,
+          template_name: template.name,
           gregorian,
           hebrew,
           dreamspell,
           unix_utc: unixUtc,
           session_id: sessionId,
           user_id: userId,
+          fields: fields || {},
           ip_hash: ledgerData.ip_hash,
           github_issue_url: issueUrl,
           ledger_path: ledgerPath
@@ -392,13 +395,15 @@ export default async function handler(req, res) {
       dreamspell,
       unix_utc: unixUtc,
       template: templateKey,
-      template_name: SEAL_TEMPLATES[templateKey].label,
+      template_name: template.name,
       ledger_file: ledgerFile,
       issue_url: issueUrl,
       ledger_path: ledgerPath,
       github_error: githubError,
+      validation_passed: validation.valid,
       retention_days: RETENTION_DAYS,
-      jurisdiction: JURISDICTION
+      jurisdiction: JURISDICTION,
+      request_id: requestId
     });
 
   } catch (err) {
@@ -406,7 +411,8 @@ export default async function handler(req, res) {
     return res.status(500).json({
       error: 'SEAL_ERROR',
       message: err.message,
-      success: false
+      success: false,
+      request_id: requestId
     });
   }
 }
