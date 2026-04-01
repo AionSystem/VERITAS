@@ -497,7 +497,8 @@ For commercial licensing inquiries: **aionsystem@outlook.com**
 - [OpenRouter](https://openrouter.ai) — unified AI API
 - [Leaflet.js](https://leafletjs.com/) — maps
 - [Supabase](https://supabase.com/) — backend sync
-- Claude 3.5 Sonnet — primary damage assessment
+- openai/gpt-4o-mini — primary damage assessment
+- Claude 3.5 Sonnet — fallback AI model
 - DeepSeek — fallback AI model
 
 [![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
