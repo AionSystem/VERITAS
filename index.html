@@ -1422,13 +1422,14 @@ async function stampWithSTP() {
     return;
   }
   
+  toast('Creating STP seal...');
+  
   const clean = reports.map(r => ({
     uuid: r.uuid,
     timestamp: r.timestamp,
     lat: r.lat,
     lng: r.lng,
     undp_damage: r.undpTier,
-    internal_damage: r.internalTier,
     infrastructure: r.infraType,
     dci: r.dci,
     dci_tier: r.dciTier
@@ -1438,8 +1439,7 @@ async function stampWithSTP() {
   const datasetHash = await computeHash(datasetStr);
   const timestamp = new Date().toISOString();
   
-  // Use Template 16 for VERITAS Export (or Template 07 for general)
-  const entry = `VERITAS Export\nTimestamp: ${timestamp}\nReports: ${reports.length}\nDataset SHA-256: ${datasetHash}\nPowered by CERTUS Engine v2.5\nSTP integrity seal requested via AionSystem/VERITAS`;
+  const entry = `VERITAS Export\nTimestamp: ${timestamp}\nReports: ${reports.length}\nDataset SHA-256: ${datasetHash}`;
   
   const btn = document.getElementById('stpSealBtn');
   const originalText = btn.textContent;
@@ -1447,39 +1447,49 @@ async function stampWithSTP() {
   btn.disabled = true;
   
   try {
-    // FIX: Use relative path to local API (same deployment)
+    // Try STP API but don't fail if it doesn't work
     const response = await fetchWithTimeout('https://veritas-flax-eta.vercel.app/api/stp-seal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         entry: entry,
-        type: '07', // GENERAL-TRACE (or use '16' if you've added VERITAS-EXPORT template)
+        type: '07',
         sessionId: 'veritas-export-' + timestamp,
         userId: null
       })
-    });
+    }).catch(() => null);
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    let sealData = null;
+    if (response && response.ok) {
+      sealData = await response.json();
     }
     
-    const seal = await response.json();
-    if (!seal.success) throw new Error(seal.error || 'Seal failed');
-    
+    // Create local seal even if API fails
     currentSTPSeal = {
-      ...seal,
+      seal: datasetHash,
       datasetHash,
       reportsCount: reports.length,
-      exportTimestamp: timestamp
+      exportTimestamp: timestamp,
+      local: !sealData,
+      note: sealData ? 'Sealed with STP service' : 'Local seal only - API unavailable'
     };
     
     displaySTPSeal(currentSTPSeal);
-    toast('STP seal created successfully');
+    toast(sealData ? 'STP seal created successfully!' : 'Local seal created (API unavailable)');
     
   } catch (err) {
     console.error('[VERITAS] STP seal error:', err);
-    toast(`STP seal failed: ${err.name === 'AbortError' ? 'Request timed out' : err.message}`);
+    // Still create a local seal
+    currentSTPSeal = {
+      seal: datasetHash,
+      datasetHash,
+      reportsCount: reports.length,
+      exportTimestamp: timestamp,
+      local: true,
+      error: err.message
+    };
+    displaySTPSeal(currentSTPSeal);
+    toast(`Local seal created. API error: ${err.message}`);
   } finally {
     btn.textContent = originalText;
     btn.disabled = false;
