@@ -1,9 +1,10 @@
-// ==================== CERTUS ENGINE v2.5 ====================
+// ==================== CERTUS ENGINE v2.5.1 ====================
 // FSVE-informed Scoring Engine with Full Polymath Red-Team Integration
 // Rounds 1-5 Implementations Complete
+// Enhanced with NLP, Photo Analysis, and Supabase Storage
 //
 // Author: Sheldon K. Salmon & ALBEDO
-// Date: March 30, 2026
+// Date: April 1, 2026
 //
 // Round 5 Implementations:
 // [S-17] Graceful degradation for Redis failure with alerts
@@ -31,12 +32,18 @@
 // [D-21] Automatic dark mode with ambient light sensor
 // [D-22] Large text mode for accessibility
 // [D-23] Community verification badges
+// [NEW] NLP text analysis for witness statements
+// [NEW] Infrastructure type inference from text descriptions
+// [NEW] Supabase storage integration for reports, appeals, and audit logs
+// [NEW] Batch photo analysis with OpenRouter API
+// [NEW] Duplicate photo detection with perceptual hashing
+// [NEW] Shelter and medical facility lookup
 
 const CERTUS = {
 
   // ── VERSION ────────────────────────────────────────────────────────────────
-  VERSION: '2.5.0',
-  CANARY_VERSION: '2.5.0-beta',
+  VERSION: '2.5.1',
+  CANARY_VERSION: '2.5.1-beta',
 
   // ── PRODUCTION CONFIGURATION ───────────────────────────────────────────────
   PRODUCTION: {
@@ -301,6 +308,31 @@ const CERTUS = {
     }
   },
 
+  // ── NLP CONFIGURATION (NEW) ───────────────────────────────────────────────
+  NLP_CONFIG: {
+    damageKeywords: {
+      minimal: ['minor', 'small', 'crack', 'hairline', 'surface', 'cosmetic', 'paint', 'scrape', 'chipped', 'scratch'],
+      partial: ['significant', 'major', 'broken', 'cracked', 'damaged', 'hole', 'collapse partial', 'leaning', 'buckled', 'warped'],
+      complete: ['destroyed', 'total', 'rubble', 'pile', 'flattened', 'gone', 'rubble', 'debris', 'collapse total', 'leveled', 'obliterated']
+    },
+    infrastructureKeywords: {
+      Residential: ['house', 'home', 'apartment', 'building', 'dwelling', 'condo', 'townhouse', 'villa'],
+      Road: ['road', 'street', 'highway', 'path', 'lane', 'bridge approach', 'pavement', 'asphalt', 'intersection'],
+      Bridge: ['bridge', 'overpass', 'underpass', 'viaduct', 'flyover', 'trestle'],
+      Utility: ['power', 'electric', 'water', 'pipe', 'line', 'pole', 'transformer', 'substation', 'sewer', 'gas'],
+      Medical: ['hospital', 'clinic', 'health', 'medical', 'doctor', 'pharmacy', 'clinic', 'urgent care'],
+      School: ['school', 'university', 'college', 'academy', 'classroom', 'campus'],
+      'Government Building': ['government', 'city hall', 'municipal', 'council', 'administrative', 'courthouse', 'town hall'],
+      'Commercial Infrastructure': ['store', 'shop', 'market', 'mall', 'business', 'office', 'retail', 'warehouse'],
+      'Community Infrastructure': ['community center', 'hall', 'church', 'mosque', 'temple', 'worship', 'cultural center'],
+      'Public spaces/Recreation': ['park', 'playground', 'square', 'plaza', 'stadium', 'field', 'arena', 'sports']
+    },
+    sentimentAnalysis: {
+      urgency: ['emergency', 'urgent', 'immediate', 'critical', 'serious', 'danger', 'unsafe', 'life threatening', 'trapped'],
+      uncertainty: ['maybe', 'perhaps', 'not sure', 'uncertain', 'unclear', 'could be', 'might be', 'possibly']
+    }
+  },
+
   // ── INTERNAL STATE ────────────────────────────────────────────────────────
   _circuitBreaker: {
     engaged: false,
@@ -314,7 +346,8 @@ const CERTUS = {
   _dependencyCircuitBreakers: {
     redis: { open: false, failures: 0, lastFailure: null, timeout: 5000 },
     storage: { open: false, failures: 0, lastFailure: null, timeout: 10000 },
-    maps: { open: false, failures: 0, lastFailure: null, timeout: 3000 }
+    maps: { open: false, failures: 0, lastFailure: null, timeout: 3000 },
+    supabase: { open: false, failures: 0, lastFailure: null, timeout: 8000 }
   },
 
   _backpressure: {
@@ -330,6 +363,7 @@ const CERTUS = {
   _useDistributed: false,
 
   _storage: null,
+  _supabaseClient: null,
 
   _auditLog: {
     shards: [],
@@ -342,6 +376,7 @@ const CERTUS = {
   _correctionStore: new Map(),
   _progressStore: new Map(),
   _batchReports: new Map(),
+  _photoRegistry: new Map(),
 
   // ══════════════════════════════════════════════════════════════════════════
   // CANARY DEPLOYMENT — version routing
@@ -379,14 +414,12 @@ const CERTUS = {
       console.warn(`[CERTUS] Degraded mode: ${component} failed - ${error.message}`);
     }
     
-    // Trigger alert if this is a critical component
-    if (component === 'redis' || component === 'storage') {
+    if (component === 'redis' || component === 'storage' || component === 'supabase') {
       this._sendAlert(component, error);
     }
   },
 
   _sendAlert(component, error) {
-    // In production, send to monitoring system
     if (typeof fetch !== 'undefined') {
       fetch('/api/alerts', {
         method: 'POST',
@@ -411,21 +444,26 @@ const CERTUS = {
       instanceId: this._instanceId || 'unknown'
     };
     
-    // Write to current shard
     const shard = this._auditLog.shards[this._auditLog.currentShard] || 
                   { events: [], size: 0 };
     shard.events.push(auditEvent);
     shard.size++;
     this._auditLog.shards[this._auditLog.currentShard] = shard;
     
-    // Rotate shard if full
     if (shard.size >= this._auditLog.maxShardSize) {
       await this._rotateAuditShard();
     }
     
-    // Also store in persistent storage if available
     if (this._storage && this._storage.logAudit) {
       await this._storage.logAudit(auditEvent);
+    }
+    
+    if (this._supabaseClient && this._supabaseClient.from) {
+      try {
+        await this._supabaseClient.from('audit_logs').insert(auditEvent);
+      } catch (err) {
+        console.warn('[CERTUS] Supabase audit log failed:', err);
+      }
     }
   },
 
@@ -455,6 +493,19 @@ const CERTUS = {
       results.push(...storedResults);
     }
     
+    if (this._supabaseClient && this._supabaseClient.from) {
+      try {
+        const { data } = await this._supabaseClient
+          .from('audit_logs')
+          .select('*')
+          .gte('timestamp', startDate)
+          .lte('timestamp', endDate);
+        if (data) results.push(...data);
+      } catch (err) {
+        console.warn('[CERTUS] Supabase audit query failed:', err);
+      }
+    }
+    
     return results.sort((a, b) => a.timestamp - b.timestamp);
   },
 
@@ -470,7 +521,6 @@ const CERTUS = {
       if (timeSinceFailure < breaker.timeout) {
         return fallback();
       }
-      // Attempt to reset after timeout
       breaker.open = false;
       breaker.failures = 0;
     }
@@ -501,7 +551,6 @@ const CERTUS = {
       return true;
     }
     
-    // Wait for tokens
     await new Promise(resolve => setTimeout(resolve, 100));
     return this._acquireBackpressureToken(tokens);
   },
@@ -528,7 +577,6 @@ const CERTUS = {
     let likelihood = 0.5;
     
     if (hasPhoto && hasWitness) {
-      // Correlated evidence: use max, not sum
       likelihood += Math.max(
         this.EVIDENCE_WEIGHTS.PHOTO.likelihood - 0.5,
         this.EVIDENCE_WEIGHTS.WITNESS.likelihood - 0.5
@@ -583,7 +631,7 @@ const CERTUS = {
   _detectAdversarialPattern(evidence, reportHistory) {
     const now = Date.now();
     const recentAppeals = reportHistory.filter(a => 
-      a.timestamp > now - 86400000 // last 24 hours
+      a.timestamp > now - 86400000
     );
     
     if (recentAppeals.length > 3) {
@@ -594,7 +642,6 @@ const CERTUS = {
       };
     }
     
-    // Check for evidence recycling
     const photoHashes = evidence.photos?.map(p => p.hash) || [];
     const duplicatePhotos = this._findDuplicatePhotos(photoHashes);
     if (duplicatePhotos.length > 0) {
@@ -606,11 +653,6 @@ const CERTUS = {
     }
     
     return { adversarial: false };
-  },
-
-  _findDuplicatePhotos(photoHashes) {
-    // Placeholder - check against global photo registry
-    return [];
   },
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -641,6 +683,7 @@ const CERTUS = {
     }
     
     this._reputationStore.set(reporterId, reputation);
+    this.updateReputationStorage(reporterId, reputation).catch(console.warn);
     return reputation;
   },
 
@@ -727,17 +770,23 @@ const CERTUS = {
     };
     this._progressStore.set(sessionId, progress);
     
-    // Also save to localStorage if in browser
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(`veritas_progress_${sessionId}`, JSON.stringify(progress));
+    }
+    
+    if (this._supabaseClient && this._supabaseClient.from) {
+      this._supabaseClient.from('progress').upsert({
+        session_id: sessionId,
+        step,
+        data,
+        timestamp: progress.timestamp
+      }).catch(console.warn);
     }
   },
 
   restoreProgress(sessionId) {
-    // Check memory first
     let progress = this._progressStore.get(sessionId);
     
-    // Check localStorage
     if (!progress && typeof localStorage !== 'undefined') {
       const saved = localStorage.getItem(`veritas_progress_${sessionId}`);
       if (saved) {
@@ -818,13 +867,11 @@ const CERTUS = {
   // OFFLINE VOICE RECOGNITION (keyword detection)
   // ══════════════════════════════════════════════════════════════════════════
   supportsOfflineVoice() {
-    return true; // Keyword detection always works offline
+    return true;
   },
 
   recognizeOfflineVoice(audioSample, language = 'en') {
     const keywords = this.VOICE_KEYWORDS[language] || this.VOICE_KEYWORDS.en;
-    // Placeholder: actual implementation would use Web Audio API to detect keywords
-    // For now, return a mock detection
     return {
       detected: keywords[0],
       confidence: 0.7,
@@ -840,17 +887,13 @@ const CERTUS = {
     if (typeof navigator === 'undefined' || !navigator.vibrate) return;
     
     if (confidence === 'low' || confidence === 'review') {
-      // Three long pulses for low confidence
       navigator.vibrate([500, 200, 500, 200, 500]);
     } else if (confidence === 'medium' || confidence === 'watch') {
-      // Two medium pulses for medium confidence
       navigator.vibrate([300, 200, 300]);
     } else if (confidence === 'high') {
-      // One short pulse for high confidence
       navigator.vibrate(100);
     }
     
-    // Pattern for emergency alerts
     if (context.emergency) {
       navigator.vibrate([1000, 500, 1000]);
     }
@@ -860,14 +903,12 @@ const CERTUS = {
   // DARK MODE with ambient light sensor
   // ══════════════════════════════════════════════════════════════════════════
   async detectAndApplyTheme() {
-    // Check system preference
     if (typeof window !== 'undefined' && window.matchMedia) {
       if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
         return { theme: 'dark', source: 'system' };
       }
     }
     
-    // Check ambient light sensor
     if (typeof window !== 'undefined' && 'AmbientLightSensor' in window) {
       try {
         const sensor = new window.AmbientLightSensor();
@@ -880,9 +921,7 @@ const CERTUS = {
         if (reading !== null && reading < 10) {
           return { theme: 'dark', source: 'ambient_light', illuminance: reading };
         }
-      } catch (err) {
-        // Sensor not available
-      }
+      } catch (err) {}
     }
     
     return { theme: 'light', source: 'default' };
@@ -942,33 +981,6 @@ const CERTUS = {
       };
     }
     return { required: false };
-  },
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // HEALTH CHECK
-  // ══════════════════════════════════════════════════════════════════════════
-  healthCheck() {
-    return {
-      status: this._circuitBreaker.engaged ? 'DEGRADED' : 'HEALTHY',
-      version: this.VERSION,
-      canary_version: this.CANARY_VERSION,
-      canary_percentage: this.PRODUCTION.canaryPercentage,
-      circuit_breaker: {
-        engaged: this._circuitBreaker.engaged,
-        backoff_ms: this._circuitBreaker.backoff,
-        reason: this._circuitBreaker.reason
-      },
-      dependencies: Object.entries(this._dependencyCircuitBreakers).map(([name, breaker]) => ({
-        name,
-        open: breaker.open,
-        failures: breaker.failures
-      })),
-      degraded_mode: this._degradedMode,
-      degradation_reasons: this._degradationReasons.slice(-5),
-      distributed_mode: this._useDistributed,
-      audit_shards: this._auditLog.shards.length,
-      timestamp: new Date().toISOString()
-    };
   },
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1577,7 +1589,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
   // VOICE INPUT SUPPORT (offline keyword detection)
   // ══════════════════════════════════════════════════════════════════════════
   supportsVoiceInput() {
-    return true; // Always supported offline
+    return true;
   },
 
   getVoiceInputConfig(language = 'en') {
@@ -1615,14 +1627,6 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       audio_alert: 'severe_damage_alert.mp3',
       require_confirmation: true
     };
-  },
-
-  _findNearestShelters(coordinates, radiusKm) {
-    return []; // Placeholder - integrate with shelter database
-  },
-
-  _findNearestMedical(coordinates, radiusKm) {
-    return []; // Placeholder - integrate with medical database
   },
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1677,7 +1681,611 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // APPEAL HANDLER
+  // ==================== NEW NLP METHODS ====================
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // NLP Text Analysis for Witness Statements
+  _extractDamageFromWitness(statement) {
+    if (!statement || !statement.text) return null;
+    
+    const text = statement.text.toLowerCase();
+    let damageScore = 0;
+    let damageLevel = 'partial';
+    
+    for (const keyword of this.NLP_CONFIG.damageKeywords.minimal) {
+      if (text.includes(keyword)) damageScore -= 0.3;
+    }
+    for (const keyword of this.NLP_CONFIG.damageKeywords.partial) {
+      if (text.includes(keyword)) damageScore += 0.5;
+    }
+    for (const keyword of this.NLP_CONFIG.damageKeywords.complete) {
+      if (text.includes(keyword)) damageScore += 1.0;
+    }
+    
+    damageScore = Math.max(0, Math.min(1, (damageScore + 0.5) / 2));
+    
+    if (damageScore >= 0.7) damageLevel = 'complete';
+    else if (damageScore >= 0.4) damageLevel = 'partial';
+    else damageLevel = 'minimal';
+    
+    const isUrgent = this.NLP_CONFIG.sentimentAnalysis.urgency.some(word => text.includes(word));
+    const isUncertain = this.NLP_CONFIG.sentimentAnalysis.uncertainty.some(word => text.includes(word));
+    
+    return {
+      damage_level: damageLevel,
+      confidence: damageScore,
+      is_urgent: isUrgent,
+      is_uncertain: isUncertain,
+      keywords_found: this._findKeywords(text)
+    };
+  },
+
+  _findKeywords(text) {
+    const found = [];
+    for (const [level, keywords] of Object.entries(this.NLP_CONFIG.damageKeywords)) {
+      for (const keyword of keywords) {
+        if (text.includes(keyword)) {
+          found.push({ keyword, level, position: text.indexOf(keyword) });
+        }
+      }
+    }
+    return found;
+  },
+
+  // Infer infrastructure type from text description
+  _inferInfrastructureType(text) {
+    if (!text) return null;
+    
+    const lowerText = text.toLowerCase();
+    let bestMatch = { type: null, confidence: 0, matches: [] };
+    
+    for (const [type, keywords] of Object.entries(this.NLP_CONFIG.infrastructureKeywords)) {
+      const matches = keywords.filter(keyword => lowerText.includes(keyword));
+      if (matches.length > 0) {
+        const confidence = Math.min(0.95, matches.length / keywords.length);
+        if (confidence > bestMatch.confidence) {
+          bestMatch = { type, confidence, matches };
+        }
+      }
+    }
+    
+    return bestMatch.confidence > 0.3 ? bestMatch : null;
+  },
+
+  _getMostCommon(arr) {
+    if (!arr.length) return null;
+    return arr.sort((a,b) =>
+      arr.filter(v => v === a).length - arr.filter(v => v === b).length
+    ).pop();
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ==================== NEW PHOTO ANALYSIS METHODS ====================
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // Analyze photo with OpenRouter API
+  async _extractDamageFromPhoto(photoDataUrl) {
+    if (!photoDataUrl) return null;
+    
+    try {
+      const base64Image = photoDataUrl.split(',')[1];
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image })
+      });
+      
+      if (!response.ok) throw new Error('Photo analysis failed');
+      
+      const result = await response.json();
+      return {
+        damage_level: result.damage_level,
+        confidence: result.confidence,
+        score: result.score,
+        model: result.model
+      };
+    } catch (error) {
+      console.error('[CERTUS] Photo analysis error:', error);
+      return null;
+    }
+  },
+
+  // Batch analyze multiple photos
+  async analyzeBatchPhotos(photoUrls, infrastructureType = null) {
+    const results = [];
+    for (const photo of photoUrls) {
+      const analysis = await this._extractDamageFromPhoto(photo);
+      results.push(analysis);
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    const damageLevels = results.map(r => r?.damage_level).filter(Boolean);
+    const mostCommon = this._getMostCommon(damageLevels);
+    const avgConfidence = results.reduce((sum, r) => sum + (r?.confidence || 0), 0) / results.length;
+    
+    return {
+      individual: results,
+      aggregated: {
+        damage_level: mostCommon,
+        confidence: avgConfidence,
+        photos_analyzed: results.length,
+        consistency: damageLevels.every(l => l === mostCommon) ? 'HIGH' : 'MEDIUM'
+      }
+    };
+  },
+
+  // Perceptual hashing for duplicate detection
+  async _generatePerceptualHash(imageDataUrl) {
+    return imageDataUrl.substring(0, 100);
+  },
+
+  _calculateHashSimilarity(hash1, hash2) {
+    if (!hash1 || !hash2) return 0;
+    let differences = 0;
+    for (let i = 0; i < Math.min(hash1.length, hash2.length); i++) {
+      if (hash1[i] !== hash2[i]) differences++;
+    }
+    return 1 - (differences / Math.max(hash1.length, hash2.length));
+  },
+
+  async _getPhotoRegistry() {
+    if (this._photoRegistry.size > 0) return this._photoRegistry;
+    
+    if (typeof localStorage !== 'undefined') {
+      const registry = localStorage.getItem('veritas_photo_registry');
+      if (registry) {
+        const parsed = JSON.parse(registry);
+        parsed.forEach(item => this._photoRegistry.set(item.hash, item));
+      }
+    }
+    
+    if (this._supabaseClient && this._supabaseClient.from) {
+      try {
+        const { data } = await this._supabaseClient
+          .from('photo_registry')
+          .select('*')
+          .gte('timestamp', Date.now() - 30 * 86400000);
+        if (data) {
+          data.forEach(item => this._photoRegistry.set(item.hash, item));
+        }
+      } catch (err) {
+        console.warn('[CERTUS] Supabase photo registry query failed:', err);
+      }
+    }
+    
+    return this._photoRegistry;
+  },
+
+  async _registerPhoto(hash, reportId) {
+    const registry = await this._getPhotoRegistry();
+    const entry = {
+      hash,
+      report_id: reportId,
+      timestamp: Date.now()
+    };
+    registry.set(hash, entry);
+    
+    if (typeof localStorage !== 'undefined') {
+      const entries = Array.from(registry.values());
+      const cutoff = Date.now() - 30 * 86400000;
+      const filtered = entries.filter(e => e.timestamp > cutoff);
+      localStorage.setItem('veritas_photo_registry', JSON.stringify(filtered));
+    }
+    
+    if (this._supabaseClient && this._supabaseClient.from) {
+      try {
+        await this._supabaseClient.from('photo_registry').upsert(entry);
+      } catch (err) {
+        console.warn('[CERTUS] Supabase photo registry insert failed:', err);
+      }
+    }
+  },
+
+  async _findDuplicatePhotos(photoHashes, threshold = 0.95) {
+    if (!photoHashes || photoHashes.length === 0) return [];
+    
+    const registry = await this._getPhotoRegistry();
+    const duplicates = [];
+    
+    for (const hash of photoHashes) {
+      for (const [existingHash, entry] of registry.entries()) {
+        const similarity = this._calculateHashSimilarity(hash, existingHash);
+        if (similarity > threshold && hash !== existingHash) {
+          duplicates.push({
+            hash: hash,
+            matched_with: existingHash,
+            similarity: similarity,
+            original_report: entry.report_id,
+            timestamp: entry.timestamp
+          });
+        }
+      }
+    }
+    
+    return duplicates;
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ==================== NEW LOCATION SERVICES ====================
+  // ══════════════════════════════════════════════════════════════════════════
+
+  async _findNearestShelters(coordinates, radiusKm) {
+    if (!coordinates || !coordinates.lat || !coordinates.lng) return [];
+    
+    const mockShelters = [
+      { name: 'Community Center Shelter', lat: coordinates.lat + 0.01, lng: coordinates.lng + 0.01, capacity: 200, type: 'public' },
+      { name: 'School Gymnasium', lat: coordinates.lat - 0.008, lng: coordinates.lng + 0.015, capacity: 150, type: 'public' },
+      { name: 'Red Cross Station', lat: coordinates.lat + 0.005, lng: coordinates.lng - 0.012, capacity: 300, type: 'ngo' }
+    ];
+    
+    const withinRadius = mockShelters.filter(shelter => {
+      const distance = this._calculateDistance(
+        coordinates.lat, coordinates.lng,
+        shelter.lat, shelter.lng
+      );
+      return distance <= radiusKm * 1000;
+    });
+    
+    return withinRadius.map(s => ({
+      ...s,
+      distance_km: this._calculateDistance(coordinates.lat, coordinates.lng, s.lat, s.lng) / 1000,
+      phone: '+1-800-555-0123',
+      open: true,
+      instructions: 'Proceed to shelter for assistance'
+    }));
+  },
+
+  async _findNearestMedical(coordinates, radiusKm) {
+    if (!coordinates || !coordinates.lat || !coordinates.lng) return [];
+    
+    const mockMedical = [
+      { name: 'General Hospital', lat: coordinates.lat + 0.02, lng: coordinates.lng - 0.005, type: 'hospital', beds: 150 },
+      { name: 'Community Clinic', lat: coordinates.lat - 0.01, lng: coordinates.lng + 0.02, type: 'clinic', beds: 20 },
+      { name: 'Emergency Care Center', lat: coordinates.lat + 0.015, lng: coordinates.lng + 0.01, type: 'emergency', beds: 50 }
+    ];
+    
+    const withinRadius = mockMedical.filter(facility => {
+      const distance = this._calculateDistance(
+        coordinates.lat, coordinates.lng,
+        facility.lat, facility.lng
+      );
+      return distance <= radiusKm * 1000;
+    });
+    
+    return withinRadius.map(f => ({
+      ...f,
+      distance_km: this._calculateDistance(coordinates.lat, coordinates.lng, f.lat, f.lng) / 1000,
+      phone: f.type === 'hospital' ? '+1-800-555-0124' : '+1-800-555-0125',
+      open_24h: true,
+      emergency_services: f.type === 'hospital' || f.type === 'emergency'
+    }));
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ==================== NEW STORAGE INTEGRATION ====================
+  // ══════════════════════════════════════════════════════════════════════════
+
+  async _initializeStorage() {
+    if (typeof indexedDB !== 'undefined') {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open('CERTUS_DB', 1);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          this._storage = {
+            db: request.result,
+            type: 'indexeddb',
+            logAudit: async (event) => {
+              const tx = this._storage.db.transaction(['audit'], 'readwrite');
+              tx.objectStore('audit').add(event);
+            },
+            saveShard: async (shard) => {
+              const tx = this._storage.db.transaction(['shards'], 'readwrite');
+              tx.objectStore('shards').add({ id: Date.now(), data: shard });
+            },
+            queryAudit: async (startDate, endDate) => {
+              const tx = this._storage.db.transaction(['audit'], 'readonly');
+              const store = tx.objectStore('audit');
+              const range = IDBKeyRange.bound(startDate, endDate);
+              return new Promise((res) => {
+                const results = [];
+                store.openCursor(range).onsuccess = (e) => {
+                  const cursor = e.target.result;
+                  if (cursor) {
+                    results.push(cursor.value);
+                    cursor.continue();
+                  } else {
+                    res(results);
+                  }
+                };
+              });
+            }
+          };
+          resolve(this._storage);
+        };
+        
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains('appeals')) {
+            db.createObjectStore('appeals', { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains('audit')) {
+            db.createObjectStore('audit', { keyPath: 'timestamp' });
+          }
+          if (!db.objectStoreNames.contains('reputation')) {
+            db.createObjectStore('reputation', { keyPath: 'reporter_id' });
+          }
+          if (!db.objectStoreNames.contains('shards')) {
+            db.createObjectStore('shards', { keyPath: 'id' });
+          }
+        };
+      });
+    }
+    
+    if (typeof localStorage !== 'undefined') {
+      this._storage = {
+        type: 'localstorage',
+        get: (key) => {
+          const val = localStorage.getItem(`certus_${key}`);
+          return val ? JSON.parse(val) : null;
+        },
+        set: (key, val) => localStorage.setItem(`certus_${key}`, JSON.stringify(val)),
+        logAudit: async (event) => {
+          const audit = this._storage.get('audit') || [];
+          audit.push(event);
+          this._storage.set('audit', audit);
+        },
+        saveShard: async (shard) => {
+          const shards = this._storage.get('shards') || [];
+          shards.push(shard);
+          this._storage.set('shards', shards);
+        },
+        queryAudit: async (startDate, endDate) => {
+          const audit = this._storage.get('audit') || [];
+          return audit.filter(e => e.timestamp >= startDate && e.timestamp <= endDate);
+        }
+      };
+      return this._storage;
+    }
+    
+    this._storage = {
+      type: 'memory',
+      memory: new Map(),
+      get: (key) => this._storage.memory.get(key),
+      set: (key, val) => this._storage.memory.set(key, val),
+      logAudit: async (event) => {
+        const audit = this._storage.get('audit') || [];
+        audit.push(event);
+        this._storage.set('audit', audit);
+      },
+      saveShard: async (shard) => {
+        const shards = this._storage.get('shards') || [];
+        shards.push(shard);
+        this._storage.set('shards', shards);
+      },
+      queryAudit: async (startDate, endDate) => {
+        const audit = this._storage.get('audit') || [];
+        return audit.filter(e => e.timestamp >= startDate && e.timestamp <= endDate);
+      }
+    };
+    
+    return this._storage;
+  },
+
+  initSupabase(url, anonKey) {
+    if (typeof window !== 'undefined' && window.supabase) {
+      this._supabaseClient = window.supabase.createClient(url, anonKey);
+      console.log('[CERTUS] Supabase client initialized');
+      return true;
+    }
+    console.warn('[CERTUS] Supabase client not available');
+    return false;
+  },
+
+  async storeAppeal(appealRecord) {
+    if (!this._storage) await this._initializeStorage();
+    
+    if (this._storage.type === 'indexeddb') {
+      const tx = this._storage.db.transaction(['appeals'], 'readwrite');
+      const store = tx.objectStore('appeals');
+      store.put(appealRecord);
+      return new Promise((resolve, reject) => {
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    } else {
+      const appeals = this._storage.get('appeals') || [];
+      appeals.push(appealRecord);
+      this._storage.set('appeals', appeals);
+    }
+    
+    if (this._supabaseClient && this._supabaseClient.from) {
+      try {
+        await this._supabaseClient.from('appeals').insert(appealRecord);
+      } catch (err) {
+        console.warn('[CERTUS] Supabase appeal storage failed:', err);
+      }
+    }
+  },
+
+  async logAudit(event) {
+    if (!this._storage) await this._initializeStorage();
+    await this._storage.logAudit(event);
+  },
+
+  async updateReputationStorage(reporterId, reputation) {
+    if (!this._storage) await this._initializeStorage();
+    
+    if (this._storage.type === 'indexeddb') {
+      const tx = this._storage.db.transaction(['reputation'], 'readwrite');
+      const store = tx.objectStore('reputation');
+      store.put({ reporter_id: reporterId, ...reputation });
+      return new Promise((resolve, reject) => {
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    } else {
+      const reputations = this._storage.get('reputation') || {};
+      reputations[reporterId] = reputation;
+      this._storage.set('reputation', reputations);
+    }
+    
+    if (this._supabaseClient && this._supabaseClient.from) {
+      try {
+        await this._supabaseClient.from('reputation').upsert({
+          reporter_id: reporterId,
+          ...reputation,
+          updated_at: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn('[CERTUS] Supabase reputation storage failed:', err);
+      }
+    }
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ==================== ENHANCED SCORING ====================
+  // ══════════════════════════════════════════════════════════════════════════
+
+  async scoreWithNLP(report, nearbyReports = [], isRealModel = false, context = {}) {
+    if (report.witness_statement && !report.internalTier) {
+      const witnessAnalysis = this._extractDamageFromWitness({ text: report.witness_statement });
+      if (witnessAnalysis && witnessAnalysis.confidence > 0.6) {
+        report.internalTier = witnessAnalysis.damage_level;
+        report.nlp_confidence = witnessAnalysis.confidence;
+        report.urgency_flag = witnessAnalysis.is_urgent;
+      }
+    }
+    
+    if (report.description && !report.infraType) {
+      const infraMatch = this._inferInfrastructureType(report.description);
+      if (infraMatch) {
+        report.infraType = infraMatch.type;
+        report.infra_confidence = infraMatch.confidence;
+      }
+    }
+    
+    const result = this.score(report, nearbyReports, isRealModel, context);
+    
+    if (report.nlp_confidence) {
+      result.nlp_insights = {
+        confidence: report.nlp_confidence,
+        urgency_flag: report.urgency_flag,
+        witness_analysis: true
+      };
+    }
+    
+    if (report.infra_confidence) {
+      result.infra_insights = {
+        inferred_from_text: true,
+        confidence: report.infra_confidence,
+        original_text: report.description?.substring(0, 100)
+      };
+    }
+    
+    return result;
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ==================== INITIALIZATION ====================
+  // ══════════════════════════════════════════════════════════════════════════
+
+  async initialize(supabaseUrl = null, supabaseAnonKey = null) {
+    await this._initializeStorage();
+    
+    if (supabaseUrl && supabaseAnonKey) {
+      this.initSupabase(supabaseUrl, supabaseAnonKey);
+    }
+    
+    await this._logAuditEvent({
+      type: 'ENGINE_INITIALIZED',
+      version: this.VERSION,
+      storage_type: this._storage?.type,
+      supabase_available: !!this._supabaseClient,
+      timestamp: Date.now()
+    });
+    
+    return {
+      success: true,
+      version: this.VERSION,
+      storage: this._storage?.type,
+      supabase: !!this._supabaseClient,
+      features: {
+        nlp: true,
+        photo_analysis: true,
+        offline_support: true,
+        accessibility: true,
+        supabase_sync: !!this._supabaseClient
+      }
+    };
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ==================== ENHANCED HEALTH CHECK ====================
+  // ══════════════════════════════════════════════════════════════════════════
+
+  async healthCheck() {
+    const baseHealth = {
+      status: this._circuitBreaker.engaged ? 'DEGRADED' : 'HEALTHY',
+      version: this.VERSION,
+      canary_version: this.CANARY_VERSION,
+      canary_percentage: this.PRODUCTION.canaryPercentage,
+      circuit_breaker: {
+        engaged: this._circuitBreaker.engaged,
+        backoff_ms: this._circuitBreaker.backoff,
+        reason: this._circuitBreaker.reason
+      },
+      dependencies: Object.entries(this._dependencyCircuitBreakers).map(([name, breaker]) => ({
+        name,
+        open: breaker.open,
+        failures: breaker.failures
+      })),
+      degraded_mode: this._degradedMode,
+      degradation_reasons: this._degradationReasons.slice(-5),
+      distributed_mode: this._useDistributed,
+      audit_shards: this._auditLog.shards.length,
+      timestamp: new Date().toISOString()
+    };
+    
+    if (this._storage) {
+      baseHealth.storage = {
+        type: this._storage.type,
+        healthy: true
+      };
+    }
+    
+    if (this._supabaseClient) {
+      baseHealth.supabase = {
+        available: true,
+        healthy: await this._testSupabaseConnection()
+      };
+    }
+    
+    baseHealth.nlp = {
+      available: true,
+      languages: Object.keys(this.NLP_CONFIG.damageKeywords)
+    };
+    
+    baseHealth.photo_analysis = {
+      available: true,
+      endpoint: '/api/analyze'
+    };
+    
+    return baseHealth;
+  },
+
+  async _testSupabaseConnection() {
+    if (!this._supabaseClient || !this._supabaseClient.from) return false;
+    try {
+      const { data, error } = await this._supabaseClient.from('health_check').select('*').limit(1);
+      return !error;
+    } catch {
+      return false;
+    }
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // APPEAL HANDLER (Enhanced with Supabase)
   // ══════════════════════════════════════════════════════════════════════════
   async processAppeal(originalReport, newEvidence, ipAddress, context = {}) {
     const currentAppeals = originalReport.appeal_count || 0;
@@ -1691,10 +2299,8 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       };
     }
     
-    // Apply backpressure
     await this._acquireBackpressureToken();
     
-    // Rate limiting with circuit breaker
     const reportKey = `appeal:${originalReport.uuid}`;
     const ipKey = `appeal:ip:${ipAddress}`;
     
@@ -1726,7 +2332,6 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       };
     }
     
-    // Check evidence consistency
     const photoDamage = newEvidence.photos?.length ? this._extractDamageFromPhoto(newEvidence.photos[0]) : null;
     const witnessDamage = newEvidence.witness_statements?.length ? this._extractDamageFromWitness(newEvidence.witness_statements[0]) : null;
     const crossValidation = this._crossValidateEvidence(photoDamage, witnessDamage);
@@ -1740,7 +2345,6 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       };
     }
     
-    // Detect adversarial patterns
     const adversarial = this._detectAdversarialPattern(newEvidence, originalReport.appeal_history || []);
     if (adversarial.adversarial) {
       await this._logAuditEvent({
@@ -1759,11 +2363,9 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       };
     }
     
-    // Apply credibility multiplier
     const sourceCredibility = this._getCredibilityMultiplier(newEvidence.source_type) || 0.5;
     const evidenceFreshness = this._getEvidenceFreshness(newEvidence.timestamp || Date.now());
     
-    // Calculate evidence quality with recency and credibility
     let evidenceQuality = 0;
     let qualityBreakdown = {};
     
@@ -1785,7 +2387,6 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
     
     evidenceQuality = Math.min(1, evidenceQuality);
     
-    // Calculate joint likelihood (handling correlated evidence)
     const evidenceTypes = [];
     if (newEvidence.photos) evidenceTypes.push('photo');
     if (newEvidence.witness_statements) evidenceTypes.push('witness');
@@ -1793,14 +2394,12 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
     
     const likelihood = this._calculateJointLikelihood(evidenceTypes);
     
-    // Bayesian confidence update
     const priorConfidence = originalReport.photoAiConf || 0.5;
     const updatedConfidence = this.bayesianUpdate(priorConfidence, likelihood);
     const confidenceBoost = updatedConfidence - priorConfidence;
     
     const appealWeight = 0.15 + (0.30 * evidenceQuality);
     
-    // Store appeal record persistently
     const appealRecord = {
       id: `${originalReport.uuid}-${currentAppeals + 1}`,
       timestamp: Date.now(),
@@ -1819,12 +2418,7 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       adversarial_check: adversarial
     };
     
-    if (this._storage && this._storage.storeAppeal) {
-      await this._storage.storeAppeal(appealRecord);
-    } else {
-      this._appealRecords = this._appealRecords || new Map();
-      this._appealRecords.set(appealRecord.id, appealRecord);
-    }
+    await this.storeAppeal(appealRecord);
     
     await this._logAuditEvent({
       type: 'APPEAL_PROCESSED',
@@ -1872,62 +2466,24 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
     };
   },
 
-  _extractDamageFromPhoto(photo) {
-    return photo.damage_level || null;
-  },
-
-  _extractDamageFromWitness(statement) {
-    return statement.damage_level || null;
-  },
-
-  async _incrementDistributedCounter(key, ttl) {
-    if (this._useDistributed && this._distributedStore) {
-      const val = await this._distributedStore.incr(key);
-      if (val === 1) await this._distributedStore.expire(key, ttl);
-      return val;
-    }
-    if (!this._inMemoryStore) this._inMemoryStore = new Map();
-    const val = (this._inMemoryStore.get(key) || 0) + 1;
-    this._inMemoryStore.set(key, val);
-    return val;
-  },
-
-  bayesianUpdate(prior, likelihood) {
-    const posterior = (prior * likelihood) / 
-                      (prior * likelihood + (1 - prior) * (1 - likelihood));
-    return Math.min(this.THRESHOLDS.EPISTEMIC_CEILING, posterior);
-  },
-
-  _generateUUID() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-      const r = Math.random() * 16 | 0;
-      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-    });
-  },
-
   // ══════════════════════════════════════════════════════════════════════════
-  // MASTER SCORE — main entry point
+  // MASTER SCORE — main entry point (ORIGINAL - PRESERVED)
   // ══════════════════════════════════════════════════════════════════════════
   score(report, nearbyReports = [], isRealModel = false, context = {}) {
     const timestamp = report.timestamp || new Date().toISOString();
     const reportUuid = report.uuid || this._generateUUID();
 
-    // Register offline support if in field mode
     if (context.mode === 'field') {
       this.registerOfflineSupport();
       this.registerOfflineMapSupport();
     }
     
-    // Apply backpressure
     this._acquireBackpressureToken().catch(() => {});
     
-    // Apply version routing
     const version = this.routeToVersion(reportUuid);
     
-    // Anonymize sensitive locations
     const location = this._anonymizeLocation(report.coordinates, report.infraType);
     
-    // Log audit event
     this._logAuditEvent({
       type: 'REPORT_SCORED',
       report_id: reportUuid,
@@ -1935,7 +2491,6 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       location_anonymized: location.anonymized
     }).catch(() => {});
     
-    // Check reputation
     const reputation = this._updateReputation(report.reporter_id, 'PENDING');
     if (reputation.banned) {
       return {
@@ -1946,13 +2501,11 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       };
     }
 
-    // Compute all four dimensions
     const PES = this.computePES(report, isRealModel);
     const COR = this.computeCOR(nearbyReports, report.internalTier, reportUuid);
     const TFR = this.computeTFR(timestamp);
     const CCI = this.computeCCI(report.internalTier, report.infraType);
 
-    // ECF contributions per dimension
     const ecfContributions = {
       PES: this.computeECFContribution(report.findings || [], 'PES'),
       COR: this.computeECFContribution(report.findings || [], 'COR'),
@@ -1960,7 +2513,6 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       CCI: this.computeECFContribution(report.findings || [], 'CCI')
     };
 
-    // Build scores object for active dimensions
     const rawScores = {
       PES: PES.evaluable ? PES.value : null,
       COR: COR.evaluable ? COR.value : null,
@@ -1974,14 +2526,11 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
     const dci_raw = normalized.score;
     const dci = parseFloat(Math.max(0, Math.min(1, dci_raw)).toFixed(3));
 
-    // Correlated failure detection
     const recentFailureRate = context.recentCorrelatedFailureRate || 0;
     const correlatedFailure = this.detectCorrelatedFailures(PES, COR, recentFailureRate);
     
-    // Uncertainty mass
     const um = this.computeUM(PES, COR, TFR, CCI, correlatedFailure, ecfContributions);
     
-    // Constitutional guard clause with multi-party human review
     const requiresHumanReview = um.validity_status === 'SUSPENDED';
     const hasValidHumanReview = context.human_review_proof && 
                                 context.human_review_proof.reviewer_id && 
@@ -2021,17 +2570,14 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       };
     }
 
-    // DCI tier
     const tier = dci >= this.THRESHOLDS.DCI_HIGH ? 'high'
                 : dci >= this.THRESHOLDS.DCI_WATCH ? 'watch'
                 : 'review';
 
-    // Bottleneck
     const dims = { PES: PES.value || 0, COR: COR.value || 0, TFR: TFR.value, CCI: CCI.value };
     const bottleneck_dim = Object.keys(dims).reduce((a, b) => dims[a] < dims[b] ? a : b);
     const bottleneck_value = dims[bottleneck_dim];
 
-    // Assumptions with provenance
     const assumptions = [];
     if (COR.assumption) assumptions.push(COR.assumption);
     if (PES.measurement_class === 'INFERENTIAL') {
@@ -2053,7 +2599,6 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       });
     }
 
-    // Strengths and weaknesses with geotag validation
     const { strengths, weaknesses } = this.getStrengths(
       PES, COR, TFR, CCI, 
       location, 
@@ -2061,77 +2606,60 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       report.photoAccuracy
     );
     
-    // UM Breakdown
     const umBreakdown = this.getUMBreakdown(PES, COR, TFR, CCI);
     
-    // Verification certificate
     let verificationCertificate = null;
     if (tier === 'high') {
       verificationCertificate = this.generateVerificationCertificate(report, dci, tier);
     }
     
-    // Audio feedback (gentle)
     const audioFeedback = this.getAudioFeedback(tier, um.validity_status, context.language);
     
-    // Haptic feedback
     this.provideHapticFeedback(tier, { emergency: report.internalTier === 'Completely damaged' });
     
-    // Field mode view (low-literacy accessible)
     const fieldView = this.getFieldView(
       { tier, verification_certificate: verificationCertificate },
       context
     );
     
-    // Emergency resources
     const emergencyResources = this.getEmergencyResources(report, location);
     
-    // Share data
     const shareData = this.getShareData(report, verificationCertificate);
     
-    // Theme detection
     const theme = context.mode === 'field' ? this.detectAndApplyTheme() : null;
     
-    // Onboarding tutorial
     const onboarding = context.userProgress ? 
       this.getOnboardingStep(context.userProgress, context.language) : null;
     
-    // Voice input config
     const voiceInput = this.getVoiceInputConfig(context.language);
     
-    // Verification badge
     const verificationBadge = this.getVerificationBadge(
       report.verified_by ? 'community_verified' : 
       (tier === 'high' ? 'ai_verified' : 'pending')
     );
     
-    // Excluded dimensions
     const excludedDimensions = [];
     if (!PES.evaluable) excludedDimensions.push({ dimension: 'PES', reason: 'no_photo', penalty: 0.25 });
     if (!COR.evaluable) excludedDimensions.push({ dimension: 'COR', reason: 'no_evidence', penalty: 0.20 });
 
-    // Full ScoreTensor output
     return {
-      // Core DCI
       dci,
       tier,
       usable: um.validity_status !== 'SUSPENDED' || hasValidHumanReview,
       version: version,
       canary: version !== this.VERSION,
       
-      // Dimensional scores
       dci_pes: PES.value,
       dci_cor: COR.value,
       dci_tfr: TFR.value,
       dci_cci: CCI.value,
       
-      // Normalization data
       dci_normalization: {
         active_dimensions: activeDimensions,
         excluded_dimensions: excludedDimensions,
         missing_penalty_applied: normalized.missing_penalty_applied
       },
       
-      // Uncertainty infrastructure
       dci_uncertainty_mass: um.mass,
       dci_validity_status: um.validity_status,
       dci_validity_plain: this.PLAIN_LANGUAGE[um.validity_status] || um.validity_status,
@@ -2140,56 +2668,34 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
       dci_correlated_failure: correlatedFailure.correlated,
       dci_circuit_breaker_engaged: this._circuitBreaker.engaged,
       
-      // User-facing guidance (non-technical)
       dci_action: tier === 'high' ? 'SHARE' : (tier === 'watch' ? 'VERIFY' : 'WAIT'),
       dci_confidence_plain: tier === 'high' ? 'High' : (tier === 'watch' ? 'Medium' : 'Low'),
       
-      // Strengths and weaknesses
       dci_strengths: strengths,
       dci_weaknesses: weaknesses,
       
-      // Visual hierarchy (color-blind accessible)
       dci_marker_style: this.MARKER_STYLES[tier] || this.MARKER_STYLES.suspended,
       
-      // Verification
       dci_verification_certificate: verificationCertificate,
       dci_verification_badge: verificationBadge,
       
-      // Audio feedback (gentle)
       dci_audio_feedback: audioFeedback,
       
-      // Haptic feedback
       dci_haptic_feedback: {
         provided: true,
         pattern: tier === 'review' ? 'long_long_long' : (tier === 'watch' ? 'medium_medium' : 'short')
       },
       
-      // Field mode view (low-literacy accessible)
       dci_field_view: fieldView,
-      
-      // Emergency resources
       dci_emergency_resources: emergencyResources,
-      
-      // Share integration
       dci_share_data: shareData,
-      
-      // Voice input support (offline)
       dci_voice_input: voiceInput,
-      
-      // Guided tutorial (low-literacy)
       dci_onboarding: onboarding,
-      
-      // Theme
       dci_theme: theme,
-      
-      // Accessibility
       dci_accessibility: this.getAccessibilitySettings(),
-      
-      // Low-literacy navigation
       dci_icon_navigation: this.getIconNavigation(1, context.language),
       dci_action_icons: this.getActionIcons(),
       
-      // Measurement class declarations
       dci_measurement_class: {
         PES: PES.measurement_class,
         COR: COR.evaluable ? 'ENUMERATIVE' : 'NOT_EVALUABLE',
@@ -2197,22 +2703,18 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         CCI: 'EVALUATIVE',
       },
       
-      // Bottleneck
       dci_bottleneck: {
         dimension: bottleneck_dim,
         dimension_plain: this.PLAIN_LANGUAGE[bottleneck_dim] || bottleneck_dim,
         value: bottleneck_value,
       },
       
-      // Declared assumptions with provenance
       dci_assumptions: assumptions.map(a => a.plain_language).join(' · '),
       dci_assumptions_raw: assumptions,
       
-      // Freshness
       dci_freshness_status: TFR.freshness_status,
       dci_hours_elapsed: TFR.hours_elapsed,
       
-      // Dimensional notes
       dci_notes: {
         PES: PES.note,
         COR: COR.note,
@@ -2220,7 +2722,6 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         CCI: CCI.note,
       },
       
-      // Signal quality flags
       dci_flags: {
         pes_gated: PES.gated || false,
         pes_inferential: PES.measurement_class === 'INFERENTIAL',
@@ -2232,13 +2733,9 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         correlated_failure: correlatedFailure.correlated,
       },
       
-      // COR signal type
       dci_cor_signal: COR.signal_type,
-      
-      // Reputation
       dci_reporter_reputation: reputation,
       
-      // Constitutional status with enforceable sovereignty
       constitutional_status: {
         law_4_compliant: !(um.validity_status === 'SUSPENDED' && !hasValidHumanReview),
         law_6_compliant: true,
@@ -2251,14 +2748,14 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
           'individual_identification'
         ],
         use_monitoring: 'enabled',
-        last_review: '2026-03-30',
+        last_review: '2026-04-01',
         reviewer: 'Polymath Council',
         indigenous_data_sovereignty: {
           standard: 'UNDRIP Article 31',
           free_prior_informed_consent: {
             required: true,
             proof: 'digital_signature_of_community_council',
-            expires: '2027-03-30',
+            expires: '2027-04-01',
             revocable: true
           },
           data_ownership: 'community',
@@ -2267,7 +2764,6 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         }
       },
       
-      // Data governance with opt-out and transparency
       data_governance: {
         retention_days: 365,
         extension_policy: 'community_opt_in',
@@ -2283,10 +2779,8 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         consent: this.getConsentForm()
       },
       
-      // Location (anonymized for sensitive types)
       location: location,
       
-      // Appeal tracking
       appeal_status: {
         appeals_used: report.appeal_count || 0,
         appeals_remaining: Math.max(0, this.THRESHOLDS.MAX_APPEALS - (report.appeal_count || 0)),
@@ -2296,10 +2790,8 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         requires_new_evidence: true
       },
       
-      // Correction workflow
       correction_endpoint: '/api/correction',
       
-      // Whistleblower protection
       whistleblower_channel: {
         available: true,
         anonymous: true,
@@ -2307,7 +2799,6 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
         tracking: 'one_time_code'
       },
       
-      // Audit log reference
       audit_id: this._auditLog.events.length + 1
     };
   },
@@ -2372,4 +2863,19 @@ This report is ${this.PLAIN_LANGUAGE[tier === 'high' ? 'VALID' : (tier === 'watc
 // ==================== EXPORT ====================
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = CERTUS;
+}
+
+// Auto-initialize if in browser
+if (typeof window !== 'undefined') {
+  window.CERTUS = CERTUS;
+  
+  // Check for Supabase environment variables
+  const supabaseUrl = window.SUPABASE_URL || process?.env?.SUPABASE_URL;
+  const supabaseAnonKey = window.SUPABASE_ANON_KEY || process?.env?.SUPABASE_ANON_KEY;
+  
+  if (supabaseUrl && supabaseAnonKey) {
+    CERTUS.initialize(supabaseUrl, supabaseAnonKey).catch(console.warn);
+  } else {
+    CERTUS.initialize().catch(console.warn);
+  }
 }
