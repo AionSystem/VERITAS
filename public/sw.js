@@ -2,34 +2,46 @@
  * VERITAS — Community Damage Certification Platform
  * Service Worker for offline-first PWA
  * Author: Sheldon K. Salmon (Aion System)
- * CERTUS Engine v1.0
+ * CERTUS Engine v2.5.2
  *
  * Caches the app shell and allows offline submission via IndexedDB.
  * Background sync pushes queued reports to Supabase when connectivity returns.
  */
 
-const CACHE_NAME = 'veritas-v1';
+const CACHE_NAME = 'veritas-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/simulator.html',   // CERTUS.AI — must be available offline
-  '/certify.html',     // AION.CERTIFY — must be available offline
+  '/certus-engine-v2.5.js',
+  '/ai-analysis.js',
   '/manifest.json',
   // Leaflet — loaded from CDN; cached here for offline map rendering
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
-  // Note: Google Fonts returns opaque responses that cannot be cached reliably.
-  // System font fallback is defined in CSS; fonts load when online only.
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
+
+// ============================================================
+// CRITICAL FIX: Supabase configuration
+// These should match your actual Supabase credentials
+// ============================================================
+const SUPABASE_URL = 'https://spqqhvaqjwxcrdbujwna.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwcXFodmFxand4Y3JkYnVqd25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwMjQwMTAsImV4cCI6MjA1NjYwMDAxMH0.PzY5zQgzN9kJgCm7jOyg2_-_k_axbUVHOmJ7Cxo5BTc'; // Your anon key
 
 // Install event – cache essential assets
 self.addEventListener('install', event => {
+  console.log('[SW] Installing...');
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
+    caches.open(CACHE_NAME).then(async cache => {
       console.log('[SW] Caching app shell');
-      // addAll fails if any single request fails.
-      // Fonts are excluded above to prevent install failure on first offline load.
-      return cache.addAll(ASSETS_TO_CACHE);
+      // Cache each asset individually to prevent one failure from breaking all
+      for (const asset of ASSETS_TO_CACHE) {
+        try {
+          await cache.add(asset);
+          console.log(`[SW] Cached: ${asset}`);
+        } catch (err) {
+          console.warn(`[SW] Failed to cache ${asset}:`, err);
+        }
+      }
     })
   );
   self.skipWaiting(); // activate immediately
@@ -37,6 +49,7 @@ self.addEventListener('install', event => {
 
 // Activate event – clean up old caches
 self.addEventListener('activate', event => {
+  console.log('[SW] Activating...');
   event.waitUntil(
     caches.keys().then(keys => {
       return Promise.all(
@@ -50,40 +63,53 @@ self.addEventListener('activate', event => {
   self.clients.claim(); // take control of all clients
 });
 
-// Fetch event – serve from cache, fallback to network, cache fresh responses
+// Fetch event – serve from cache, fallback to network
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-
-  // Skip non-GET requests and unsupported schemes
+  
+  // Skip non-GET requests
   if (event.request.method !== 'GET') return;
-
-  // Skip Supabase API calls — always go to network; IndexedDB handles offline state
+  
+  // Skip Supabase API calls — always go to network
   if (url.hostname.includes('supabase.co')) return;
-
+  
+  // Skip OpenRouter API calls
+  if (url.hostname.includes('openrouter.ai')) return;
+  
+  // Skip analytics and tracking
+  if (url.hostname.includes('google-analytics')) return;
+  
   // For same-origin and allowed CDN requests: cache-first strategy
-  if (url.origin === location.origin || ASSETS_TO_CACHE.includes(event.request.url)) {
-    event.respondWith(
-      caches.match(event.request).then(cached => {
-        if (cached) {
-          return cached;
+  event.respondWith(
+    caches.match(event.request).then(cached => {
+      if (cached) {
+        console.log(`[SW] Serving from cache: ${url.pathname}`);
+        return cached;
+      }
+      
+      return fetch(event.request).then(response => {
+        // Cache successful, non-opaque responses only
+        if (response && response.status === 200 && response.type !== 'opaque') {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache);
+          });
         }
-        return fetch(event.request).then(response => {
-          // Cache successful, non-opaque responses only
-          if (response && response.status === 200 && response.type !== 'opaque') {
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, responseToCache);
-            });
-          }
-          return response;
-        }).catch(() => {
-          // Fallback to root shell if specific asset unavailable
-          return caches.match('/');
+        return response;
+      }).catch(err => {
+        console.warn(`[SW] Network failed for ${url.pathname}:`, err);
+        // Fallback to root shell if specific asset unavailable
+        if (url.pathname.endsWith('.html') || url.pathname === '/') {
+          return caches.match('/index.html');
+        }
+        // Return a generic offline response
+        return new Response('Offline — please check your connection', {
+          status: 503,
+          statusText: 'Service Unavailable'
         });
-      })
-    );
-  }
-  // All other requests (third-party CDNs, tile servers, etc.) go straight to network
+      });
+    })
+  );
 });
 
 // Background Sync — push queued offline reports to Supabase when connectivity returns
@@ -101,65 +127,108 @@ self.addEventListener('sync', event => {
  * for the next sync attempt — the browser will retry automatically.
  */
 async function syncQueuedReports() {
-  const db = await openVeritasDB();
-  const tx = db.transaction('reports', 'readwrite');
-  const store = tx.objectStore('reports');
-  const allReports = await getAllFromStore(store);
-
-  const unsynced = allReports.filter(r => !r.synced);
-  if (unsynced.length === 0) {
-    console.log('[SW] No unsynced reports found.');
-    return;
-  }
-
-  console.log(`[SW] Syncing ${unsynced.length} queued report(s)...`);
-
-  for (const report of unsynced) {
-    try {
-      const response = await fetch(
-        `${self.SUPABASE_URL}/rest/v1/reports`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': self.SUPABASE_ANON,
-            'Authorization': `Bearer ${self.SUPABASE_ANON}`,
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify(report)
-        }
-      );
-
-      if (response.ok) {
-        // Mark as synced in IndexedDB
-        const updateTx = db.transaction('reports', 'readwrite');
-        const updateStore = updateTx.objectStore('reports');
-        report.synced = true;
-        updateStore.put(report);
-        console.log(`[SW] Report ${report.uuid} synced.`);
-      } else {
-        console.warn(`[SW] Report ${report.uuid} sync failed — status ${response.status}. Will retry.`);
-      }
-    } catch (err) {
-      console.warn(`[SW] Network error syncing report ${report.uuid}:`, err);
-      // Do not mark as synced — browser retries the sync tag automatically
+  try {
+    const db = await openVeritasDB();
+    const allReports = await getAllReports(db);
+    
+    const unsynced = allReports.filter(r => !r.synced);
+    if (unsynced.length === 0) {
+      console.log('[SW] No unsynced reports found.');
+      return;
     }
+    
+    console.log(`[SW] Syncing ${unsynced.length} queued report(s)...`);
+    
+    for (const report of unsynced) {
+      try {
+        // Prepare payload matching your Supabase schema
+        const payload = {
+          uuid: report.uuid,
+          timestamp: report.timestamp,
+          lat: report.lat,
+          lng: report.lng,
+          undp_tier: report.undpTier,
+          infra_type: report.infraType,
+          dci: report.dci,
+          dci_tier: report.dciTier,
+          loc_mode: report.locMode,
+          text_loc: report.textLocation || '',
+          photo_ai_score: report.photoAiScore,
+          photo_ai_conf: report.photoAiConf
+        };
+        
+        const response = await fetch(
+          `${SUPABASE_URL}/rest/v1/reports`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_ANON,
+              'Authorization': `Bearer ${SUPABASE_ANON}`,
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify(payload)
+          }
+        );
+        
+        if (response.ok) {
+          // Mark as synced in IndexedDB
+          await markReportSynced(db, report.uuid);
+          console.log(`[SW] Report ${report.uuid} synced.`);
+        } else {
+          const errorText = await response.text();
+          console.warn(`[SW] Report ${report.uuid} sync failed — ${response.status}: ${errorText}`);
+        }
+      } catch (err) {
+        console.warn(`[SW] Network error syncing report ${report.uuid}:`, err);
+        // Do not mark as synced — browser retries the sync tag automatically
+      }
+    }
+  } catch (err) {
+    console.error('[SW] Sync error:', err);
   }
 }
 
-// IndexedDB helpers — minimal wrappers for use inside the service worker
+// IndexedDB helpers
 function openVeritasDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open('veritas-db', 1);
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
+    req.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains('reports')) {
+        db.createObjectStore('reports', { keyPath: 'uuid' });
+      }
+    };
   });
 }
 
-function getAllFromStore(store) {
+function getAllReports(db) {
   return new Promise((resolve, reject) => {
+    const tx = db.transaction('reports', 'readonly');
+    const store = tx.objectStore('reports');
     const req = store.getAll();
     req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function markReportSynced(db, uuid) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('reports', 'readwrite');
+    const store = tx.objectStore('reports');
+    const req = store.get(uuid);
+    req.onsuccess = () => {
+      const report = req.result;
+      if (report) {
+        report.synced = true;
+        store.put(report);
+        resolve();
+      } else {
+        resolve();
+      }
+    };
     req.onerror = () => reject(req.error);
   });
 }
