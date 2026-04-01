@@ -125,18 +125,38 @@ function computeSealExact(entry, gregorian, hebrew, dreamspell, unixUtc) {
 }
 
 // ============================================================
-// TEMPLATE SELECTION (Now using imported functions)
+// TEMPLATE SELECTION (Using imported functions)
 // ============================================================
 function selectTemplate(entry, contextType) {
-  const template = detectTemplate(entry, contextType);
-  return template.id;
+  try {
+    const template = detectTemplate(entry, contextType);
+    if (!template) {
+      console.warn('[STP] No template detected, defaulting to 07');
+      return '07';
+    }
+    return template.id;
+  } catch (err) {
+    console.error('[STP] Template detection error:', err);
+    return '07';
+  }
 }
 
 function ledgerFileName(templateKey, gregorian, seal) {
-  const template = getTemplate(templateKey);
-  const label = template.name.replace(/\s+/g, '-').toUpperCase();
-  const dateStr = gregorian.replace(/[,\s]+/g, '-').replace(/[^A-Z0-9\-]/gi, '');
-  return `STP-${label}-${dateStr}-${seal.substring(0, 6).toUpperCase()}.json`;
+  try {
+    const template = getTemplate(templateKey);
+    if (!template) {
+      console.warn('[STP] Template not found for key:', templateKey, 'using GENERAL-TRACE');
+      const label = 'GENERAL-TRACE';
+      const dateStr = gregorian.replace(/[,\s]+/g, '-').replace(/[^A-Z0-9\-]/gi, '');
+      return `STP-${label}-${dateStr}-${seal.substring(0, 6).toUpperCase()}.json`;
+    }
+    const label = template.name.replace(/\s+/g, '-').toUpperCase();
+    const dateStr = gregorian.replace(/[,\s]+/g, '-').replace(/[^A-Z0-9\-]/gi, '');
+    return `STP-${label}-${dateStr}-${seal.substring(0, 6).toUpperCase()}.json`;
+  } catch (err) {
+    console.error('[STP] ledgerFileName error:', err);
+    return `STP-FALLBACK-${Date.now()}-${seal.substring(0, 6)}.json`;
+  }
 }
 
 // ============================================================
