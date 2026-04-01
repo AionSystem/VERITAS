@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   try {
     const { image, infrastructureType } = req.body;
     
-    // IMPORTANT: Get API key from environment variable
+    // Get API key from environment variable
     const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
     
     if (!OPENROUTER_API_KEY) {
@@ -32,12 +32,10 @@ export default async function handler(req, res) {
   "confidence": 0.0-1.0
 }`;
     
-    // Use a working model - these are confirmed working:
-    // 'meta-llama/llama-3.2-11b-vision-instruct:free' (free)
-    // 'openai/gpt-4o-mini' (paid)
-    // 'anthropic/claude-3-haiku' (paid)
+    // Use GPT-4o-mini - confirmed working model
+    const modelToUse = 'openai/gpt-4o-mini';
     
-    console.log('Calling OpenRouter with model: meta-llama/llama-3.2-11b-vision-instruct:free');
+    console.log('Calling OpenRouter with model:', modelToUse);
     
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -48,7 +46,7 @@ export default async function handler(req, res) {
         'X-Title': 'VERITAS Damage Assessment'
       },
       body: JSON.stringify({
-        model: 'meta-llama/llama-3.2-11b-vision-instruct:free', // Working free model
+        model: modelToUse,
         messages: [{
           role: 'user',
           content: [
@@ -113,7 +111,7 @@ export default async function handler(req, res) {
       confidence: result.confidence,
       score: result.damage_level === 'complete' ? 0.9 : 
              result.damage_level === 'partial' ? 0.6 : 0.3,
-      model: 'llama-3.2-11b-vision'
+      model: modelToUse
     });
     
   } catch (error) {
