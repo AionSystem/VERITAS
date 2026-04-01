@@ -704,6 +704,31 @@ function handlePhoto(input) {
   reader.onerror = () => { toast('Failed to read file'); };
   reader.readAsDataURL(file);
 }
+  // TRIGGER PHOTO CAPTURE - FIXED FOR MOBILE
+function triggerPhotoCapture() {
+  console.log('[VERITAS] Photo capture triggered');
+  const input = document.getElementById('photoInput');
+  
+  if (!input) {
+    console.error('[VERITAS] Photo input not found');
+    toast('Photo input not found');
+    return;
+  }
+  
+  // Clear previous value to ensure change event fires on same file
+  input.value = '';
+  
+  // For mobile, ensure capture attribute is set
+  if (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    input.setAttribute('capture', 'environment');
+  } else {
+    input.removeAttribute('capture');
+  }
+  
+  // Trigger the file picker
+  input.click();
+  console.log('[VERITAS] Input clicked');
+}
 
 // SIMPLIFIED AI ANALYSIS - Calls your Vercel backend
 async function runAiAnalysis() {
@@ -1447,37 +1472,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     radio.addEventListener('change', updateCrisisSubtype);
   });
 });
-</script>
-  <!-- Add this button at the bottom of your page -->
-<button onclick="debugPhotoUpload()" style="position:fixed; bottom:10px; left:10px; background:#ff4d4d; color:white; padding:10px; z-index:9999; border-radius:5px;">
-  📸 DEBUG PHOTO
-</button>
-
-<script>
-function debugPhotoUpload() {
-  console.log('=== PHOTO UPLOAD DEBUG ===');
-  console.log('PhotoInput exists:', !!document.getElementById('photoInput'));
-  console.log('PhotoZone exists:', !!document.getElementById('photoZone'));
-  console.log('triggerPhotoCapture exists:', typeof triggerPhotoCapture);
-  console.log('handlePhoto exists:', typeof handlePhoto);
-  
-  // Create a test input
-  const testInput = document.createElement('input');
-  testInput.type = 'file';
-  testInput.accept = 'image/*';
-  testInput.onchange = function(e) {
-    const file = e.target.files[0];
-    if (file) {
-      console.log('File selected:', file.name, file.size, file.type);
-      alert(`Photo selected! Name: ${file.name}\nSize: ${(file.size/1024).toFixed(1)}KB`);
-      // Try to process it
-      handlePhoto(testInput);
-    } else {
-      alert('No file selected');
-    }
-  };
-  testInput.click();
-}
 </script>
 </body>
 </html>
