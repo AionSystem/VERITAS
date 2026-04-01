@@ -1,91 +1,44 @@
-// ==================== SIMPLE WORKING AI ANALYSIS ====================
-// For VERITAS - OpenRouter API Integration
-// Just works. No complexity.
+// ==================== AI ANALYSIS MODULE ====================
+// Calls your Vercel backend API for OpenRouter AI analysis
+// Complete file - copy this entire code
 
 const AI_ANALYSIS = {
-  apiKey: null,
+  // UPDATE THIS URL WITH YOUR ACTUAL VERCEL API ENDPOINT
+  API_URL: 'https://veritas-flax-eta.vercel.app/api/analyze',
   
-  // Set your API key
-  setApiKey(key) {
-    if (key && key.trim()) {
-      this.apiKey = key.trim();
-      localStorage.setItem('openrouter_api_key', this.apiKey);
-      console.log('✅ API key saved');
-      return true;
-    }
-    return false;
-  },
-  
-  // Check if we have a key
-  isConfigured() {
-    return !!(this.apiKey && this.apiKey.length > 20);
-  },
-  
-  // Analyze a photo
+  // Analyze a photo by calling your Vercel backend
   async analyzePhoto(imageDataUrl, infrastructureType = null) {
-    // If no key, try to load from storage
-    if (!this.apiKey) {
-      const saved = localStorage.getItem('openrouter_api_key');
-      if (saved) this.apiKey = saved;
-    }
-    
-    // Still no key? Use fallback
-    if (!this.apiKey) {
-      console.warn('⚠️ No API key - using fallback');
-      return this.fallback();
-    }
+    console.log('📤 Sending to Vercel backend...');
     
     try {
       // Extract the base64 image data
       const base64Image = imageDataUrl.split(',')[1];
       
-      // Simple prompt
-      const prompt = `Analyze this damage photo. Respond with ONLY JSON:
-{"damage_level":"minimal or partial or complete","confidence":0.0-1.0}`;
-      
-      console.log('📤 Sending to OpenRouter...');
-      
-      // Call OpenRouter
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      // Call YOUR backend
+      const response = await fetch(this.API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
-          'HTTP-Referer': window.location.origin,
-          'X-Title': 'VERITAS'
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.0-flash-exp:free',
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: imageDataUrl } }
-            ]
-          }],
-          max_tokens: 100
+          image: base64Image,
+          infrastructureType: infrastructureType,
+          timestamp: new Date().toISOString()
         })
       });
       
       // Check response
       if (!response.ok) {
         const error = await response.text();
-        console.error('❌ API Error:', response.status, error);
-        throw new Error(`API error: ${response.status}`);
+        console.error('❌ Backend Error:', response.status, error);
+        throw new Error(`Backend error: ${response.status}`);
       }
       
-      // Parse response
-      const data = await response.json();
-      const content = data.choices[0].message.content;
-      console.log('📥 Response:', content);
+      // Parse response from your backend
+      const result = await response.json();
+      console.log('📥 Backend response:', result);
       
-      // Extract JSON
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('No JSON in response');
-      
-      const result = JSON.parse(jsonMatch[0]);
-      
-      // Map to our format
+      // Map to VERITAS format
       const damageMap = {
         'minimal': 'Minimal / No damage',
         'partial': 'Partially damaged',
@@ -96,10 +49,11 @@ const AI_ANALYSIS = {
         success: true,
         damage_level: damageMap[result.damage_level] || 'Unknown',
         internal_tier: result.damage_level,
-        score: result.damage_level === 'complete' ? 0.9 : 
-               result.damage_level === 'partial' ? 0.6 : 0.3,
-        confidence: Math.min(0.95, result.confidence || 0.7),
-        model_used: 'gemini-2.0-flash',
+        score: result.score || (result.damage_level === 'complete' ? 0.9 : 
+                               result.damage_level === 'partial' ? 0.6 : 0.3),
+        confidence: result.confidence || 0.7,
+        description: result.description || 'Analysis complete',
+        model_used: result.model || 'vercel-backend',
         is_mock: false
       };
       
@@ -109,7 +63,7 @@ const AI_ANALYSIS = {
     }
   },
   
-  // Simple fallback when API fails
+  // Fallback when backend fails
   fallback(errorMsg = null) {
     const random = Math.random();
     let damage = 'partial';
@@ -123,38 +77,42 @@ const AI_ANALYSIS = {
       internal_tier: damage,
       score: damage === 'complete' ? 0.85 : damage === 'partial' ? 0.55 : 0.25,
       confidence: 0.5 + Math.random() * 0.3,
+      description: errorMsg || 'AI backend unavailable - using fallback scoring',
       model_used: 'fallback',
       is_mock: true,
       error: errorMsg
     };
   },
   
-  // Test if API key works
-  async testApiKey() {
-    if (!this.apiKey) return { success: false, error: 'No API key set' };
-    
+  // Test if your Vercel backend is reachable
+  async testBackend() {
     try {
-      const response = await fetch('https://openrouter.ai/api/v1/auth/key', {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${this.apiKey}` }
+      const response = await fetch(this.API_URL, {
+        method: 'HEAD',
+        headers: { 'Content-Type': 'application/json' }
       });
       
       if (response.ok) {
-        return { success: true, message: 'API key is valid' };
+        console.log('✅ Backend reachable');
+        return { success: true, message: 'Backend is online' };
       } else {
-        return { success: false, error: `Invalid key (${response.status})` };
+        return { success: false, error: `Status: ${response.status}` };
       }
     } catch (error) {
+      console.error('❌ Backend unreachable:', error.message);
       return { success: false, error: error.message };
     }
+  },
+  
+  // Kept for compatibility
+  setApiKey() { 
+    console.log('⚠️ API key is managed on Vercel backend, not in browser');
+    return true; 
+  },
+  
+  isConfigured() { 
+    return true;
   }
 };
 
-// Auto-load saved key on startup
-const savedKey = localStorage.getItem('openrouter_api_key');
-if (savedKey) {
-  AI_ANALYSIS.setApiKey(savedKey);
-  console.log('✅ Loaded saved API key');
-}
-
-console.log('✅ AI Analysis module ready');
+console.log('✅ AI Analysis module ready - calling Vercel backend');
