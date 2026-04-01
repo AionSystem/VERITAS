@@ -25,25 +25,25 @@ export default async function handler(req, res) {
 {"damage_level":"minimal or partial or complete","confidence":0.0-1.0}`;
     
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'HTTP-Referer': 'https://veritas-flax-eta.vercel.app',
-        'X-Title': 'VERITAS Damage Assessment'
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-exp:free',
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${image}` } }
-          ]
-        }],
-        max_tokens: 100
-      })
-    });
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+    'HTTP-Referer': 'https://veritas-flax-eta.vercel.app',
+    'X-Title': 'VERITAS Damage Assessment'
+  },
+  body: JSON.stringify({
+    model: 'meta-llama/llama-3.2-11b-vision-instruct:free',  // <-- CHANGE THIS LINE
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'text', text: prompt },
+        { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${image}` } }
+      ]
+    }],
+    max_tokens: 100
+  })
+});
     
     const data = await response.json();
     const content = data.choices[0].message.content;
