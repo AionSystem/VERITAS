@@ -1,16 +1,42 @@
 {
   "name": "veritas",
-  "version": "2.5.0",
-  "description": "VERITAS — Community Damage Certification Platform",
-  "author": "Sheldon K. Salmon",
-  "license": "MIT",
+  "version": "2.5.2",
+  "description": "VERITAS — Community Damage Certification Platform. UNDP-compliant damage assessment with CERTUS Engine, DCI scoring, offline-first, STP integrity seals.",
+  "author": {
+    "name": "Sheldon K. Salmon",
+    "email": "sheldon@veritas.org",
+    "url": "https://aionsystem.github.io/VERITAS"
+  },
+  "license": "GPL-3.0",
   "type": "module",
   "main": "api/stp-seal.js",
   "scripts": {
     "dev": "vercel dev",
     "build": "echo 'No build step required'",
     "start": "vercel start",
-    "deploy": "vercel --prod"
+    "deploy": "vercel --prod",
+    "test": "echo 'See TEST_SUITE_VERITAS.md for test documentation'"
+  },
+  "keywords": [
+    "damage-assessment",
+    "crisis-response",
+    "humanitarian",
+    "undp",
+    "disaster-management",
+    "open-source",
+    "offline-first",
+    "certus-engine",
+    "veritas",
+    "dci",
+    "community-reporting"
+  ],
+  "homepage": "https://aionsystem.github.io/VERITAS",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AionSystem/VERITAS.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AionSystem/VERITAS/issues"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0"
@@ -19,6 +45,26 @@
     "vercel": "^37.0.0"
   },
   "engines": {
-    "node": "24.x"
-  }
+    "node": ">=18.x"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/veritas"
+  },
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "public/",
+    "api/",
+    "supabase/",
+    "docs/",
+    "model/",
+    "LICENSE",
+    "README.md",
+    "CERTUS.md",
+    "VERITAS_UNDP_COMPLIANCE.md",
+    "TEST_SUITE_VERITAS.md"
+  ]
 }
