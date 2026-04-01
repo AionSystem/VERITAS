@@ -150,6 +150,8 @@ VERITAS/
 │   └── xbd-model/                  ← xBD disaster damage model
 │
 ├── CERTUS.md                       ← CERTUS Engine v2.5 documentation
+├── NOTICE
+├── COMMERCIAL-LICENSE.md
 ├── TEST_SUITE_VERITAS.md           ← Test suite documentation
 ├── VERITAS_UNDP_COMPLIANCE.md      ← Full UNDP compliance audit
 ├── VERITAS-PROPOSAL.md             ← UNDP submission proposal
