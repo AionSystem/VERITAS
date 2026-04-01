@@ -253,11 +253,9 @@
   <!-- FIX #7 — mobile nav includes language row -->
   <div class="mobile-nav" id="mobile-nav">
     <div class="mobile-lang-row" id="mobileLangRow"></div>
-    <a href="/simulators/">Simulators</a>
-    <a href="/services/">Services</a>
-    <a href="/stack/">Stack</a>
-    <a href="/certify/">Certify</a>
-    <a href="https://aionsystem.github.io/VERITAS-PAGE">VERITAS</a>
+    <a href="#" onclick="switchView('report')">📍 Report Damage</a>
+    <a href="#" onclick="switchView('rescue')">🆘 I Need Rescue</a>
+    <a href="#" onclick="switchView('respond')">🗺 Responder View</a>
   </div>
   <div class="offline-banner" id="offlineBanner"><span>📡</span><span data-i18n="offline">Offline — reports saved locally and will sync when connected</span></div>
   <div class="sync-queue" id="syncQueue"><span class="spinner"></span><span id="syncQueueText" data-i18n="syncing">Syncing queued reports...</span></div>
