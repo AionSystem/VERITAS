@@ -705,58 +705,55 @@ function handlePhoto(input) {
   reader.readAsDataURL(file);
 }
 
-// FIX #4 — safe AI_ANALYSIS check using typeof
+// SIMPLIFIED AI ANALYSIS - Calls your Vercel backend
 async function runAiAnalysis() {
   const statusEl=document.getElementById('photoAiStatus');
   statusEl.classList.add('show');
   const statusText=document.getElementById('aiStatusText');
   statusText.innerHTML='<span class="spinner"></span> AI analyzing image...';
+  
   try {
-    const aiAvailable = typeof AI_ANALYSIS !== 'undefined' && AI_ANALYSIS !== null;
-    if (!window.aiInitialized && aiAvailable) {
-      let apiKey=localStorage.getItem('openrouter_api_key');
-      if (!apiKey) {
-        apiKey=prompt('Enter OpenRouter API key for AI analysis (get at openrouter.ai/keys):');
-        if (apiKey) localStorage.setItem('openrouter_api_key', apiKey);
-      }
-      if (apiKey && typeof AI_ANALYSIS.setApiKey === 'function') {
-        AI_ANALYSIS.setApiKey(apiKey);
-        window.aiInitialized=true;
-      }
-    }
-    let assessment;
-    if (aiAvailable && typeof AI_ANALYSIS.isConfigured === 'function' && AI_ANALYSIS.isConfigured()) {
-      const infraType=STATE.infraType||null;
-      assessment=await AI_ANALYSIS.analyzePhoto(STATE.photo, infraType);
+    // Check if AI_ANALYSIS is available
+    if (typeof AI_ANALYSIS !== 'undefined' && AI_ANALYSIS !== null) {
+      // Call your Vercel backend
+      const assessment = await AI_ANALYSIS.analyzePhoto(STATE.photo, STATE.infraType);
+      
       if (assessment.is_mock) {
         statusText.innerHTML=`⚠️ AI offline — using fallback scoring. Confidence: ${Math.round(assessment.confidence*100)}%`;
       } else {
-        const modelName=assessment.model_used?.includes('claude')?'Claude 3.5 Sonnet':'DeepSeek';
-        statusText.innerHTML=`✅ AI: ${assessment.damage_level} (${Math.round(assessment.score*100)}% severity) · Confidence: ${Math.round(assessment.confidence*100)}% · ${modelName}`;
-        if (assessment.confidence>0.7 && assessment.internal_tier && !STATE.undpTier) {
+        statusText.innerHTML=`✅ AI: ${assessment.damage_level} (${Math.round(assessment.score*100)}% severity) · Confidence: ${Math.round(assessment.confidence*100)}%`;
+        
+        // Auto-select damage if confidence is high
+        if (assessment.confidence > 0.7 && assessment.internal_tier && !STATE.undpTier) {
           selectDamage(assessment.internal_tier);
           toast(`AI detected: ${assessment.damage_level}`, 2000);
         }
       }
-      STATE.photoAiScore=assessment.score;
-      STATE.photoAiConf=assessment.confidence;
-      STATE.photoAiModel=assessment.model_used;
+      
+      STATE.photoAiScore = assessment.score;
+      STATE.photoAiConf = assessment.confidence;
+      STATE.photoAiModel = assessment.model_used;
+      
     } else {
-      statusText.innerHTML='⚠️ AI offline — using fallback scoring';
-      STATE.photoAiScore=parseFloat((0.65+Math.random()*0.30).toFixed(3));
-      STATE.photoAiConf=parseFloat((0.55+Math.random()*0.40).toFixed(3));
-      STATE.photoAiModel='mock';
+      // Fallback if AI_ANALYSIS not loaded
+      statusText.innerHTML='⚠️ AI module not loaded — using fallback scoring';
+      STATE.photoAiScore = parseFloat((0.65+Math.random()*0.30).toFixed(3));
+      STATE.photoAiConf = parseFloat((0.55+Math.random()*0.40).toFixed(3));
+      STATE.photoAiModel = 'mock';
     }
-    document.getElementById('step1Next').disabled=false;
+    
+    document.getElementById('step1Next').disabled = false;
+    
   } catch(err) {
     console.error('[VERITAS] AI analysis error:', err);
     statusText.innerHTML=`⚠️ AI error — using fallback`;
-    STATE.photoAiScore=parseFloat((0.65+Math.random()*0.30).toFixed(3));
-    STATE.photoAiConf=parseFloat((0.55+Math.random()*0.40).toFixed(3));
-    STATE.photoAiModel='mock_fallback';
-    document.getElementById('step1Next').disabled=false;
+    STATE.photoAiScore = parseFloat((0.65+Math.random()*0.30).toFixed(3));
+    STATE.photoAiConf = parseFloat((0.55+Math.random()*0.40).toFixed(3));
+    STATE.photoAiModel = 'error_fallback';
+    document.getElementById('step1Next').disabled = false;
   }
 }
+
 
 // ==================== STEP NAVIGATION ====================
 function goStep(step) {
