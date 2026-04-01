@@ -937,6 +937,12 @@ async function submitReport() {
   }
 }
 function showConfirmation(report, certus) {
+  // Add this guard
+  if (!certus || !certus.dci) {
+    console.error('[VERITAS] Invalid certus result:', certus);
+    toast('Error displaying confirmation');
+    return;
+  }
   document.getElementById('reportForm').style.display='none';
   const screen=document.getElementById('confirmScreen');
   screen.classList.add('show');
