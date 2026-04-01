@@ -1,7 +1,6 @@
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import https from 'https';
-import { getTemplate, detectTemplate, validateTemplateRequirements, renderIssueBody } from './templates/index.mjs';
 
 // ============================================================
 // CONFIGURATION
@@ -10,9 +9,11 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
-const SECURITY_CONTACT = 'aionsystem2026@gmail.com';
-const DATA_BREACH_NOTIFICATION_HOURS = 72;
-const RETENTION_DAYS = 90;
+// Your VERITAS repo info
+const GITHUB_OWNER = 'AionSystem';
+const GITHUB_REPO = 'VERITAS';
+const GITHUB_LEDGER_PATH = 'ledger';
+
 const JURISDICTION = 'New York State, USA';
 const TERMS_VERSION = '2026-03-30-v3';
 const MAX_ENTRY_SIZE = 1024 * 1024;
@@ -24,8 +25,6 @@ const httpsAgent = new https.Agent({
   maxFreeSockets: 5
 });
 
-const verificationCache = new Map();
-const CACHE_TTL = 5 * 60 * 1000;
 let requestCounter = 0;
 let supabase = null;
 
@@ -113,7 +112,7 @@ function dreamspellString(d) {
 // ============================================================
 // SEAL COMPUTATION
 // ============================================================
-function computeSealExact(entry, gregorian, hebrew, dreamspell, unixUtc) {
+function computeSeal(entry, gregorian, hebrew, dreamspell, unixUtc) {
   const obj = { dreamspell, entry, gregorian, hebrew, unix_utc: unixUtc };
   const keys = Object.keys(obj).sort();
   const parts = keys.map(k => {
@@ -125,47 +124,94 @@ function computeSealExact(entry, gregorian, hebrew, dreamspell, unixUtc) {
 }
 
 // ============================================================
-// TEMPLATE SELECTION (Using imported functions)
+// TEMPLATES
 // ============================================================
-function selectTemplate(entry, contextType) {
-  try {
-    const template = detectTemplate(entry, contextType);
-    if (!template) {
-      console.warn('[STP] No template detected, defaulting to 07');
-      return '07';
-    }
-    return template.id;
-  } catch (err) {
-    console.error('[STP] Template detection error:', err);
-    return '07';
-  }
+const TEMPLATES = {
+  '07': { name: 'GENERAL-TRACE', label: 'GENERAL-TRACE', category: 'general' },
+  '15': { name: 'VERITAS-REPORT', label: 'VERITAS-REPORT', category: 'damage-assessment' },
+  '16': { name: 'VERITAS-EXPORT', label: 'VERITAS-EXPORT', category: 'data-integrity' }
+};
+
+function getTemplate(id) {
+  return TEMPLATES[id] || TEMPLATES['07'];
+}
+
+function detectTemplate(entry, contextType) {
+  if (contextType && TEMPLATES[contextType]) return TEMPLATES[contextType];
+  const lowerEntry = (entry || '').toLowerCase();
+  if (lowerEntry.includes('damage report') || lowerEntry.includes('building damage')) return TEMPLATES['15'];
+  if (lowerEntry.includes('export') || lowerEntry.includes('dataset')) return TEMPLATES['16'];
+  return TEMPLATES['07'];
 }
 
 function ledgerFileName(templateKey, gregorian, seal) {
-  try {
-    const template = getTemplate(templateKey);
-    if (!template) {
-      console.warn('[STP] Template not found for key:', templateKey, 'using GENERAL-TRACE');
-      const label = 'GENERAL-TRACE';
-      const dateStr = gregorian.replace(/[,\s]+/g, '-').replace(/[^A-Z0-9\-]/gi, '');
-      return `STP-${label}-${dateStr}-${seal.substring(0, 6).toUpperCase()}.json`;
-    }
-    const label = template.name.replace(/\s+/g, '-').toUpperCase();
-    const dateStr = gregorian.replace(/[,\s]+/g, '-').replace(/[^A-Z0-9\-]/gi, '');
-    return `STP-${label}-${dateStr}-${seal.substring(0, 6).toUpperCase()}.json`;
-  } catch (err) {
-    console.error('[STP] ledgerFileName error:', err);
-    return `STP-FALLBACK-${Date.now()}-${seal.substring(0, 6)}.json`;
-  }
+  const template = getTemplate(templateKey);
+  const label = template.name;
+  const dateStr = gregorian.replace(/[,\s]+/g, '-').replace(/[^A-Z0-9\-]/gi, '');
+  return `STP-${label}-${dateStr}-${seal.substring(0, 6).toUpperCase()}.json`;
+}
+
+function renderIssueBody(template, metadata, stamp, entry) {
+  const data = metadata?.fields || metadata || {};
+  return `# ${template.name} - VERITAS Integrity Seal
+
+**Template ID:** ${template.id}
+**Category:** ${template.category}
+**Sealed by:** VERITAS Platform
+
+---
+
+## 📅 Triple-Time Stamp
+
+| Calendar | Value |
+|----------|-------|
+| Gregorian | ${stamp.gregorian} |
+| Hebrew | ${stamp.hebrew} |
+| Dreamspell | ${stamp.dreamspell} |
+| Unix UTC | ${stamp.unixUtc} |
+
+## 🔒 STP Seal
+
+**Seal:** \`${stamp.seal}\`
+**Ledger File:** \`${stamp.ledgerFile}\`
+
+---
+
+## 📝 Original Entry
+
+\`\`\`
+${entry}
+\`\`\`
+
+---
+
+## 📋 Submission Data
+
+${Object.entries(data).map(([k, v]) => `**${k}:** ${v}`).join('\n\n')}
+
+---
+
+## 🔗 Verification
+
+This seal can be verified by recomputing the SHA-256 hash of the original entry and comparing to the seal above.
+
+*Sealed by VERITAS — Community Damage Certification Platform*
+*Sovereign Trace Protocol integrated into VERITAS*
+`;
 }
 
 // ============================================================
-// GITHUB HELPERS
+// GITHUB HELPERS (Now points to VERITAS repo)
 // ============================================================
 let githubAuthFailure = false;
 let lastAuthFailureTime = null;
 
 async function ghRequest(path, method, body, timeoutMs = 15000) {
+  if (!process.env.GITHUB_TOKEN) {
+    console.warn('[STP] No GitHub token provided');
+    return { data: null, error: 'NO_TOKEN', degraded: true };
+  }
+  
   if (githubAuthFailure && (Date.now() - lastAuthFailureTime) < 3600000) {
     return { 
       data: null, 
@@ -217,16 +263,13 @@ async function ghRequest(path, method, body, timeoutMs = 15000) {
 
 async function createGitHubIssueForSeal(templateKey, entry, stamp, metadata) {
   const template = getTemplate(templateKey);
-  if (!template) {
-    throw new Error(`Template not found for key: ${templateKey}`);
-  }
-  const title = `[${template.name}] ${entry.substring(0, 80)}${entry.length > 80 ? '...' : ''}`;
+  const title = `[STP] ${template.name} - ${stamp.gregorian.substring(0, 16)}`;
   const body = renderIssueBody(template, metadata, stamp, entry);
   
-  const labels = [template.id];
+  const labels = [template.id, 'stp-seal'];
   if (template.category) labels.push(template.category);
   
-  const { data: issue } = await ghRequest('/repos/AionSystem/SOVEREIGN-TRACE-PROTOCOL/issues', 'POST', { 
+  const { data: issue } = await ghRequest(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues`, 'POST', { 
     title, 
     body, 
     labels
@@ -235,11 +278,16 @@ async function createGitHubIssueForSeal(templateKey, entry, stamp, metadata) {
 }
 
 async function createLedgerFileForSeal(fileName, ledgerData) {
-  const path = `ledger/${fileName}`;
+  const path = `${GITHUB_LEDGER_PATH}/${fileName}`;
   const content = Buffer.from(JSON.stringify(ledgerData, null, 2), 'utf8').toString('base64');
-  await ghRequest(`/repos/AionSystem/SOVEREIGN-TRACE-PROTOCOL/contents/${path}`, 'PUT', {
+  
+  // Check if file exists first
+  const { data: existing } = await ghRequest(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`, 'GET').catch(() => ({ data: null }));
+  
+  await ghRequest(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`, 'PUT', {
     message: `STP seal: ${fileName}`,
     content,
+    sha: existing?.sha
   });
   return path;
 }
@@ -281,7 +329,8 @@ export default async function handler(req, res) {
     return res.status(200).json({
       status: 'healthy',
       service: 'STP-Seal',
-      version: 'FROZEN-2.0',
+      version: 'VERITAS-INTEGRATED',
+      repo: `${GITHUB_OWNER}/${GITHUB_REPO}`,
       timestamp: new Date().toISOString(),
       endpoints: ['/api/stp-seal', '/api/health']
     });
@@ -322,71 +371,22 @@ export default async function handler(req, res) {
     const hebrew = hebrewString(now);
     const dreamspell = dreamspellString(now);
     
-    const finalEntry = entry.trim() + `\n\nServer Timestamp: ${now.toISOString()}`;
+    const finalEntry = entry.trim() + `\n\nServer Timestamp: ${now.toISOString()}\nSealed by: VERITAS Platform\nSeal ID: ${requestId}`;
     
-    // Select template with fallback
-    let templateKey = '07'; // default
-    let template = null;
+    // Select template
+    const template = detectTemplate(finalEntry, type);
+    const templateKey = template.id;
     
-    try {
-      templateKey = selectTemplate(finalEntry, type);
-      template = getTemplate(templateKey);
-      
-      // If template is still null, force to GENERAL-TRACE
-      if (!template) {
-        console.warn(`[STP] Template ${templateKey} not found, falling back to 07`);
-        templateKey = '07';
-        template = getTemplate('07');
-      }
-    } catch (err) {
-      console.error('[STP] Template detection error:', err);
-      templateKey = '07';
-      template = getTemplate('07');
-    }
-    
-    // Final check - if still no template, return error
-    if (!template) {
-      console.error('[STP] CRITICAL: No template available, even fallback failed');
-      return res.status(500).json({
-        success: false,
-        error: 'TEMPLATE_SYSTEM_FAILURE',
-        message: 'Template system unavailable. Please check template files.',
-        request_id: requestId
-      });
-    }
-    
-    // Prepare form data for validation
-    const formData = { fields: fields || {}, sessionId, userId };
-    
-    // Validate template requirements (with error handling)
-    let validation = { valid: true, missing: [] };
-    try {
-      validation = validateTemplateRequirements(template, formData);
-    } catch (err) {
-      console.error('[STP] Validation error:', err);
-      validation = { valid: true, missing: [] };
-    }
-    
-    if (!validation.valid) {
-      return res.status(400).json({
-        success: false,
-        error: 'VALIDATION_FAILED',
-        missing_requirements: validation.missing,
-        message: 'Template requirements not met',
-        template_id: template.id,
-        template_name: template.name,
-        request_id: requestId
-      });
-    }
-    
-    const seal = computeSealExact(finalEntry, gregorian, hebrew, dreamspell, unixUtc);
+    const seal = computeSeal(finalEntry, gregorian, hebrew, dreamspell, unixUtc);
     const ledgerFile = ledgerFileName(templateKey, gregorian, seal);
     
     const stamp = { gregorian, hebrew, dreamspell, unixUtc, seal, ledgerFile };
     
+    const formData = { fields: fields || {}, sessionId, userId };
+    
     const ledgerData = {
       protocol: 'SOVEREIGN-TRACE-PROTOCOL',
-      stamp_version: 'FROZEN-2.0',
+      stamp_version: 'VERITAS-INTEGRATED',
       template: templateKey,
       template_name: template.name,
       entry: finalEntry,
@@ -415,10 +415,14 @@ export default async function handler(req, res) {
           createGitHubIssueForSeal(templateKey, finalEntry, stamp, formData),
           createLedgerFileForSeal(ledgerFile, ledgerData)
         ]);
+        console.log('[STP] GitHub integration successful:', { issueUrl, ledgerPath });
       } catch (err) {
         githubError = err.message;
         console.error('GitHub integration failed:', err.message);
       }
+    } else {
+      console.warn('[STP] No GitHub token, skipping GitHub integration');
+      githubError = 'No GITHUB_TOKEN configured';
     }
 
     if (SUPABASE_URL && SUPABASE_KEY) {
@@ -437,7 +441,8 @@ export default async function handler(req, res) {
           fields: fields || {},
           ip_hash: ledgerData.ip_hash,
           github_issue_url: issueUrl,
-          ledger_path: ledgerPath
+          ledger_path: ledgerPath,
+          request_id: requestId
         });
       } catch (dbErr) {
         console.error('Supabase insert failed:', dbErr.message);
@@ -457,8 +462,7 @@ export default async function handler(req, res) {
       issue_url: issueUrl,
       ledger_path: ledgerPath,
       github_error: githubError,
-      validation_passed: validation.valid,
-      retention_days: RETENTION_DAYS,
+      repo: `${GITHUB_OWNER}/${GITHUB_REPO}`,
       jurisdiction: JURISDICTION,
       request_id: requestId
     });
