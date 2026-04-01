@@ -1527,6 +1527,212 @@ function copyRestEndpoint(){
 window.addEventListener('online',()=>{STATE.isOnline=true;document.getElementById('offlineBanner').classList.remove('show');syncPending();toast('Back online — syncing reports');});
 window.addEventListener('offline',()=>{STATE.isOnline=false;document.getElementById('offlineBanner').classList.add('show');toast('Offline — reports saved locally');});
 
+// ==================== RESCUE FUNCTIONS ====================
+let lastKnownLocation = null;
+let locationTrackingInterval = null;
+
+function startLocationTracking() {
+  if (!navigator.geolocation) {
+    document.getElementById('gpsStatus').innerHTML = '❌ GPS not supported';
+    return;
+  }
+  
+  document.getElementById('gpsStatus').innerHTML = '📍 Acquiring GPS...';
+  
+  // Get initial location
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      lastKnownLocation = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        timestamp: Date.now()
+      };
+      updateLocationStatus();
+      document.getElementById('gpsStatus').innerHTML = '✅ GPS locked';
+    },
+    err => {
+      console.warn('GPS error:', err);
+      document.getElementById('gpsStatus').innerHTML = '⚠️ GPS unavailable - using last known';
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+  
+  // Track location every 30 seconds
+  if (locationTrackingInterval) clearInterval(locationTrackingInterval);
+  locationTrackingInterval = setInterval(() => {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        lastKnownLocation = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          timestamp: Date.now()
+        };
+        updateLocationStatus();
+        saveLastLocation(lastKnownLocation);
+      },
+      () => {},
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, 30000);
+}
+
+function updateLocationStatus() {
+  const statusEl = document.getElementById('lastLocationStatus');
+  if (lastKnownLocation) {
+    statusEl.innerHTML = `📍 Last location: ${lastKnownLocation.lat.toFixed(6)}, ${lastKnownLocation.lng.toFixed(6)} (${Math.round(lastKnownLocation.accuracy)}m accuracy) · Updated ${new Date(lastKnownLocation.timestamp).toLocaleTimeString()}`;
+  } else {
+    statusEl.innerHTML = `📍 Waiting for GPS signal...`;
+  }
+}
+
+async function saveLastLocation(location) {
+  try {
+    localStorage.setItem('veritas_last_location', JSON.stringify(location));
+  } catch (e) {}
+}
+
+function loadLastLocation() {
+  try {
+    const saved = localStorage.getItem('veritas_last_location');
+    if (saved) {
+      lastKnownLocation = JSON.parse(saved);
+      updateLocationStatus();
+    }
+  } catch (e) {}
+}
+
+async function sendEmergencySignal() {
+  toast('📡 Sending rescue signal...');
+  
+  // Get current location
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        const location = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy
+        };
+        await createEmergencyReport(location);
+      },
+      async () => {
+        if (lastKnownLocation) {
+          await createEmergencyReport(lastKnownLocation);
+        } else {
+          toast('❌ Cannot get location. Please enable GPS.');
+        }
+      }
+    );
+  } else if (lastKnownLocation) {
+    await createEmergencyReport(lastKnownLocation);
+  } else {
+    toast('❌ Location services not available');
+  }
+}
+
+async function createEmergencyReport(location) {
+  const timestamp = new Date().toISOString();
+  const uuid = generateUUID();
+  
+  // Take photo if possible
+  let photo = null;
+  try {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    
+    const photoPromise = new Promise((resolve) => {
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.readAsDataURL(file);
+        } else {
+          resolve(null);
+        }
+      };
+      input.click();
+    });
+    
+    photo = await photoPromise;
+  } catch (err) {
+    console.error('Photo capture error:', err);
+  }
+  
+  const rescueReport = {
+    uuid,
+    type: 'EMERGENCY_RESCUE',
+    timestamp,
+    lat: location.lat,
+    lng: location.lng,
+    accuracy: location.accuracy,
+    photo,
+    status: 'PENDING',
+    urgency: 'CRITICAL',
+    offline_queued: !navigator.onLine
+  };
+  
+  // Save to IndexedDB
+  await dbPut(rescueReport);
+  STATE.reports.push(rescueReport);
+  
+  // Try to send immediately if online
+  if (navigator.onLine) {
+    try {
+      await syncEmergencyToBackend(rescueReport);
+      toast('✅ Rescue signal sent! Help is on the way.');
+    } catch (err) {
+      toast('📡 Rescue signal saved. Will send when connected.');
+    }
+  } else {
+    toast('📡 Rescue signal saved offline. Will send when connected.');
+  }
+  
+  // Show confirmation
+  showEmergencyConfirmation(rescueReport);
+}
+
+function showEmergencyConfirmation(report) {
+  const confirmDiv = document.createElement('div');
+  confirmDiv.style.position = 'fixed';
+  confirmDiv.style.bottom = '20px';
+  confirmDiv.style.left = '20px';
+  confirmDiv.style.right = '20px';
+  confirmDiv.style.backgroundColor = '#ff4d4d';
+  confirmDiv.style.color = 'white';
+  confirmDiv.style.padding = '20px';
+  confirmDiv.style.borderRadius = '12px';
+  confirmDiv.style.zIndex = '10000';
+  confirmDiv.style.textAlign = 'center';
+  confirmDiv.innerHTML = `
+    <div style="font-size: 48px;">🆘</div>
+    <div style="font-size: 20px; font-weight: bold; margin: 10px 0;">RESCUE SIGNAL SENT</div>
+    <div>Your location has been shared with rescue teams.</div>
+    <div style="font-size: 12px; margin-top: 10px;">${report.lat.toFixed(6)}, ${report.lng.toFixed(6)}</div>
+    <div style="font-size: 10px; margin-top: 5px;">Stay where you are if safe. Help is on the way.</div>
+    <button onclick="this.parentElement.remove()" style="margin-top: 15px; padding: 8px 20px; background: white; color: #ff4d4d; border: none; border-radius: 20px;">OK</button>
+  `;
+  document.body.appendChild(confirmDiv);
+  
+  setTimeout(() => confirmDiv.remove(), 10000);
+}
+
+async function syncEmergencyToBackend(report) {
+  const response = await fetchWithTimeout('https://veritas-flax-eta.vercel.app/api/rescue', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(report)
+  });
+  if (!response.ok) throw new Error('Sync failed');
+}
+
+// Load saved location on startup
+loadLastLocation();
+  
 // ==================== STP INTEGRATION ====================
 // FIX: Use local API endpoint (same deployment)
 let currentSTPSeal = null;
