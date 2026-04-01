@@ -303,55 +303,66 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { entry, type, sessionId, userId, fields } = req.body;
+  const { entry, type, sessionId, userId, fields } = req.body;
+  
+  if (!entry || typeof entry !== 'string' || !entry.trim()) {
+    return res.status(400).json({ error: 'EMPTY_ENTRY', message: 'Entry text is required' });
+  }
+  
+  if (entry.length > MAX_ENTRY_SIZE) {
+    return res.status(413).json({ error: 'PAYLOAD_TOO_LARGE', message: `Entry exceeds ${MAX_ENTRY_SIZE / 1024}KB` });
+  }
+  
+  const now = new Date();
+  const unixUtc = Math.floor(now.getTime() / 1000);
+  const gregorian = gregorianString(now);
+  const hebrew = hebrewString(now);
+  const dreamspell = dreamspellString(now);
+  
+  const finalEntry = entry.trim() + `\n\nServer Timestamp: ${now.toISOString()}`;
+  
+  // Select template with fallback
+  let templateKey = '07'; // default
+  let template = null;
+  
+  try {
+    templateKey = selectTemplate(finalEntry, type);
+    template = getTemplate(templateKey);
     
-    if (!entry || typeof entry !== 'string' || !entry.trim()) {
-      return res.status(400).json({ error: 'EMPTY_ENTRY', message: 'Entry text is required' });
+    // If template is still null, force to GENERAL-TRACE
+    if (!template) {
+      console.warn(`[STP] Template ${templateKey} not found, falling back to 07`);
+      templateKey = '07';
+      template = getTemplate('07');
     }
-    
-    if (entry.length > MAX_ENTRY_SIZE) {
-      return res.status(413).json({ error: 'PAYLOAD_TOO_LARGE', message: `Entry exceeds ${MAX_ENTRY_SIZE / 1024}KB` });
-    }
-    
-    const now = new Date();
-    const unixUtc = Math.floor(now.getTime() / 1000);
-    const gregorian = gregorianString(now);
-    const hebrew = hebrewString(now);
-    const dreamspell = dreamspellString(now);
-    
-    const finalEntry = entry.trim() + `\n\nServer Timestamp: ${now.toISOString()}`;
-    
-    // In the main handler, after selectTemplate:
-const templateKey = selectTemplate(finalEntry, type);
-const template = getTemplate(templateKey);
-
-// ADD THIS GUARD
-if (!template) {
-  console.error(`[STP] Template not found for key: ${templateKey}`);
-  return res.status(400).json({
-    success: false,
-    error: 'TEMPLATE_NOT_FOUND',
-    message: `Template with key "${templateKey}" not found. Available: ${Object.keys(getTemplate('all')).join(', ')}`,
-    entry_preview: finalEntry.substring(0, 200)
-  });
-}
-    
-    // Prepare form data for validation
-    const formData = { fields: fields || {}, sessionId, userId };
-    
-    // Validate template requirements
-    const validation = validateTemplateRequirements(template, formData);
-    if (!validation.valid) {
-      return res.status(400).json({
-        success: false,
-        error: 'VALIDATION_FAILED',
-        missing_requirements: validation.missing,
-        message: 'Template requirements not met',
-        template_id: template.id,
-        template_name: template.name,
-        required_fields: template.fields?.filter(f => f.required).map(f => ({ id: f.id, label: f.label })) || []
-      });
-    }
+  } catch (err) {
+    console.error('[STP] Template detection error:', err);
+    templateKey = '07';
+    template = getTemplate('07');
+  }
+  
+  // Prepare form data for validation
+  const formData = { fields: fields || {}, sessionId, userId };
+  
+  // Validate template requirements (with error handling)
+  let validation = { valid: true, missing: [] };
+  try {
+    validation = validateTemplateRequirements(template, formData);
+  } catch (err) {
+    console.error('[STP] Validation error:', err);
+    validation = { valid: true, missing: [] };
+  }
+  
+  if (!validation.valid) {
+    return res.status(400).json({
+      success: false,
+      error: 'VALIDATION_FAILED',
+      missing_requirements: validation.missing,
+      message: 'Template requirements not met',
+      template_id: template.id,
+      template_name: template.name
+    });
+  }
     
     const seal = computeSealExact(finalEntry, gregorian, hebrew, dreamspell, unixUtc);
     const ledgerFile = ledgerFileName(templateKey, gregorian, seal);
