@@ -1262,10 +1262,62 @@ function initRespondMap(reports) {
   const satellite=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'© Esri',maxZoom:18});
   street.addTo(STATE.respondMap);
   L.control.layers({'Street':street,'Satellite':satellite}).addTo(STATE.respondMap);
-  STATE.respondMap.setView(CONFIG.MAP_CENTER,CONFIG.MAP_ZOOM);
+  STATE.respondMap.setView(CONFIG.MAP_CENTER,CONFIG.MAP_ZOOM) enableRespondMapClick();
   plotReports(reports);
 }
-
+  // Fix for black screen: when the base layer changes, force map redraw
+  STATE.respondMap.on('baselayerchange', function() {
+  setTimeout(() => {
+    STATE.respondMap.invalidateSize();
+  }, 100);
+});
+  STATE.respondMap.on('layeradd', function() {
+  STATE.respondMap.invalidateSize();
+});
+function enableRespondMapClick() {
+  if (!STATE.respondMap) return;
+  // Remove any existing click handler to avoid duplicates
+  STATE.respondMap.off('click');
+  STATE.respondMap.on('click', async (e) => {
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
+    // Ask for damage level (minimal/partial/complete) and infrastructure type
+    const damage = prompt('Enter damage level (minimal, partial, complete):');
+    if (!damage || !['minimal','partial','complete'].includes(damage)) {
+      toast('Invalid damage level. Report cancelled.');
+      return;
+    }
+    const infra = prompt('Enter infrastructure type (e.g., Residential, Road, etc.):');
+    if (!infra) {
+      toast('Infrastructure type required. Report cancelled.');
+      return;
+    }
+    // Build a minimal report
+    const uuid = generateUUID();
+    const timestamp = new Date().toISOString();
+    const report = {
+      uuid, timestamp, lat, lng, hasGPS: true,
+      undpTier: damage, internalTier: tierMap[damage],
+      infraType: infra,
+      locMode: 'precise',
+      textLocation: null,
+      photo: null,
+      photoAiScore: 0.5,
+      photoAiConf: 0.5,
+      synced: false
+    };
+    // Score it (use safeCERTUSScore)
+    const certus = safeCERTUSScore(report, [], false);
+    report.dci = certus.dci;
+    report.dciTier = certus.tier;
+    // Save to IndexedDB
+    await dbPut(report);
+    STATE.reports.push(report);
+    // Refresh dashboard
+    initRespondDashboard();
+    toast('Report added manually!');
+  });
+}
 // ==================== CRITICAL FIX #1 + #2 — plotReports ====================
 // BUG #1 FIXED: forEach callback was never closed (syntax error broke entire script)
 // BUG #2 FIXED: L.marker() was constructed but never added to the layer
