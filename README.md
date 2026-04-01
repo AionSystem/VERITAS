@@ -467,8 +467,22 @@ vercel --prod
 
 ## License
 
-MIT © 2026 Sheldon K. Salmon, AionSystem
-See [LICENSE](LICENSE) for full text.
+VERITAS is dual-licensed:
+
+- **GNU General Public License v3.0** — for humanitarian, non-profit, academic, and open-source use
+- **Commercial License** — for proprietary use, closed-source integration, and OEM applications
+
+| User Type | License |
+|-----------|---------|
+| Humanitarian / NGOs / UNDP | GPL-3.0 (Free) |
+| Academic / Research | GPL-3.0 (Free) |
+| Government Disaster Agencies | GPL-3.0 (Free) |
+| Open-source projects | GPL-3.0 (Free) |
+| Commercial (proprietary) | Commercial License (Fee) |
+
+See [LICENSE](LICENSE) for GPL terms and [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md) for commercial licensing information.
+
+For commercial licensing inquiries: **aionsystem@outlook.com**
 
 [![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
