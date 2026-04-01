@@ -1579,7 +1579,8 @@ function loadLastLocation() {
 async function sendEmergencySignal() {
   toast('📡 Sending rescue signal...');
   
-  // Get current location
+  const gpsStatusEl = document.getElementById('gpsStatus');
+  
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       async pos => {
@@ -1595,6 +1596,7 @@ async function sendEmergencySignal() {
           await createEmergencyReport(lastKnownLocation);
         } else {
           toast('❌ Cannot get location. Please enable GPS.');
+          if (gpsStatusEl) gpsStatusEl.innerHTML = '❌ GPS permission denied';
         }
       }
     );
