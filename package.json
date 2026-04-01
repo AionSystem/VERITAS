@@ -8,7 +8,8 @@
     "url": "https://aionsystem.github.io/VERITAS"
   },
   "license": "GPL-3.0",
-  "private": false,
+  "type": "module",
+  "main": "api/stp-seal.js",
   "scripts": {
     "dev": "vercel dev",
     "build": "echo 'No build step required'",
