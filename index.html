@@ -241,12 +241,10 @@
   <nav>
     <a href="/" class="logo">AION<span>system</span></a>
     <ul class="nav-links">
-      <li><a href="/simulators/">Simulators</a></li>
-      <li><a href="/services/">Services</a></li>
-      <li><a href="/stack/">Stack</a></li>
-      <li><a href="/certify/">Certify</a></li>
-      <li><a href="https://aionsystem.github.io/VERITAS-PAGE">VERITAS</a></li>
-    </ul>
+  <li><a href="#" onclick="switchView('report')">📍 Report Damage</a></li>
+  <li><a href="#" onclick="switchView('rescue')">🆘 I Need Rescue</a></li>
+  <li><a href="#" onclick="switchView('respond')">🗺 Responder View</a></li>
+</ul>
     <div class="lang-selector" id="langSelector"></div>
     <button class="nav-hamburger" id="nav-hamburger" aria-label="Menu">
       <span></span><span></span><span></span>
@@ -272,9 +270,10 @@
     </a>
   </div>
   <div class="veritas-tabs">
-    <button class="veritas-tab active" id="navReport" onclick="switchView('report')" data-i18n="report_tab">📍 Report</button>
-    <button class="veritas-tab" id="navRespond" onclick="switchView('respond')" data-i18n="respond_tab">🗺 Respond</button>
-  </div>
+  <button class="veritas-tab active" id="navReport" onclick="switchView('report')">📍 Report Damage</button>
+  <button class="veritas-tab" id="navRescue" onclick="switchView('rescue')">🆘 I Need Rescue</button>
+  <button class="veritas-tab" id="navRespond" onclick="switchView('respond')">🗺 Responder View</button>
+</div>
 
   <!-- REPORT VIEW -->
   <div class="veritas-view active" id="viewReport">
