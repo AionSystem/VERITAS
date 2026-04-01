@@ -10,6 +10,7 @@
 [![Commercial License](https://img.shields.io/badge/Commercial-License%20Available-orange)](COMMERCIAL-LICENSE.md)
 [![ORCID — Sheldon K. Salmon](https://img.shields.io/badge/ORCID-0009--0005--8057--5115-a6ce39?style=flat&logo=orcid&logoColor=white)](https://orcid.org/0009-0005-8057-5115)
 [![DOI](https://zenodo.org/badge/1194238160.svg)](https://doi.org/10.5281/zenodo.19295266)
+[![DOI](https://zenodo.org/badge/1198800128.svg)](https://doi.org/10.5281/zenodo.19373724)
 
 <!-- CORE ARCHITECTURE -->
 [![CERTUS Engine](https://img.shields.io/badge/CERTUS-v2.5-4ade80?style=flat-square)](https://github.com/AionSystem/VERITAS)
