@@ -31,6 +31,181 @@
     }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     html{scroll-behavior:smooth;}
+    <!-- ==================== AI DEBUGGER PANEL ==================== -->
+<div id="ai-debug-panel" style="position:fixed; bottom:10px; right:10px; width:450px; max-width:90%; background:rgba(0,0,0,0.95); border:2px solid #f0a500; border-radius:8px; padding:12px; z-index:10000; font-family:monospace; font-size:11px; color:#0f0; display:block; backdrop-filter:blur(10px); box-shadow:0 0 20px rgba(240,165,0,0.3);">
+  <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px solid #f0a500; padding-bottom:5px;">
+    <strong style="color:#f0a500;">🔍 OPENROUTER DEBUGGER</strong>
+    <button onclick="toggleDebugPanel()" style="background:none; border:none; color:#f0a500; cursor:pointer; font-size:16px;">✕</button>
+  </div>
+  <div id="ai-debug-content" style="max-height:400px; overflow-y:auto; font-size:10px; line-height:1.6;">
+    <div>Loading debug info...</div>
+  </div>
+  <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+    <button onclick="refreshDebugInfo()" style="background:#f0a500; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:bold;">🔄 Refresh</button>
+    <button onclick="testOpenRouterKey()" style="background:#f0a500; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:bold;">🔑 Test Key</button>
+    <button onclick="setOpenRouterKey()" style="background:#f0a500; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:bold;">⚙️ Set Key</button>
+    <button onclick="clearAICache()" style="background:#666; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">🗑️ Clear Cache</button>
+    <button onclick="forceAIAnalysis()" style="background:#4ade80; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">📸 Force Analysis</button>
+  </div>
+  <div style="margin-top:8px; font-size:9px; color:#888; text-align:center;">
+    Press <strong>Ctrl+Shift+D</strong> to toggle | <strong>F12</strong> for console
+  </div>
+</div>
+
+<script>
+// ==================== AI DEBUGGER FUNCTIONS ====================
+let debugInterval = null;
+
+function toggleDebugPanel() {
+  const panel = document.getElementById('ai-debug-panel');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    if (debugInterval) clearInterval(debugInterval);
+    refreshDebugInfo();
+    debugInterval = setInterval(refreshDebugInfo, 3000);
+  } else {
+    panel.style.display = 'none';
+    if (debugInterval) clearInterval(debugInterval);
+  }
+}
+
+async function refreshDebugInfo() {
+  const content = document.getElementById('ai-debug-content');
+  
+  if (typeof AI_ANALYSIS === 'undefined') {
+    content.innerHTML = `
+      <div style="color:#ff4d4d;">❌ AI_ANALYSIS module NOT LOADED!</div>
+      <div style="margin-top:8px; color:#ffc947;">Check if ai-analysis.js is loaded correctly.</div>
+      <div>Check console for errors (F12).</div>
+    `;
+    return;
+  }
+  
+  const isConfigured = AI_ANALYSIS.isConfigured ? AI_ANALYSIS.isConfigured() : false;
+  const apiKey = AI_ANALYSIS.getApiKey ? AI_ANALYSIS.getApiKey() : null;
+  const debugInfo = AI_ANALYSIS.getDebugInfo ? AI_ANALYSIS.getDebugInfo() : null;
+  
+  let html = `
+    <div><span style="color:#4ade80;">✅ AI_ANALYSIS loaded</span> v${AI_ANALYSIS.version || 'unknown'}</div>
+    <div style="margin-top:6px;"><strong>🔑 API Key:</strong> ${apiKey ? apiKey.substring(0,15) + '...' + apiKey.slice(-5) : '<span style="color:#ff4d4d;">NOT SET</span>'}</div>
+    <div><strong>📡 Configured:</strong> ${isConfigured ? '<span style="color:#4ade80;">YES</span>' : '<span style="color:#ff4d4d;">NO</span>'}</div>
+  `;
+  
+  if (debugInfo) {
+    html += `
+      <div><strong>📊 Requests:</strong> ${debugInfo.requestCount || 0} total, ${debugInfo.successRate || '0%'} success</div>
+      <div><strong>💾 Cache:</strong> ${debugInfo.cacheSize || 0} items</div>
+      <div><strong>🕐 Last Error:</strong> ${debugInfo.lastError ? debugInfo.lastError.message : '<span style="color:#4ade80;">None</span>'}</div>
+    `;
+  }
+  
+  // Show photo status
+  const hasPhoto = STATE && STATE.photo;
+  html += `<div><strong>📸 Photo:</strong> ${hasPhoto ? '<span style="color:#4ade80;">Captured</span>' : '<span style="color:#ffc947;">Not taken</span>'}</div>`;
+  
+  if (STATE && STATE.photoAiScore) {
+    html += `<div><strong>🤖 AI Score:</strong> ${STATE.photoAiScore.toFixed(3)} | Confidence: ${(STATE.photoAiConf*100).toFixed(0)}%</div>`;
+  }
+  
+  // Show recent logs
+  if (debugInfo && debugInfo.recentLogs && debugInfo.recentLogs.length > 0) {
+    html += `<div style="margin-top:8px;"><strong>📋 Recent Logs:</strong></div><div style="font-size:9px; max-height:150px; overflow-y:auto;">`;
+    debugInfo.recentLogs.slice(-8).forEach(log => {
+      const color = log.level === 'error' ? '#ff4d4d' : log.level === 'warn' ? '#ffc947' : '#4ade80';
+      html += `<div style="border-top:1px solid #333; padding:3px 0;"><span style="color:${color}">[${log.level}]</span> ${log.message.substring(0, 80)}</div>`;
+    });
+    html += `</div>`;
+  }
+  
+  content.innerHTML = html;
+}
+
+async function testOpenRouterKey() {
+  if (typeof AI_ANALYSIS === 'undefined') {
+    alert('❌ AI_ANALYSIS module not loaded!');
+    return;
+  }
+  
+  if (!AI_ANALYSIS.isConfigured || !AI_ANALYSIS.isConfigured()) {
+    alert('⚠️ No API key configured. Click "Set Key" first.');
+    return;
+  }
+  
+  const result = await AI_ANALYSIS.testApiKey();
+  if (result.success) {
+    alert('✅ API key is valid and working!\n\n' + result.message);
+  } else {
+    alert('❌ API key test failed:\n\n' + result.error);
+  }
+  refreshDebugInfo();
+}
+
+function setOpenRouterKey() {
+  if (typeof AI_ANALYSIS === 'undefined') {
+    alert('❌ AI_ANALYSIS module not loaded! Check console.');
+    return;
+  }
+  
+  const key = prompt('Enter your OpenRouter API key:\n\nGet one at: https://openrouter.ai/keys\n\nKey format: sk-or-v1-xxxxxxxxxxxx', 
+                      localStorage.getItem('openrouter_api_key') || '');
+  if (key && key.trim()) {
+    if (AI_ANALYSIS.setApiKey) {
+      AI_ANALYSIS.setApiKey(key.trim());
+      alert('✅ API key saved! Click "Test Key" to verify.');
+    } else {
+      alert('⚠️ setApiKey function not available');
+    }
+  }
+  refreshDebugInfo();
+}
+
+function clearAICache() {
+  if (typeof AI_ANALYSIS !== 'undefined' && AI_ANALYSIS.clearCache) {
+    const result = AI_ANALYSIS.clearCache();
+    alert(`Cleared ${result.cleared || 0} cached items`);
+    refreshDebugInfo();
+  } else {
+    alert('Cache clear function not available');
+  }
+}
+
+async function forceAIAnalysis() {
+  if (!STATE || !STATE.photo) {
+    alert('Please take a photo first!');
+    return;
+  }
+  
+  if (typeof AI_ANALYSIS === 'undefined') {
+    alert('AI_ANALYSIS not loaded');
+    return;
+  }
+  
+  alert('Running AI analysis manually... Check the status below.');
+  await runAiAnalysis();
+  refreshDebugInfo();
+}
+
+// Auto-refresh every 3 seconds
+debugInterval = setInterval(refreshDebugInfo, 3000);
+
+// Keyboard shortcut: Ctrl+Shift+D
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+    e.preventDefault();
+    toggleDebugPanel();
+  }
+});
+
+// Show console warning if no API key
+setTimeout(() => {
+  if (typeof AI_ANALYSIS !== 'undefined' && AI_ANALYSIS.isConfigured && !AI_ANALYSIS.isConfigured()) {
+    console.log('%c🔑 No OpenRouter API key found! Click "Set Key" in the debug panel.', 'background:#f0a500; color:#000; padding:4px; border-radius:4px;');
+  }
+}, 1000);
+
+console.log('%c🔍 AI Debugger Active | Press Ctrl+Shift+D to toggle panel', 'background:#f0a500; color:#000; padding:4px; border-radius:4px;');
+</script>
+    
     body{
       background:var(--bg); color:var(--text); font-family:var(--sans);
       font-size:var(--font-size-base); line-height:1.5; overflow-x:hidden;
