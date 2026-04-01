@@ -1,4 +1,6 @@
-# GNU GENERAL PUBLIC LICENSE
+# VERITAS License
+
+## GNU GENERAL PUBLIC LICENSE
 Version 3, 29 June 2007
 
 VERITAS — Community Damage Certification Platform
@@ -21,8 +23,37 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 ## Commercial Licensing
 
-For organizations that require proprietary use or cannot comply with GPL terms, commercial licenses are available.
+For organizations that require proprietary use, embedding in closed-source products, or cannot comply with GPL terms, **commercial licenses are available**.
 
-Contact: aionsystem@outlook.com 
+All commercial licensing revenue supports:
+- Ongoing development and maintenance
+- Free access for humanitarian organizations
+- Documentation and training resources
+- Community support
 
-**Humanitarian organizations, UN agencies, and non-profits may use VERITAS under GPL without additional licensing.**
+**Humanitarian organizations, UN agencies, non-profits, and government disaster agencies may use VERITAS under GPL without additional licensing.**
+
+---
+
+## License Summary
+
+| User Type | License | Fee |
+|-----------|---------|-----|
+| Humanitarian / Non-profit | GPL-3.0 | Free |
+| UNDP / UN Agencies | GPL-3.0 | Free |
+| Government Disaster Agencies | GPL-3.0 | Free |
+| Academic / Research | GPL-3.0 | Free |
+| Commercial (open source) | GPL-3.0 | Free |
+| Commercial (proprietary / closed) | Commercial License | Fee |
+| OEM / Embedding | Commercial License | Fee |
+
+---
+
+## Commercial License Contact
+
+For commercial licensing inquiries:
+- **Email:** aionsystem@outlook.com 
+- **Subject:** VERITAS Commercial License
+- **Include:** Organization name, intended use, user count
+
+Licensing terms, fees, and support options available upon request.
