@@ -1,6 +1,15 @@
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import https from 'https';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// ============================================================
+// FILE PATHS FOR TEMPLATES
+// ============================================================
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ============================================================
 // CONFIGURATION
@@ -34,7 +43,175 @@ function getSupabase() {
 }
 
 // ============================================================
-// TIME STAMP FUNCTIONS
+// TEMPLATE LOADING (from templates/index.js)
+// ============================================================
+const TEMPLATES = {};
+
+// Load all template JSON files from templates directory
+const templatesDir = path.join(__dirname, 'templates');
+const templateFiles = [
+  '01-ai-failure.json',
+  '02-research-priority.json',
+  '03-evidence-chain.json',
+  '04-creative-priority.json',
+  '05-clinical-record.json',
+  '06-scope-anchor.json',
+  '07-general-trace.json',
+  '08-foresight-seal.json',
+  '09-webeater-link.json',
+  '10-audit-request.json',
+  '11-audit-completion.json',
+  '12-auditor-application.json',
+  '13-integrity-violation.json',
+  '14-near-miss.json',
+  '15-veritas-report.json',
+  '16-veritas-export.json'
+];
+
+for (const file of templateFiles) {
+  try {
+    const templatePath = path.join(templatesDir, file);
+    if (fs.existsSync(templatePath)) {
+      const templateContent = fs.readFileSync(templatePath, 'utf8');
+      const template = JSON.parse(templateContent);
+      TEMPLATES[template.id] = template;
+      console.log(`[STP] Loaded template: ${template.id} - ${template.name}`);
+    } else {
+      console.warn(`[STP] Template file not found: ${file}`);
+    }
+  } catch (err) {
+    console.error(`[STP] Failed to load ${file}:`, err.message);
+  }
+}
+
+function getTemplate(id) {
+  return TEMPLATES[id] || TEMPLATES['07']; // Default to GENERAL-TRACE
+}
+
+function detectTemplateFromEntry(entry, contextType = null) {
+  // If specific template requested
+  if (contextType && TEMPLATES[contextType]) {
+    return TEMPLATES[contextType];
+  }
+  
+  const lowerEntry = (entry || '').toLowerCase();
+  
+  // Priority order (most severe first)
+  const priority = ['13', '05', '10', '11', '12', '01', '09', '06', '03', '08', '02', '04', '14', '15', '16'];
+  
+  for (const id of priority) {
+    const template = TEMPLATES[id];
+    if (template && template.triggers && template.triggers.some(t => lowerEntry.includes(t.toLowerCase()))) {
+      return template;
+    }
+  }
+  
+  return TEMPLATES['07'];
+}
+
+function validateTemplateRequirements(template, body) {
+  const missing = [];
+  
+  if (template.requires_docusign && !body.docusign_completed) {
+    missing.push('DocuSign verification required');
+  }
+  if (template.requires_identity && !body.identity_verified) {
+    missing.push('Identity verification required');
+  }
+  if (template.requires_phi_gate && !body.phi_gate_confirmed) {
+    missing.push('PHI gate confirmation required');
+  }
+  if (template.requires_stripe && !body.stripe_payment_id) {
+    missing.push('Stripe payment ID required');
+  }
+  if (template.requires_prior_seal && !body.prior_seal_hash) {
+    missing.push('Prior seal hash required (Webeater Link)');
+  }
+  if (template.requires_auditor_badge && !body.auditor_badge) {
+    missing.push('Auditor badge required');
+  }
+  
+  // Check required fields from template
+  if (template.fields) {
+    for (const field of template.fields) {
+      if (field.required && !body[field.id] && !body.fields?.[field.id]) {
+        missing.push(`Field "${field.label}" is required`);
+      }
+    }
+  }
+  
+  return {
+    valid: missing.length === 0,
+    missing
+  };
+}
+
+function renderIssueBody(template, formData, stamp, entry) {
+  let body = '';
+  
+  // Add template header
+  body += `# ${template.name}\n`;
+  body += `**Template ID:** ${template.id}\n`;
+  body += `**Category:** ${template.category}\n\n`;
+  body += `---\n\n`;
+  
+  // Add legal notice if present
+  if (template.legal_notice) {
+    body += `## ${template.legal_notice.title}\n\n`;
+    body += template.legal_notice.content.join('\n') + '\n\n---\n\n';
+  }
+  
+  // Add triple-time stamp (always included)
+  body += `## 📅 Triple-Time Stamp\n\n`;
+  body += `| Calendar | Value |\n`;
+  body += `|----------|-------|\n`;
+  body += `| Gregorian | ${stamp.gregorian} |\n`;
+  body += `| Hebrew | ${stamp.hebrew} |\n`;
+  body += `| Dreamspell | ${stamp.dreamspell} |\n`;
+  body += `| Unix UTC | ${stamp.unixUtc} |\n\n`;
+  
+  // Add the entry/seal info
+  body += `## 🔒 STP Seal\n\n`;
+  body += `**Seal:** \`${stamp.seal}\`\n`;
+  body += `**Ledger File:** \`${stamp.ledgerFile}\`\n\n`;
+  
+  // Add original entry
+  body += `## 📝 Original Entry\n\n`;
+  body += `\`\`\`\n${entry}\n\`\`\`\n\n`;
+  
+  // Add form fields if present
+  if (formData.fields || formData) {
+    body += `## 📋 Submission Data\n\n`;
+    const data = formData.fields || formData;
+    for (const [key, value] of Object.entries(data)) {
+      if (value && key !== 'entry' && key !== 'type') {
+        body += `**${key}:** ${value}\n\n`;
+      }
+    }
+  }
+  
+  // Add after-submit steps
+  if (template.after_submit) {
+    body += `---\n\n## What Happens Next\n\n`;
+    for (const step of template.after_submit.steps) {
+      body += `- ${step}\n`;
+    }
+    body += `\n---\n\n${template.after_submit.footer}`;
+  }
+  
+  // Add server metadata
+  body += `\n\n---\n\n## ⚙️ Metadata\n\n`;
+  body += `- **Sealed by:** VERITAS API\n`;
+  body += `- **Protocol:** Sovereign Trace Protocol\n`;
+  body += `- **Jurisdiction:** ${JURISDICTION}\n`;
+  body += `- **Terms Version:** ${TERMS_VERSION}\n`;
+  body += `- **Sealed at:** ${new Date().toISOString()}\n`;
+  
+  return body;
+}
+
+// ============================================================
+// TIME STAMP FUNCTIONS (kept from original)
 // ============================================================
 const GREGORIAN_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -123,39 +300,9 @@ function computeSealExact(entry, gregorian, hebrew, dreamspell, unixUtc) {
   return crypto.createHash('sha256').update(`{${parts.join(',')}}`, 'utf8').digest('hex');
 }
 
-// ============================================================
-// TEMPLATE SELECTION
-// ============================================================
-const SEAL_TEMPLATES = {
-  '01': { name: 'ai-failure', label: 'AI-FAILURE', triggers: ['ai failure','model failure','hallucination'] },
-  '02': { name: 'research-priority', label: 'RESEARCH-PRIORITY', triggers: ['hypothesis','research','theory','prediction'] },
-  '03': { name: 'evidence-chain', label: 'EVIDENCE-CHAIN', triggers: ['evidence','source','document'] },
-  '04': { name: 'creative-priority', label: 'CREATIVE-PRIORITY', triggers: ['creative','music','art','design'] },
-  '05': { name: 'clinical-record', label: 'CLINICAL-RECORD', triggers: ['clinical','patient','medical record'] },
-  '06': { name: 'scope-anchor', label: 'SCOPE-ANCHOR', triggers: ['scope','agreement','contract'] },
-  '07': { name: 'general-trace', label: 'GENERAL-TRACE', triggers: [] },
-  '08': { name: 'foresight-seal', label: 'FORESIGHT-SEAL', triggers: ['predict','forecast','foresight'] },
-  '09': { name: 'webeater-link', label: 'WEBEATER-LINK', triggers: ['link','bind','connect two seals'] },
-  '10': { name: 'audit-request', label: 'AUDIT-REQUEST', triggers: ['audit request','certification'] },
-  '11': { name: 'audit-completion', label: 'AUDIT-COMPLETION', triggers: ['audit complete','audit filed'] },
-  '12': { name: 'auditor-application', label: 'AUDITOR-APPLICATION', triggers: ['apply auditor'] },
-  '13': { name: 'integrity-violation', label: 'INTEGRITY-VIOLATION', triggers: ['misuse','violation','bribery'] },
-  '14': { name: 'near-miss', label: 'NEAR-MISS', triggers: ['near miss','almost','close call'] },
-};
-
-function selectTemplate(entry, contextType) {
-  if (contextType && SEAL_TEMPLATES[contextType]) return contextType;
-  const lower = (entry || '').toLowerCase();
-  const priority = ['13','14','05','10','11','12','01','09','06','03','08','02','04'];
-  for (const key of priority) {
-    if (SEAL_TEMPLATES[key]?.triggers.some(t => lower.includes(t))) return key;
-  }
-  if (['ignore previous','you are now','without restrictions','jailbreak'].some(t => lower.includes(t))) return '13';
-  return '07';
-}
-
 function ledgerFileName(templateKey, gregorian, seal) {
-  const label = SEAL_TEMPLATES[templateKey].label;
+  const template = TEMPLATES[templateKey] || TEMPLATES['07'];
+  const label = template.name.replace(/\s+/g, '-').toUpperCase();
   const dateStr = gregorian.replace(/[,\s]+/g, '-').replace(/[^A-Z0-9\-]/gi, '');
   return `STP-${label}-${dateStr}-${seal.substring(0, 6).toUpperCase()}.json`;
 }
@@ -216,18 +363,16 @@ async function ghRequest(path, method, body, timeoutMs = 15000) {
   }
 }
 
-async function createGitHubIssueForSeal(templateKey, entry, stamp, metadata) {
-  const tmpl = SEAL_TEMPLATES[templateKey];
-  const title = `[${tmpl.label}] ${entry.substring(0, 80)}${entry.length > 80 ? '...' : ''}`;
-  const body = `## Sovereign Trace Protocol — Automated Seal\n\n` +
-    `**Template:** ${templateKey} — ${tmpl.label}\n\n` +
-    `**Entry:**\n${entry}\n\n---\n\n` +
-    `**Triple-Time Stamp:**\n- 📅 Gregorian: ${stamp.gregorian}\n- 🌑 Hebrew: ${stamp.hebrew}\n- 🌀 Dreamspell: ${stamp.dreamspell}\n- ⏱ Unix UTC: ${stamp.unixUtc}\n\n` +
-    `**🔒 Seal:** \`${stamp.seal}\`\n\n---\n\n` +
-    (metadata.sessionId ? `**Session:** ${metadata.sessionId}\n` : '') +
-    (metadata.userId ? `**User:** ${metadata.userId}\n` : '') +
-    `**Ledger File:** \`${stamp.ledgerFile}\`\n\n*Sealed by AION AI Assistant*`;
-  const { data: issue } = await ghRequest('/repos/AionSystem/SOVEREIGN-TRACE-PROTOCOL/issues', 'POST', { title, body, labels: [tmpl.name] });
+async function createGitHubIssueForSeal(template, entry, stamp, metadata, formData) {
+  const title = `[${template.name}] ${entry.substring(0, 80)}${entry.length > 80 ? '...' : ''}`;
+  const body = renderIssueBody(template, formData, stamp, entry);
+  
+  const { data: issue } = await ghRequest('/repos/AionSystem/SOVEREIGN-TRACE-PROTOCOL/issues', 'POST', { 
+    title, 
+    body, 
+    labels: [template.category, template.id]
+  });
+  
   return issue.html_url;
 }
 
@@ -280,7 +425,8 @@ export default async function handler(req, res) {
       service: 'STP-Seal',
       version: 'FROZEN-2.0',
       timestamp: new Date().toISOString(),
-      templates_loaded: Object.keys(SEAL_TEMPLATES).length,
+      templates_loaded: Object.keys(TEMPLATES).length,
+      templates: Object.keys(TEMPLATES),
       endpoints: ['/api/stp-seal', '/api/health']
     });
   }
@@ -304,7 +450,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { entry, type, sessionId, userId } = req.body;
+    const { entry, type, sessionId, userId, fields } = req.body;
     
     if (!entry || typeof entry !== 'string' || !entry.trim()) {
       return res.status(400).json({ error: 'EMPTY_ENTRY', message: 'Entry text is required' });
@@ -321,18 +467,36 @@ export default async function handler(req, res) {
     const dreamspell = dreamspellString(now);
     
     const finalEntry = entry.trim() + `\n\nServer Timestamp: ${now.toISOString()}`;
+    
+    // Detect template from entry or explicit type
+    const template = detectTemplateFromEntry(finalEntry, type);
+    const formData = { fields: fields || {}, sessionId, userId };
+    
+    // Validate template requirements
+    const validation = validateTemplateRequirements(template, formData);
+    if (!validation.valid) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_FAILED',
+        missing_requirements: validation.missing,
+        message: 'Template requirements not met',
+        required_fields: template.fields?.filter(f => f.required).map(f => ({ id: f.id, label: f.label })) || []
+      });
+    }
+    
     const seal = computeSealExact(finalEntry, gregorian, hebrew, dreamspell, unixUtc);
-    const templateKey = selectTemplate(finalEntry, type);
-    const ledgerFile = ledgerFileName(templateKey, gregorian, seal);
+    const ledgerFile = ledgerFileName(template.id, gregorian, seal);
     
     const stamp = { gregorian, hebrew, dreamspell, unixUtc, seal, ledgerFile };
     
     const ledgerData = {
       protocol: 'SOVEREIGN-TRACE-PROTOCOL',
       stamp_version: 'FROZEN-2.0',
-      template: templateKey,
-      template_name: SEAL_TEMPLATES[templateKey].label,
+      template: template.id,
+      template_name: template.name,
+      template_category: template.category,
       entry: finalEntry,
+      fields: fields || {},
       gregorian,
       hebrew,
       dreamspell,
@@ -354,7 +518,7 @@ export default async function handler(req, res) {
     if (process.env.GITHUB_TOKEN) {
       try {
         [issueUrl, ledgerPath] = await Promise.all([
-          createGitHubIssueForSeal(templateKey, finalEntry, stamp, { sessionId, userId }),
+          createGitHubIssueForSeal(template, finalEntry, stamp, { sessionId, userId }, formData),
           createLedgerFileForSeal(ledgerFile, ledgerData)
         ]);
       } catch (err) {
@@ -368,13 +532,15 @@ export default async function handler(req, res) {
         await getSupabase().from('stp_seals').insert({
           seal,
           entry: finalEntry,
-          template: templateKey,
+          template: template.id,
+          template_name: template.name,
           gregorian,
           hebrew,
           dreamspell,
           unix_utc: unixUtc,
           session_id: sessionId,
           user_id: userId,
+          fields: fields || {},
           ip_hash: ledgerData.ip_hash,
           github_issue_url: issueUrl,
           ledger_path: ledgerPath
@@ -391,14 +557,17 @@ export default async function handler(req, res) {
       hebrew,
       dreamspell,
       unix_utc: unixUtc,
-      template: templateKey,
-      template_name: SEAL_TEMPLATES[templateKey].label,
+      template: template.id,
+      template_name: template.name,
+      template_category: template.category,
       ledger_file: ledgerFile,
       issue_url: issueUrl,
       ledger_path: ledgerPath,
       github_error: githubError,
       retention_days: RETENTION_DAYS,
-      jurisdiction: JURISDICTION
+      jurisdiction: JURISDICTION,
+      validation_passed: validation.valid,
+      request_id: requestId
     });
 
   } catch (err) {
@@ -406,7 +575,8 @@ export default async function handler(req, res) {
     return res.status(500).json({
       error: 'SEAL_ERROR',
       message: err.message,
-      success: false
+      success: false,
+      request_id: requestId
     });
   }
 }
