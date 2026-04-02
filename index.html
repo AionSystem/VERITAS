@@ -1523,29 +1523,39 @@ function switchView(view) {
   console.log('[VERITAS] Switching to view:', view);
   STATE.currentView = view;
   
-  // Get all views
+  // Get all view elements
   const reportView = document.getElementById('viewReport');
   const rescueView = document.getElementById('viewRescue');
   const respondView = document.getElementById('viewRespond');
   
-  // Toggle visibility
+  // Get all tab buttons
+  const navReport = document.getElementById('navReport');
+  const navRescue = document.getElementById('navRescue');
+  const navRespond = document.getElementById('navRespond');
+  
+  // Toggle view visibility
   if (reportView) reportView.classList.toggle('active', view === 'report');
   if (rescueView) rescueView.classList.toggle('active', view === 'rescue');
   if (respondView) respondView.classList.toggle('active', view === 'respond');
   
-  // Toggle tab buttons
-  document.getElementById('navReport')?.classList.toggle('active', view === 'report');
-  document.getElementById('navRescue')?.classList.toggle('active', view === 'rescue');
-  document.getElementById('navRespond')?.classList.toggle('active', view === 'respond');
+  // Toggle tab button active states
+  if (navReport) navReport.classList.toggle('active', view === 'report');
+  if (navRescue) navRescue.classList.toggle('active', view === 'rescue');
+  if (navRespond) navRespond.classList.toggle('active', view === 'respond');
   
+  // Special handlers for specific views
   if (view === 'rescue') {
     console.log('[VERITAS] Starting location tracking for rescue view');
     startLocationTracking();
   }
+  
   if (view === 'respond' && !STATE.respondAuth) {
     setTimeout(() => toast('Enter access code UNDP2026 to unlock dashboard'), 600);
   }
-  if (view === 'respond' && STATE.respondAuth) initRespondDashboard();
+  
+  if (view === 'respond' && STATE.respondAuth) {
+    initRespondDashboard();
+  }
 }
 function toast(msg,duration=2500){
   const container=document.getElementById('toastContainer');
