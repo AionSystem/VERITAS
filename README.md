@@ -1,8 +1,6 @@
 ![image-20](https://github.com/user-attachments/assets/d5fa7d01-8dce-469d-930b-54cd3ec0e5de)
 
-Here's the updated README with the VERITAS Ecosystem section changed to reflect the new "I Need Rescue" feature instead of AION.CERTIFY and CERTUS.AI:
 
-```markdown
 # VERITAS — Community Damage Certification Platform
 
 <!-- STATUS · VERSION · COMPLIANCE -->
