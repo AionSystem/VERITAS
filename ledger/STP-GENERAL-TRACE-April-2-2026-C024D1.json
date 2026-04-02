@@ -1,0 +1,23 @@
+{
+  "protocol": "SOVEREIGN-TRACE-PROTOCOL",
+  "stamp_version": "VERITAS-INTEGRATED",
+  "template_name": "VERITAS-EXPORT",
+  "entry": "VERITAS Export\nTimestamp: 2026-04-02T16:41:17.657Z\nReports: 5\nDataset SHA-256: 44d91464ceb24333db1a922e1c119a4719c8c6f23066de108b600e0a9bf5a5bd\nPowered by CERTUS Engine v2.5\n\nServer Timestamp: 2026-04-02T16:41:19.154Z\nSealed by: VERITAS Platform\nSeal ID: 1775148079153-2-ohb969",
+  "fields": {
+    "reports_count": 5,
+    "dataset_hash": "44d91464ceb24333db1a922e1c119a4719c8c6f23066de108b600e0a9bf5a5bd",
+    "export_timestamp": "2026-04-02T16:41:17.657Z"
+  },
+  "gregorian": "April 2, 2026",
+  "hebrew": "15 Nisan 5786",
+  "dreamspell": "Day 27, Solar Moon 9/13",
+  "unix_utc": 1775148079,
+  "seal": "c024d1e086b4a00f99dc8d8f172ab82ed03c3f9daaac303bd979b5100ec92f1a",
+  "session_id": "veritas-export-2026-04-02T16:41:17.657Z",
+  "user_id": null,
+  "ip_hash": "47f07a5465b2c45e",
+  "sealed_at": "2026-04-02T16:41:19.154Z",
+  "jurisdiction": "New York State, USA",
+  "terms_version": "2026-03-30-v3",
+  "request_id": "1775148079153-2-ohb969"
+}
