@@ -726,20 +726,34 @@ const translations = {
 let currentLang = 'en';
 function setLanguage(lang) {
   currentLang = lang;
+  
+  // Update all elements with data-i18n attribute
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     if (translations[lang] && translations[lang][key] !== undefined) {
       if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-        if (el.getAttribute('placeholder')) el.placeholder = translations[lang][key];
-        else el.value = translations[lang][key];
+        if (el.getAttribute('placeholder')) {
+          el.placeholder = translations[lang][key];
+        } else {
+          el.value = translations[lang][key];
+        }
       } else {
         el.innerHTML = translations[lang][key];
       }
     }
   });
+  
+  // Update language buttons active state
   document.querySelectorAll('.lang-btn').forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
   });
+  
+  // Update mobile language row as well
+  document.querySelectorAll('#mobileLangRow .lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+  });
+  
+  console.log('[VERITAS] Language set to:', lang);
 }
 // FIX #7 — build lang buttons in both desktop and mobile containers
 function buildLangSelector() {
