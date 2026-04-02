@@ -762,6 +762,7 @@ function buildLangSelector() {
     document.getElementById('langSelector'),
     document.getElementById('mobileLangRow')
   ];
+  
   containers.forEach(container => {
     if (!container) return;
     container.innerHTML = '';
@@ -774,6 +775,7 @@ function buildLangSelector() {
       container.appendChild(btn);
     });
   });
+  
   setLanguage('en');
 }
 
