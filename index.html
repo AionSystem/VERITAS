@@ -1254,9 +1254,9 @@ async function initRespondDashboard() {
   const reports=await dbGetAll();
   const versioned=versionedReports(reports);
   updateDashboardCounts(versioned);
-  // FIX #3 — always re-plot, don't rely on initRespondMap's early-return
   if (!STATE.respondMap) {
     initRespondMap(versioned);
+    enableRespondMapClick(); // Add this line here
   } else {
     plotReports(versioned);
   }
@@ -1265,14 +1265,17 @@ async function initRespondDashboard() {
   updateExportPreview(versioned);
 }
 function initRespondMap(reports) {
-  if (STATE.respondMap) { plotReports(reports); return; }
+  if (STATE.respondMap) { 
+    plotReports(reports); 
+    return; 
+  }
+  
   STATE.respondMap = L.map('respondMap', { zoomControl: true, attributionControl: false });
   const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' });
   const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri', maxZoom: 18 });
   street.addTo(STATE.respondMap);
   L.control.layers({ 'Street': street, 'Satellite': satellite }).addTo(STATE.respondMap);
   STATE.respondMap.setView(CONFIG.MAP_CENTER, CONFIG.MAP_ZOOM);
-  enableRespondMapClick(); // <-- This line should be separate
   
   // Fix for black screen: when the base layer changes, force map redraw
   STATE.respondMap.on('baselayerchange', function() {
@@ -1286,6 +1289,7 @@ function initRespondMap(reports) {
   
   plotReports(reports);
 }
+
 function enableRespondMapClick() {
   if (!STATE.respondMap) return;
   // Remove any existing click handler to avoid duplicates
@@ -1293,7 +1297,6 @@ function enableRespondMapClick() {
   STATE.respondMap.on('click', async (e) => {
     const lat = e.latlng.lat;
     const lng = e.latlng.lng;
-    // Ask for damage level (minimal/partial/complete) and infrastructure type
     const damage = prompt('Enter damage level (minimal, partial, complete):');
     if (!damage || !['minimal','partial','complete'].includes(damage)) {
       toast('Invalid damage level. Report cancelled.');
@@ -1304,7 +1307,6 @@ function enableRespondMapClick() {
       toast('Infrastructure type required. Report cancelled.');
       return;
     }
-    // Build a minimal report
     const uuid = generateUUID();
     const timestamp = new Date().toISOString();
     const report = {
@@ -1318,14 +1320,11 @@ function enableRespondMapClick() {
       photoAiConf: 0.5,
       synced: false
     };
-    // Score it (use safeCERTUSScore)
     const certus = safeCERTUSScore(report, [], false);
     report.dci = certus.dci;
     report.dciTier = certus.tier;
-    // Save to IndexedDB
     await dbPut(report);
     STATE.reports.push(report);
-    // Refresh dashboard
     initRespondDashboard();
     toast('Report added manually!');
   });
