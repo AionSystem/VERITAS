@@ -204,7 +204,8 @@ VERITAS is a community‑operated platform for sudden‑onset crises that combin
 3. Every report, every rescue signal, and every export is permanently sealed with a cryptographic timestamp. The data chain is verifiable end-to-end.
 
 - **Live Demo:** [aionsystem.github.io/VERITAS](https://aionsystem.github.io/VERITAS)
-- **2‑Minute Video:** [![YOUTUBE](https://img.shields.io/badge/youtube.com/shorts/b5FYk3HNW54?feature=share-4285F4?style=flat-square)](https://youtube.com/shorts/b5FYk3HNW54?feature=share)
+- **2‑Minute Video:**
+[![YouTube Video](https://img.shields.io/badge/YouTube-VERITAS_Demo-red?style=flat-square&logo=youtube&logoColor=white)](https://youtube.com/shorts/b5FYk3HNW54)
 
 [![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
