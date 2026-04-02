@@ -5,7 +5,7 @@
 
 <!-- STATUS · VERSION · COMPLIANCE -->
 [![Status](https://img.shields.io/badge/STATUS-Production-1976D2?style=flat-square)](https://github.com/AionSystem/VERITAS)
-[![Version](https://img.shields.io/badge/version-v2.5.1-orange)](#)
+[![Version](https://img.shields.io/badge/version-v2.5.3-orange)](#)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](#)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Commercial License](https://img.shields.io/badge/Commercial-License%20Available-orange)](COMMERCIAL-LICENSE.md)
@@ -14,13 +14,13 @@
 [![DOI](https://zenodo.org/badge/1198800128.svg)](https://doi.org/10.5281/zenodo.19373724)
 
 <!-- CORE ARCHITECTURE -->
-[![CERTUS Engine](https://img.shields.io/badge/CERTUS-v2.5-4ade80?style=flat-square)](https://github.com/AionSystem/VERITAS)
+[![CERTUS Engine](https://img.shields.io/badge/CERTUS-v2.5.3-4ade80?style=flat-square)](https://github.com/AionSystem/VERITAS)
 [![STP](https://img.shields.io/badge/STP-Integrated-2E7D32?style=flat-square&logo=git&logoColor=white)](https://github.com/AionSystem/SOVEREIGN-TRACE-PROTOCOL)
 [![STP Templates](https://img.shields.io/badge/STP-16_Templates-2E7D32?style=flat-square)](https://github.com/AionSystem/SOVEREIGN-TRACE-PROTOCOL)
 [![Seal](https://img.shields.io/badge/Seal-SHA--256%20Bound-4527A0?style=flat-square&logo=hashnode&logoColor=white)](https://github.com/AionSystem/VERITAS)
 
 <!-- TECH STACK -->
-[![OpenRouter](https://img.shields.io/badge/OpenRouter-Claude_3.5_Sonnet_+_DeepSeek-4285F4?style=flat-square)](https://openrouter.ai)
+[![OpenRouter](https://img.shields.io/badge/OpenRouter-GPT--4o--mini_+_Claude_3.5_Sonnet-4285F4?style=flat-square)](https://openrouter.ai)
 [![Made with TensorFlow.js](https://img.shields.io/badge/Made%20with-TensorFlow.js-FF6F00?style=flat&logo=tensorflow&logoColor=white)](#)
 [![Made with JavaScript](https://img.shields.io/badge/Made%20with-JavaScript-yellow)](#)
 [![Made with HTML](https://img.shields.io/badge/Made%20with-HTML-red)](#)
@@ -100,14 +100,14 @@ For full Supabase sync and deployment, see [Installation & Deployment](#installa
 
 ## Repository Structure
 
-> Key files for evaluators: `public/certus-engine-v2.5.js` (scoring logic) · `public/index.html` (full platform) · `CERTUS.md` (engine documentation) · `VERITAS_UNDP_COMPLIANCE.md` (full compliance audit) · `docs/dci-formula.md` (DCI formula derivation)
+> Key files for evaluators: `public/certus-engine-v2_5_3.js` (scoring logic) · `public/index.html` (full platform) · `CERTUS.md` (engine documentation) · `VERITAS_UNDP_COMPLIANCE.md` (full compliance audit) · `docs/dci-formula.md` (DCI formula derivation)
 
 ```
 VERITAS/
 ├── public/                         ← All static frontend assets
 │   ├── index.html                  ← Main VERITAS interface
-│   ├── certus-engine-v2.5.js       ← CERTUS Engine (scoring logic)
-│   ├── ai-analysis.js              ← OpenRouter AI integration (Claude + DeepSeek)
+│   ├── certus-engine-v2_5_3.js     ← CERTUS Engine v2.5.3 (scoring logic)
+│   ├── ai-analysis.js              ← OpenRouter AI integration (GPT-4o-mini + Claude 3.5 Sonnet)
 │   ├── manifest.json               ← PWA manifest
 │   ├── sw.js                       ← Service Worker (offline capability)
 │   └── icons/                      ← App icons for PWA
@@ -147,7 +147,7 @@ VERITAS/
 ├── model/                          ← TensorFlow.js model files (offline AI)
 │   └── xbd-model/                  ← xBD disaster damage model
 │
-├── CERTUS.md                       ← CERTUS Engine v2.5 documentation
+├── CERTUS.md                       ← CERTUS Engine v2.5.3 documentation
 ├── NOTICE
 ├── COMMERCIAL-LICENSE.md
 ├── TEST_SUITE_VERITAS.md           ← Test suite documentation
@@ -212,13 +212,13 @@ VERITAS is a community‑operated platform for sudden‑onset crises that combin
 
 ## The CERTUS Engine
 
-The CERTUS Engine is the core of VERITAS — an epistemic scoring system that tells responders how much to trust each report.
+The CERTUS Engine (v2.5.3) is the core of VERITAS — an epistemic scoring system that tells responders how much to trust each report, and how much to trust the trust score itself.
 
 ### Scoring Dimensions
 
 | Dimension | Weight | Description |
 |-----------|--------|-------------|
-| Photo Evidence Score (PES) | 35% | AI analysis via OpenRouter (Claude/DeepSeek) with confidence gate |
+| Photo Evidence Score (PES) | 35% | AI analysis via OpenRouter with graduated model trust (see below) |
 | Corroboration Score (COR) | 30% | Agreement with other reports within 50m |
 | Temporal Freshness (TFR) | 20% | Linear decay over 48 hours |
 | Classification Consistency (CCI) | 15% | Cross-category logic checks |
@@ -252,28 +252,45 @@ Every DCI score carries an Uncertainty Mass (UM) — a measure of how much the s
 
 > SUSPENDED reports (DCI < 0.40) remain visible on the responder dashboard with a red pin and a field-verify prompt. They are never silently dropped — their presence is itself information.
 
+### Graduated Photo Model Trust (v2.5.3)
+
+The CERTUS Engine does not assume any AI model is trustworthy without a declaration. Instead, it uses a **graduated model trust score** [0.0–1.0] derived from calibration evidence, which directly reduces the PES uncertainty penalty as ground truth accumulates.
+
+| Trust Score | Calibration Status | PES UM Penalty | Measurement Class |
+|------------|-------------------|----------------|-------------------|
+| 0.0 | UNCALIBRATED (no ground truth) | 0.20 | INFERENTIAL |
+| 0.01–0.59 | PARTIAL (1–49 validated reports) | 0.08–0.20 | EVALUATIVE_PARTIAL |
+| 0.60–0.85 | PARTIAL (50–249 validated reports) | 0.03–0.08 | EVALUATIVE_PARTIAL |
+| 1.0 | VERIFIED (formally calibrated) | 0.00 | EVALUATIVE_CERTIFIED |
+
+This means the engine is honest about what it doesn't know now, and automatically becomes more confident as evidence accumulates — without requiring any code changes. The trust score is declared at initialization, logged to the audit trail, and surfaced in every scored output.
+
+Current deployment: `openrouter/gpt-4o-mini+claude-3.5-sonnet` registered as UNCALIBRATED. Full UM penalty applies. Every scored report declares this explicitly.
+
 [![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
 ---
 
 ## AI Photo Analysis — OpenRouter Integration
 
-VERITAS uses OpenRouter to access state-of-the-art AI models for damage assessment, with graceful fallback to ensure offline capability.
+VERITAS uses OpenRouter to access AI models for damage assessment, with graceful fallback to ensure continuity.
 
 ### Model Configuration
 
 | Priority | Model | Purpose |
 |----------|-------|---------|
-| Primary | Claude 3.5 Sonnet (Anthropic) | High‑accuracy damage assessment |
-| Fallback | DeepSeek | Backup if primary fails or offline |
+| Primary | GPT-4o-mini (OpenAI via OpenRouter) | Fast, cost-efficient damage assessment |
+| Fallback | Claude 3.5 Sonnet (Anthropic via OpenRouter) | Higher-accuracy fallback if primary fails |
 
 ### How It Works
 
 1. User captures photo → Canvas strips EXIF metadata
 2. Image sent to OpenRouter API with structured prompt
 3. AI returns: damage level, confidence score, description
-4. CERTUS Engine uses confidence score for PES dimension
+4. CERTUS Engine applies graduated trust scoring to the confidence value for the PES dimension
 5. If API unavailable → falls back to mock analysis (offline mode)
+
+> The engine registers the full OpenRouter endpoint (primary + fallback) as a single declared model. When ground truth validation data becomes available, `updateModelCalibration()` is called to reduce the PES uncertainty penalty without any code changes.
 
 [![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
@@ -365,7 +382,7 @@ Anyone can verify a sealed dataset by:
 | App Shell | PWA (HTML + Service Worker) | Offline‑first, installable |
 | Local Storage | IndexedDB | Survives offline, syncs when back online; unsynced reports persist indefinitely until connection restored |
 | Maps | Leaflet.js + OpenStreetMap | Free, open source, offline tiles |
-| AI Analysis | OpenRouter (Claude 3.5 + DeepSeek) | High accuracy, multiple models |
+| AI Analysis | OpenRouter (GPT-4o-mini primary, Claude 3.5 Sonnet fallback) | Cost-efficient with high-accuracy fallback |
 | Offline AI | TensorFlow.js + xBD model | Local inference when offline |
 | Backend Sync | Supabase | Real‑time, row‑level security |
 | STP Ledger | GitHub Issues + API | Immutable, verifiable, permanent within GitHub platform |
@@ -459,20 +476,37 @@ cd VERITAS
 - Get your API key
 - On first use, the app will prompt for the key (stored locally)
 
-### 3. Configure Supabase (optional)
+### 3. Register the photo model at initialization
+
+```javascript
+await CERTUS.initialize(supabaseUrl, supabaseKey, {
+  photoModel: {
+    id: 'openrouter/gpt-4o-mini+claude-3.5-sonnet',
+    type: 'openrouter',
+    calibration_status: 'UNCALIBRATED',
+    calibration_samples: 0,
+    calibration_dataset: 'Primary: openai/gpt-4o-mini, Fallback: anthropic/claude-3-5-sonnet',
+    registered_by: 'certus-deployment'
+  }
+})
+```
+
+As ground truth validation data accumulates, call `CERTUS.updateModelCalibration(n, 'PARTIAL')` — no code changes required.
+
+### 4. Configure Supabase (optional)
 
 - Create a free Supabase project
 - Run `supabase/schema.sql` to create the reports table
 - In `public/index.html`, set `USE_SUPABASE: true`
 
-### 4. Deploy to Vercel
+### 5. Deploy to Vercel
 
 ```bash
 npm install -g vercel
 vercel --prod
 ```
 
-### 5. Deploy STP service (separate project)
+### 6. Deploy STP service (separate project)
 
 The STP seal service runs independently with 16 templates:
 
@@ -515,9 +549,8 @@ For commercial licensing inquiries: [aionsystem@outlook.com](mailto:aionsystem@o
 - OpenRouter — unified AI API
 - Leaflet.js — maps
 - Supabase — backend sync
-- GPT-4o-mini — primary damage assessment
-- Claude 3.5 Sonnet — fallback AI model
-- DeepSeek — fallback AI model
+- GPT-4o-mini (OpenAI) — primary damage assessment model
+- Claude 3.5 Sonnet (Anthropic) — fallback damage assessment model
 
 [![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
@@ -529,6 +562,6 @@ This is an application of the AION Constitutional Stack — applied to community
 
 ---
 
-CERTUS Engine v2.5 — Ready for UNDP evaluation.
+CERTUS Engine v2.5.3 — Ready for UNDP evaluation.
 STP Template Registry — 16 permanent seal types.
 VERITAS — Every report sealed. Every rescue signal prioritized. Every export verifiable.
