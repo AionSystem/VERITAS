@@ -1266,23 +1266,26 @@ async function initRespondDashboard() {
 }
 function initRespondMap(reports) {
   if (STATE.respondMap) { plotReports(reports); return; }
-  STATE.respondMap=L.map('respondMap',{zoomControl:true,attributionControl:false});
-  const street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'});
-  const satellite=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'© Esri',maxZoom:18});
+  STATE.respondMap = L.map('respondMap', { zoomControl: true, attributionControl: false });
+  const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' });
+  const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri', maxZoom: 18 });
   street.addTo(STATE.respondMap);
-  L.control.layers({'Street':street,'Satellite':satellite}).addTo(STATE.respondMap);
-  STATE.respondMap.setView(CONFIG.MAP_CENTER,CONFIG.MAP_ZOOM) enableRespondMapClick();
-  plotReports(reports);
-}
+  L.control.layers({ 'Street': street, 'Satellite': satellite }).addTo(STATE.respondMap);
+  STATE.respondMap.setView(CONFIG.MAP_CENTER, CONFIG.MAP_ZOOM);
+  enableRespondMapClick(); // <-- This line should be separate
+  
   // Fix for black screen: when the base layer changes, force map redraw
   STATE.respondMap.on('baselayerchange', function() {
-  setTimeout(() => {
-    STATE.respondMap.invalidateSize();
-  }, 100);
-});
+    setTimeout(() => {
+      STATE.respondMap.invalidateSize();
+    }, 100);
+  });
   STATE.respondMap.on('layeradd', function() {
-  STATE.respondMap.invalidateSize();
-});
+    STATE.respondMap.invalidateSize();
+  });
+  
+  plotReports(reports);
+}
 function enableRespondMapClick() {
   if (!STATE.respondMap) return;
   // Remove any existing click handler to avoid duplicates
