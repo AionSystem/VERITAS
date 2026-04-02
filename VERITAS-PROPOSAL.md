@@ -6,7 +6,8 @@
 [![DOI](https://zenodo.org/badge/1194238160.svg)](https://doi.org/10.5281/zenodo.19295266)
 [![TRL](https://img.shields.io/badge/TRL-7%20Operational%20Prototype-1976D2?style=flat-square)](https://github.com/AionSystem/VERITAS)
 [![Live Demo](https://img.shields.io/badge/Demo-Live%20%7C%20UNDP2026-4ade80?style=flat-square)](https://aionsystem.github.io/VERITAS)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/AionSystem/VERITAS/blob/main/LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![Commercial License](https://img.shields.io/badge/Commercial-License%20Available-orange)](COMMERCIAL-LICENSE.md)
 [![Compliance Audit](https://img.shields.io/badge/Compliance-27%2F27%20Requirements-2E7D32?style=flat-square)](VERITAS_UNDP_COMPLIANCE.md)
 
 ---
@@ -70,7 +71,7 @@ Every report receives a **Damage Confidence Index (DCI)** — a composite score 
 
 | Dimension | Weight | Method |
 |-----------|--------|--------|
-| Photo Evidence Score (PES) | 35% | TensorFlow.js, offline-capable, confidence-gated at ≥0.60 |
+| Photo Evidence Score (PES) | 35% | AI analysis via OpenRouter (Claude 3.5 Sonnet / DeepSeek) with confidence gate |
 | Corroboration Score (COR) | 30% | Agreement within 50 meters; neutral for single reports, penalized for contradictions |
 | Temporal Freshness (TFR) | 20% | Linear decay over 48 hours |
 | Classification Consistency (CCI) | 15% | Cross-category logic check |
@@ -79,9 +80,9 @@ The DCI maps to three tiers:
 
 | DCI Range | Status | Pin | Action |
 |-----------|--------|-----|--------|
-| ≥ 0.70 | 🟢 High Confidence | Green | Deploy resources |
-| 0.40–0.69 | 🟡 Watch | Amber | Verify locally |
-| < 0.40 | 🔴 Review Required | Red | Human verification before deployment |
+| ≥ 0.70 | 🟢 VALID | Green | Deploy resources |
+| 0.40–0.69 | 🟡 DEGRADED | Amber | Verify locally |
+| < 0.40 | 🔴 SUSPENDED | Red | Human verification before deployment |
 
 ### Submission Interface (`/report`)
 
@@ -95,7 +96,7 @@ The DCI maps to three tiers:
 
 - Confidence-coded map with real-time Supabase updates
 - Conflict flags and 48-hour timeline slider
-- DCI analytics dashboard (confidence distribution, High/Watch/Review counts)
+- DCI analytics dashboard (confidence distribution, VALID/DEGRADED/SUSPENDED counts)
 - One-click export: CSV, GeoJSON, Shapefile, and REST API — each with a SHA-256 integrity hash
 
 ### Versioning
@@ -108,7 +109,7 @@ The entire form is JSON-driven. New field sections are added without touching HT
 
 > *"Modular step architecture allows UNDP to add new form steps without structural changes."*
 
-The prototype is live, open source under MIT, and testable at [aionsystem.github.io/VERITAS](https://aionsystem.github.io/VERITAS).
+The prototype is live, open source under GPL-3.0, and testable at [aionsystem.github.io/VERITAS](https://aionsystem.github.io/VERITAS).
 
 [![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
@@ -196,7 +197,7 @@ Distribution requires coordination with local partners or UNDP's network. VERITA
 
 Coordinated false reports could attempt to elevate confidence scores for a target location.
 
-> **Mitigation:** Conflict detection is automatic — any two contradicting reports at the same address trigger a red flag and force human review, regardless of individual DCI scores. Volume alone cannot reach High Confidence; the corroboration formula penalizes contradictions explicitly.
+> **Mitigation:** Conflict detection is automatic — any two contradicting reports at the same address trigger a red flag and force human review, regardless of individual DCI scores. Volume alone cannot reach VALID status; the corroboration formula penalizes contradictions explicitly.
 
 ---
 
@@ -215,7 +216,7 @@ Supabase outages affect real-time sync and the responder dashboard.
 | Resource | Link |
 |----------|------|
 | **Live Prototype** (access code: `UNDP2026`) | [aionsystem.github.io/VERITAS](https://aionsystem.github.io/VERITAS) |
-| **Source Code** (MIT licensed) | [github.com/AionSystem/VERITAS](https://github.com/AionSystem/VERITAS) |
+| **Source Code** (GPL-3.0) | [github.com/AionSystem/VERITAS](https://github.com/AionSystem/VERITAS) |
 | **DOI** (Zenodo — permanent record) | [10.5281/zenodo.19295266](https://doi.org/10.5281/zenodo.19295266) |
 | **ORCID** (Sheldon K. Salmon) | [0009-0005-8057-5115](https://orcid.org/0009-0005-8057-5115) |
 | **Sovereign Trace Protocol** | [github.com/AionSystem/SOVEREIGN-TRACE-PROTOCOL](https://github.com/AionSystem/SOVEREIGN-TRACE-PROTOCOL) |
@@ -259,11 +260,11 @@ Within 30 minutes of crisis onset, VERITAS can be operational for community use:
 
 > *"The code is open source. The architecture is not replicable."*
 
-VERITAS is certainty engineering applied to community crisis data. The formula is published. The code is forked freely under MIT. What cannot be forked is the judgment that built it — the red-team testing, the confidence gate design, the decision to treat epistemic reliability as a first-class output rather than an assumption.
+VERITAS is certainty engineering applied to community crisis data. The formula is published. The code is forked freely under GPL-3.0. What cannot be forked is the judgment that built it — the red-team testing, the confidence gate design, the decision to treat epistemic reliability as a first-class output rather than an assumption.
 
 That judgment is the contribution. The competition is the occasion.
 
 ---
 
 *Proposal authored by Sheldon K. Salmon · AionSystem · Evans Mills, New York*
-*VERITAS v1.1.0 · CERTUS Engine v1.0 · April 2026*
+*VERITAS v2.5.1 · CERTUS Engine v2.5 · April 2026*
