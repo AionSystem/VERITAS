@@ -1,109 +1,110 @@
-# VERITAS Commercial Licensing
+# VERITAS Commercial License
+
+VERITAS — Community Damage Certification Platform  
+Copyright © 2026 Sheldon K. Salmon & ALBEDO
 
 ## Overview
 
-VERITAS is freely available under the GNU General Public License (GPL-3.0) for humanitarian, non-profit, and open-source use. 
+VERITAS is dual‑licensed under the GNU General Public License v3.0 (GPL‑3.0) and a separate Commercial License. The GPL‑3.0 license applies to all open‑source, humanitarian, academic, and government disaster agency use. The Commercial License is required for proprietary, closed‑source, or OEM integration that does not comply with GPL‑3.0 terms.
 
-For organizations that require proprietary use, closed-source integration, or cannot comply with GPL terms, **commercial licenses are available**.
+## UNDP Accelerator Lab Prize Context
+
+VERITAS was submitted to the **UNDP Accelerator Lab Prize** (April 2026) as an open‑source public good. The platform is designed to serve communities in crisis, humanitarian responders, and government disaster agencies.
+
+**UNDP, UN agencies, government disaster response organizations, and humanitarian NGOs may use, modify, and deploy VERITAS under the GPL‑3.0 license without any commercial licensing obligation.** The platform is a gift to the crisis response community.
+
+The Commercial License exists solely to enable sustainable funding through proprietary commercial use cases that fall outside GPL‑3.0 terms. Revenue from commercial licenses supports ongoing development and ensures the platform remains freely available to those who need it most.
+
+## When You Need a Commercial License
+
+You must obtain a Commercial License if:
+
+- You are a **commercial entity** (e.g., insurance company, private emergency management firm, real estate analytics provider) and you intend to **embed VERITAS in a proprietary, closed‑source product**.
+- You are a **hardware manufacturer** or **OEM** and you intend to **bundle VERITAS with devices** distributed under a non‑GPL license.
+- Your organization's policies **prohibit the use of GPL‑licensed software**.
+- You require **indemnification, warranty, or dedicated support** beyond community offerings.
+
+## When You Do NOT Need a Commercial License
+
+You may use VERITAS under the GPL‑3.0 **free of charge** if:
+
+- You are **UNDP, a UN agency, or an international humanitarian organization**.
+- You are a **government disaster response or emergency management agency**.
+- You are a **non‑profit, NGO, or community‑based organization** engaged in crisis response or recovery.
+- You are an **academic or research institution** using it for non‑commercial purposes.
+- You are a **tribal or Indigenous‑led organization** using it for community protection.
+- You are distributing your own software **under a GPL‑compatible open‑source license** and make the complete source code available.
+
+## License Summary
+
+| User Type | License | Fee |
+|-----------|---------|-----|
+| UNDP / UN Agencies | GPL‑3.0 | Free |
+| Government Disaster Agencies | GPL‑3.0 | Free |
+| Humanitarian NGOs / Non‑profits | GPL‑3.0 | Free |
+| Tribal / Indigenous Community Organizations | GPL‑3.0 | Free |
+| Academic / Research (non‑commercial) | GPL‑3.0 | Free |
+| Commercial (open‑source, GPL‑compliant) | GPL‑3.0 | Free |
+| Commercial (proprietary / closed‑source) | Commercial License | Fee |
+| OEM / Embedded / White‑label | Commercial License | Fee |
+
+## Commercial License Terms
+
+Commercial licenses are tailored to the specific use case and include:
+
+- **Perpetual right to use** VERITAS in proprietary products.
+- **No requirement to disclose source code** of the combined work.
+- **Optional support and maintenance agreements**.
+- **Indemnification** (available for enterprise licenses).
+
+Pricing is based on:
+
+- Number of users / devices / deployments.
+- Scope of integration (OEM, white‑label, internal tool).
+- Required support level.
+
+## How to Obtain a Commercial License
+
+Contact the copyright holder with the following information:
+
+- **Email:** [aionsystem@outlook.com](mailto:aionsystem@outlook.com)
+- **Subject:** VERITAS Commercial License Inquiry
+- **Include:**
+  - Organization name and jurisdiction.
+  - Intended use case (e.g., embedding in insurance claims platform, internal enterprise tool).
+  - Estimated number of users, devices, or deployments.
+  - Required support level (if any).
+
+A licensing specialist will respond within 2–3 business days with options and pricing.
+
+## Revenue Use
+
+All revenue from commercial licenses directly supports:
+
+- Ongoing development and maintenance of VERITAS.
+- Free access for UNDP, humanitarian organizations, and disaster agencies.
+- Documentation, training materials, and community resources.
+- Independent security audits and certification efforts.
+
+## Frequently Asked Questions
+
+**Q: I'm with UNDP or a government disaster agency. Do I need a commercial license?**  
+A: No. VERITAS was built for you. Use it freely under GPL‑3.0.
+
+**Q: I'm a private company that wants to use VERITAS internally for disaster preparedness. Do I need a commercial license?**  
+A: No. Internal use is permitted under GPL‑3.0 without any license fee or source disclosure obligation. You only need a commercial license if you distribute VERITAS as part of a proprietary product.
+
+**Q: I want to build a commercial SaaS platform that includes VERITAS. What license do I need?**  
+A: If your SaaS platform is closed‑source and you distribute the software to customers, you need a Commercial License. If you open‑source your entire platform under GPL‑3.0, you may use the GPL license.
+
+**Q: Can I charge for a service that uses VERITAS?**  
+A: Yes. The GPL‑3.0 does not restrict commercial use or SaaS offerings. You only need a commercial license if you distribute the software as part of a proprietary product or if you do not comply with GPL source‑code requirements.
+
+## Acknowledgments
+
+VERITAS is built on the AION Constitutional Stack, CERTUS Engine, and Sovereign Trace Protocol. The platform was designed for the UNDP Accelerator Lab Prize and is dedicated to communities facing sudden‑onset crises worldwide.
 
 ---
 
-## Who Needs a Commercial License?
-
-| Scenario | License Required |
-|----------|------------------|
-| Embedding VERITAS in a proprietary product | ✅ Commercial |
-| Using VERITAS in a closed-source system | ✅ Commercial |
-| Offering VERITAS as a paid service (without open-sourcing modifications) | ✅ Commercial |
-| Redistributing VERITAS with proprietary additions | ✅ Commercial |
-| White-labeling VERITAS under a different brand | ✅ Commercial |
-
-**These users do NOT need a commercial license:**
-- Humanitarian organizations (Red Cross, NGOs, etc.)
-- UN agencies (UNDP, UNICEF, etc.)
-- Government disaster management agencies
-- Academic and research institutions
-- Open-source projects complying with GPL
-
----
-
-## Commercial License Pricing
-
-| License Tier | Annual Fee | Best For | Includes |
-|--------------|------------|----------|----------|
-| **Startup** | $2,500 | Small companies, early-stage startups | Up to 10 users, standard email support, updates |
-| **Professional** | $7,500 | Mid-size organizations, regional deployment | Up to 50 users, priority support, training (1 session) |
-| **Enterprise** | $15,000 | Large organizations, national deployment | Unlimited users, dedicated support, SLA, custom training |
-| **OEM / Embedding** | Custom | Software vendors, OEM partners | Embedding rights, white-label, redistribution, source access |
-
-*Volume discounts available for multi-year commitments.*
-
----
-
-## What You Get with a Commercial License
-
-- ✅ Legal right to use VERITAS in proprietary products
-- ✅ Indemnification against IP claims
-- ✅ Priority technical support (SLA available)
-- ✅ Access to private development channel
-- ✅ Custom feature development (Enterprise+)
-- ✅ White-label rights (OEM+)
-- ✅ No requirement to open-source modifications
-
----
-
-## How to License
-
-1. **Contact:** aionsystem@outlook.com 
-2. **Include:**
-   - Organization name
-   - Number of users / deployments
-   - Intended use case
-   - Preferred license tier (if known)
-
-3. **Receive:**
-   - License agreement
-   - Invoice (if applicable)
-   - Access to commercial documentation
-
----
-
-## Why Commercial Licensing?
-
-100% of commercial licensing revenue supports:
-
-- **Free access** for humanitarian organizations
-- **Ongoing development** of VERITAS and CERTUS Engine
-- **Documentation** and training materials
-- **Community support** for all users
-- **UNDP challenge participation** and future competitions
-
----
-
-## License FAQ
-
-**Q: Can I use VERITAS in my commercial product for free?**  
-A: Only if your product is open source under GPL. For proprietary products, a commercial license is required.
-
-**Q: What if I use VERITAS internally for my business?**  
-A: Internal use for business operations requires a commercial license unless your business qualifies as humanitarian/non-profit.
-
-**Q: Can I try VERITAS before licensing?**  
-A: Yes. The GPL version is fully functional and can be evaluated for free. You only need a commercial license when you distribute or deploy proprietary versions.
-
-**Q: Do I need a license for a proof-of-concept?**  
-A: No. Evaluation and testing under GPL is permitted. Contact us when moving to production.
-
-**Q: What if I modify VERITAS for my own use?**  
-A: Under GPL, modifications must be shared if distributed. Commercial licenses allow private modifications without sharing.
-
----
-
-## Contact
-
-**Sheldon K. Salmon**  
-Creator, VERITAS & CERTUS Engine  
-sheldon@veritas.org  
-[GitHub](https://github.com/AionSystem/VERITAS)
-
-*Commercial licensing inquiries typically responded to within 2 business days.*
+*VERITAS — Certainty engineering dressed as a crisis tool.*  
+*Copyright © 2026 Sheldon K. Salmon & ALBEDO. All rights reserved.*
