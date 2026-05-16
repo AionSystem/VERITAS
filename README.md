@@ -5,7 +5,7 @@
 
 <!-- STATUS · VERSION · COMPLIANCE -->
 [![Status](https://img.shields.io/badge/STATUS-Production-1976D2?style=flat-square)](https://github.com/AionSystem/VERITAS)
-[![Version](https://img.shields.io/badge/version-v3.0.0-orange)](#)
+[![Version](https://img.shields.io/badge/version-v3.2.1-orange)](#)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](#)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Commercial License](https://img.shields.io/badge/Commercial-License%20Available-orange)](COMMERCIAL-LICENSE.md)
@@ -102,13 +102,13 @@ For full Supabase sync and deployment, see [Installation & Deployment](#installa
 
 ## Repository Structure
 
-> Key files for evaluators: `public/certus-engine-v3.0.0.js` (scoring logic) · `public/index.html` (full platform) · `CERTUS.md` (CERTUS Engine v3.0.0 documentation) · `VERITAS_UNDP_COMPLIANCE.md` (full compliance audit) · `docs/dci-formula.md` (DCI formula derivation)
+> Key files for evaluators: `public/certus-engine-v3.2.1.js` (scoring logic) · `public/index.html` (full platform) · `CERTUS.md` (CERTUS Engine v3.2.1 documentation) · `VERITAS_UNDP_COMPLIANCE.md` (full compliance audit) · `docs/dci-formula.md` (DCI formula derivation)
 
 ```
 VERITAS/
 ├── public/                         ← All static frontend assets
 │   ├── index.html                  ← Main VERITAS interface
-│   ├── certus-engine-v3.0.0.js     ← CERTUS Engine v3.0.0 (scoring logic)
+│   ├── certus-engine-v3.2.1.js     ← CERTUS Engine v3.2.1 (scoring logic)
 │   ├── ai-analysis.js              ← OpenRouter AI integration (GPT-4o-mini + Claude 3.5 Sonnet)
 │   ├── manifest.json               ← PWA manifest
 │   ├── sw.js                       ← Service Worker (offline capability)
@@ -213,9 +213,9 @@ VERITAS is a community-operated platform for sudden-onset crises that combines d
 
 ---
 
-## Engine Certification — v3.0.0
+## Engine Certification — v3.2.1
 
-CERTUS v3.0.0 is the first engine in the AION stack to undergo a complete **four-instrument adversarial audit**. The full stack — **PDE v0.3** (12-domain diagnostic), **EAE v0.3** (elimination mapping), **ANTI-FORGE v1.3** (15-role rejection council), and **CAL v0.3** (59 FTT checks across four layers) — ran against v2.5.2 in sequence, each instrument building on prior findings. All **25 findings** (1 FATAL · 2 CRITICAL · 7 HIGH · 10 MEDIUM · 5 LOW) were resolved in v3.0.0.
+CERTUS v3.2.1 is the first engine in the AION stack to undergo a complete **four-instrument adversarial audit**. The full stack — **PDE v0.3** (12-domain diagnostic), **EAE v0.3** (elimination mapping), **ANTI-FORGE v1.3** (15-role rejection council), and **CAL v0.3** (59 FTT checks across four layers) — ran against v2.5.2 in sequence, each instrument building on prior findings. All **25 findings** (1 FATAL · 2 CRITICAL · 7 HIGH · 10 MEDIUM · 5 LOW) were resolved in v3.0.0.
 
 ### Key Hardening Additions
 
