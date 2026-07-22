@@ -1562,12 +1562,17 @@ async function runAiAnalysis() {
   try {
     if (typeof AI_ANALYSIS !== 'undefined' && AI_ANALYSIS !== null) {
       const assessment = await AI_ANALYSIS.analyzePhoto(STATE.photo, STATE.infraType);
-      if (assessment.is_mock) statusText.innerHTML=`⚠️ AI offline — using fallback scoring. Confidence: ${Math.round(assessment.confidence*100)}%`;
-      else {
+      // [FIX AI-01 handling] the module now returns a NULL judgment when the AI backend
+      // is unreachable — no fabricated score/confidence. Display that honestly and let
+      // the engine score the photo as NOT_EVALUABLE rather than on invented numbers.
+      if (assessment.is_mock || assessment.score == null) {
+        statusText.innerHTML = '⚠️ AI analysis unavailable — photo will be scored without AI analysis';
+        STATE.photoAiScore = null; STATE.photoAiConf = null; STATE.photoAiModel = 'none';
+      } else {
         statusText.innerHTML=`✅ AI: ${assessment.damage_level} (${Math.round(assessment.score*100)}% severity) · Confidence: ${Math.round(assessment.confidence*100)}%`;
         if (assessment.confidence > 0.7 && assessment.internal_tier && !STATE.undpTier) { selectDamage(assessment.internal_tier); toast(`AI detected: ${assessment.damage_level}`, 2000); }
+        STATE.photoAiScore = assessment.score; STATE.photoAiConf = assessment.confidence; STATE.photoAiModel = assessment.model_used;
       }
-      STATE.photoAiScore = assessment.score; STATE.photoAiConf = assessment.confidence; STATE.photoAiModel = assessment.model_used;
     } else {
       statusText.innerHTML='⚠️ AI module not loaded — photo will be scored without AI analysis';
       STATE.photoAiScore = null;  // [FIX FE-08] no fabricated AI results — the engine
