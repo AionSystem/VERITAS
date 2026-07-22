@@ -1,0 +1,45 @@
+# .github/workflows/certus-ci.yml
+# CERTUS Engine CI — the gate that makes finding F-01 unrepeatable.
+# Runs on every push and PR: (1) the engine must parse, (2) the 21-check
+# runtime suite must pass. A non-parsing or claim-breaking engine cannot merge.
+
+name: CERTUS Engine CI
+
+on:
+  push:
+    paths:
+      - 'public/certus-engine-*.js'
+      - 'tests/**'
+      - '.github/workflows/certus-ci.yml'
+  pull_request:
+    paths:
+      - 'public/certus-engine-*.js'
+      - 'tests/**'
+
+jobs:
+  parse-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Parse check — the engine must be valid JavaScript
+        run: |
+          for f in public/certus-engine-*.js; do
+            echo "node --check $f"
+            node --check "$f"
+          done
+
+      - name: Runtime smoke suite — every documented mechanism must behave
+        run: node tests/certus-engine.smoke.test.js
+
+      - name: Fail on any FAIL line in suite output
+        run: |
+          node tests/certus-engine.smoke.test.js | tee /tmp/smoke.out
+          if grep -q '^FAIL' /tmp/smoke.out; then
+            echo '::error::Smoke suite reported FAIL lines'
+            exit 1
+          fi
