@@ -78,7 +78,7 @@ VERITAS is built on an engine whose core virtue is declared uncertainty. This se
 ### VERITAS is not
 
 - **A rescue service.** This is the most important boundary in this document. The "I Need Rescue" feature transmits a signal to the responder dashboard *of the deployment it is running on*. **A rescue signal is seen only if a responder organization has deployed this instance and is actively monitoring it.** VERITAS has no connection to 911, 112, or any emergency service. No rescue organization is currently operating a monitored deployment. A person in danger should always contact official emergency services first, by any available means. Until a deployment operator with a monitored dashboard and a stated response commitment stands behind an instance, the rescue feature is *signal infrastructure awaiting an operator* — not a channel to help.
-- **A guarantee that a signal was seen.** The current version has no acknowledgment receipt — the system can prove a signal was *sent and sealed*, not that a responder *saw* it. A signal-acknowledgment receipt (responder-side "seen at T," sealed via STP) is a declared engineering priority precisely because, for rescue signals, receipt-of-signal is the load-bearing capability. Until it ships, this gap is stated here rather than papered over.
+- **A guarantee that help is dispatched.** VERITAS can now prove a rescue signal was *seen* — a responder acknowledgment, sealed via STP (triple-time, tamper-evident), flows back to the sender's device and shows "a responder saw your signal at T." This proves *receipt of the signal*, and it is the load-bearing capability for rescue coordination. It does **not** prove that rescue has been *dispatched* — a seen signal is not a promise of help, and the sender-side notification says exactly that. The remaining honest boundary: acknowledgment depends on a responder actively monitoring the deployment (see the first bullet), and a signal reaches responders, never emergency services directly.
 - **A safety certification of the reports it scores.** A green pin means the report scored high confidence under the DCI model and its declared limitations — not that the underlying situation is independently verified.
 
 **The design consequence:** the platform's value is realized by a deployment operator — an NGO, a disaster agency, a coordination team — who commits to monitoring the dashboard. Everything below describes what that operator gets.
@@ -227,7 +227,7 @@ VERITAS is a community-operated platform for sudden-onset crises that combines d
 **How it works — three steps:**
 
 1. A community member submits a damage report or rescue signal from any device, online or offline. The CERTUS Engine scores it instantly.
-2. A responder operating the deployment opens the dashboard and sees a confidence-weighted map — green pins are actionable, red pins need field verification first. Rescue signals appear with critical priority.
+2. A responder operating the deployment opens the dashboard and sees a confidence-weighted map — green pins are actionable, red pins need field verification first. Rescue signals appear with critical priority, and a responder can **acknowledge** one — sealing a "seen at T" receipt that returns to the sender's device.
 3. Every report, every rescue signal, and every export is permanently sealed with a cryptographic timestamp. The data chain is verifiable end-to-end.
 
 > **Boundary reminder:** rescue signals reach the dashboard of the instance they were submitted to — see [What VERITAS Is — and What It Is Not](#what-veritas-is--and-what-it-is-not).
@@ -248,8 +248,8 @@ One version story, stated once, so a reviewer checking fixity finds no drift:
 |---|---|
 | **v2.5.2** | Audit target. The complete four-instrument adversarial audit — **PDE v0.3** (12-domain diagnostic), **EAE v0.3** (elimination mapping), **ANTI-FORGE v1.3** (15-role rejection council), and **CAL v0.3** (59 FTT checks across four layers) — ran against this version in sequence, each instrument building on prior findings. Result: **25 findings** (1 FATAL · 2 CRITICAL · 7 HIGH · 10 MEDIUM · 5 LOW). |
 | **v3.0.0** | All 25 findings resolved. Hardening additions below shipped in this version, and the scoring-output `version` field reflects the engine generation (`"3.0.0"` series). |
-| **v3.2.1** | **Current.** Incremental fixes and integration refinements on the v3.0.0 hardened base. This is the version in `public/certus-engine-v3.2.2.js` and documented in `CERTUS.md`. |
-| **v3.2.2** | — repair release: execution-level review, 19 findings resolved, engine execution-verified.
+| **v3.2.1** | Incremental fixes and integration refinements on the v3.0.0 hardened base. |
+| **v3.2.2** | **Current.** Repair release from an independent execution-level code review: 19 findings resolved (2 FATAL · 4 CRITICAL · 4 HIGH · 6 MEDIUM · 3 LOW), engine parse-checked and locked by a runtime test suite. This is the version in `public/certus-engine-v3.2.2.js` and documented in `CERTUS.md`. |
 > The audit certifies the v3.0.0 hardening baseline; v3.2.2 carries that baseline forward with incremental changes that have not yet been through a full re-audit. This distinction is stated so the audit claim attaches to exactly the version it examined.
 
 ### Key Hardening Additions (v3.0.0)
@@ -463,7 +463,7 @@ VERITAS is a unified platform with three core capabilities built into a single i
 | Feature | Purpose | Access |
 |---------|---------|--------|
 | Report Damage | Community damage reporting + DCI scoring | Public |
-| I Need Rescue | Rescue signal to the deployment's responder dashboard — see boundary in [What VERITAS Is — and What It Is Not](#what-veritas-is--and-what-it-is-not) | Public |
+| I Need Rescue | Rescue signal to the deployment's responder dashboard, with an STP-sealed acknowledgment receipt returned to the sender when a responder marks it seen — see boundary in [What VERITAS Is — and What It Is Not](#what-veritas-is--and-what-it-is-not) | Public |
 | Responder Dashboard | Confidence-weighted map + rescue coordination for the deployment operator | Demo access code (`UNDP2026`) — operator auth in real deployments |
 
 All three share the same design language, offline capability, and STP integration.
@@ -478,7 +478,7 @@ VERITAS integrates with the Sovereign Trace Protocol — a permanence infrastruc
 
 > **Permanence note:** Sealed records are filed as GitHub Issues on the STP ledger repository. This provides immutable timestamping within the constraints of the GitHub platform. If the STP GitHub API is unavailable at the time of submission, the seal is queued locally and filed on next successful connection — the report itself is never blocked.
 
-> **What the seal proves:** that this exact report or export existed at this moment and has not been altered since. It does not prove the report's content is accurate, and it does not prove a signal was seen by a responder — see the acknowledgment-receipt priority in [What VERITAS Is — and What It Is Not](#what-veritas-is--and-what-it-is-not).
+> **What the seal proves:** that this exact report, export, or rescue acknowledgment existed at this moment and has not been altered since. It does not prove the report's content is accurate, and it does not prove rescue was dispatched. For rescue signals, the responder's *acknowledgment* is itself STP-sealed — so "this signal was seen at T by this deployment" becomes a tamper-evident receipt, not an unverifiable claim (see [What VERITAS Is — and What It Is Not](#what-veritas-is--and-what-it-is-not)).
 
 ### How It Works
 
@@ -549,7 +549,7 @@ For a person trapped or in immediate danger who needs to send a rescue signal to
 - High-visibility red pin on responder map
 - Critical urgency flag in export data
 - Confirmation screen with location, instructions, and the monitoring boundary restated
-- Signal-acknowledgment receipt (responder "seen at T", STP-sealed) — declared engineering priority; until it ships, the system proves a signal was *sent and sealed*, not that it was *seen*
+- **Signal-acknowledgment receipt (built):** when a responder acknowledges the signal on the dashboard, an STP-sealed "seen at T by this deployment" receipt flows back to the sender's device, which shows *"a responder saw your signal."* Proves the signal was **seen** — never that rescue is dispatched, and the notification says so explicitly. Works cross-device via the shared backend, and on a single device via local storage (offline-safe)
 
 ---
 
@@ -560,7 +560,7 @@ For a coordination team member at a crisis operations desk who needs to triage i
 **Demo access code:** `UNDP2026` *(published for evaluation — real deployments use operator-managed authentication)*
 
 - Confidence map with color-coded pins (VALID/DEGRADED/SUSPENDED)
-- Rescue signals highlighted with 🆘 icon and priority status
+- Rescue signals highlighted with a pulsing 🆘 marker (rendered above damage pins) and an **Acknowledge — seen** action that seals a receipt back to the sender; the button states it confirms the signal was seen, not that rescue is dispatched
 - Real-time updates via Supabase subscription
 - Versioned reports — only the latest per location
 - Live confidence dashboard with DCI distribution
@@ -698,8 +698,8 @@ This is an application of the AION Constitutional Stack — applied to community
 
 <div align="center">
 
-CERTUS Engine v3.2.2 — hardened baseline v3.0.0, four-instrument audit complete, 25 findings resolved.
+CERTUS Engine v3.2.2 — hardened baseline v3.0.0, four-instrument audit plus independent execution review, 76 findings resolved · 0 open, engine execution-verified.
 STP Template Registry — 16 permanent seal types.
-VERITAS — Every report sealed. Every rescue signal prioritized on the deployment dashboard. Every export verifiable.
+VERITAS — Every report sealed. Every rescue signal prioritized — and its acknowledgment sealed and returned to the sender. Every export verifiable.
 
 </div>
