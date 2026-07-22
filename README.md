@@ -5,7 +5,7 @@
 
 <!-- STATUS · VERSION · COMPLIANCE -->
 [![Status](https://img.shields.io/badge/STATUS-Prototype--Predeployment-1976D2?style=flat-square)](https://github.com/AionSystem/VERITAS)
-[![Version](https://img.shields.io/badge/version-v3.2.1-orange)](#)
+[![Version](https://img.shields.io/badge/version-v3.2.2-orange)](#)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](#)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Commercial License](https://img.shields.io/badge/Commercial-License%20Available-orange)](COMMERCIAL-LICENSE.md)
@@ -14,7 +14,7 @@
 [![DOI](https://zenodo.org/badge/1198800128.svg)](https://doi.org/10.5281/zenodo.19373724)
 
 <!-- CORE ARCHITECTURE -->
-[![CERTUS Engine](https://img.shields.io/badge/CERTUS-v3.2.1-4ade80?style=flat-square)](https://github.com/AionSystem/VERITAS)
+[![CERTUS Engine](https://img.shields.io/badge/CERTUS-v3.2.2-4ade80?style=flat-square)](https://github.com/AionSystem/VERITAS)
 [![STP](https://img.shields.io/badge/STP-Integrated-2E7D32?style=flat-square&logo=git&logoColor=white)](https://github.com/AionSystem/SOVEREIGN-TRACE-PROTOCOL)
 [![STP Templates](https://img.shields.io/badge/STP-16_Templates-2E7D32?style=flat-square)](https://github.com/AionSystem/SOVEREIGN-TRACE-PROTOCOL)
 [![Seal](https://img.shields.io/badge/Seal-SHA--256%20Bound-4527A0?style=flat-square&logo=hashnode&logoColor=white)](https://github.com/AionSystem/VERITAS)
@@ -127,13 +127,13 @@ For full Supabase sync and deployment, see [Installation & Deployment](#installa
 
 ## Repository Structure
 
-> Key files for evaluators: `public/certus-engine-v3.2.1.js` (scoring logic) · `public/index.html` (full platform) · `CERTUS.md` (CERTUS Engine v3.2.1 documentation) · `VERITAS_UNDP_COMPLIANCE.md` (full compliance audit) · `docs/dci-formula.md` (DCI formula derivation)
+> Key files for evaluators: `public/certus-engine-v3.2.2.js` (scoring logic) · `public/index.html` (full platform) · `CERTUS.md` (CERTUS Engine v3.2.2 documentation) · `VERITAS_UNDP_COMPLIANCE.md` (full compliance audit) · `docs/dci-formula.md` (DCI formula derivation)
 
 ```
 VERITAS/
 ├── public/                         ← All static frontend assets
 │   ├── index.html                  ← Main VERITAS interface
-│   ├── certus-engine-v3.2.1.js     ← CERTUS Engine v3.2.1 (scoring logic)
+│   ├── certus-engine-v3.2.2.js     ← CERTUS Engine v3.2.2 (scoring logic)
 │   ├── ai-analysis.js              ← OpenRouter AI integration (GPT-4o-mini + Claude 3.5 Sonnet)
 │   ├── manifest.json               ← PWA manifest
 │   ├── sw.js                       ← Service Worker (offline capability)
@@ -174,7 +174,7 @@ VERITAS/
 ├── model/                          ← TensorFlow.js model files (offline AI)
 │   └── xbd-model/                  ← xBD disaster damage model (bundled, pending wiring)
 │
-├── CERTUS.md                       ← CERTUS Engine v3.2.1 documentation
+├── CERTUS.md                       ← CERTUS Engine v3.2.2 documentation
 ├── NOTICE
 ├── COMMERCIAL-LICENSE.md
 ├── TEST_SUITE_VERITAS.md           ← Test suite documentation
@@ -248,9 +248,9 @@ One version story, stated once, so a reviewer checking fixity finds no drift:
 |---|---|
 | **v2.5.2** | Audit target. The complete four-instrument adversarial audit — **PDE v0.3** (12-domain diagnostic), **EAE v0.3** (elimination mapping), **ANTI-FORGE v1.3** (15-role rejection council), and **CAL v0.3** (59 FTT checks across four layers) — ran against this version in sequence, each instrument building on prior findings. Result: **25 findings** (1 FATAL · 2 CRITICAL · 7 HIGH · 10 MEDIUM · 5 LOW). |
 | **v3.0.0** | All 25 findings resolved. Hardening additions below shipped in this version, and the scoring-output `version` field reflects the engine generation (`"3.0.0"` series). |
-| **v3.2.1** | **Current.** Incremental fixes and integration refinements on the v3.0.0 hardened base. This is the version in `public/certus-engine-v3.2.1.js` and documented in `CERTUS.md`. |
-
-> The audit certifies the v3.0.0 hardening baseline; v3.2.1 carries that baseline forward with incremental changes that have not yet been through a full re-audit. This distinction is stated so the audit claim attaches to exactly the version it examined.
+| **v3.2.1** | **Current.** Incremental fixes and integration refinements on the v3.0.0 hardened base. This is the version in `public/certus-engine-v3.2.2.js` and documented in `CERTUS.md`. |
+| **v3.2.2** | — repair release: execution-level review, 19 findings resolved, engine execution-verified.
+> The audit certifies the v3.0.0 hardening baseline; v3.2.2 carries that baseline forward with incremental changes that have not yet been through a full re-audit. This distinction is stated so the audit claim attaches to exactly the version it examined.
 
 ### Key Hardening Additions (v3.0.0)
 
@@ -698,7 +698,7 @@ This is an application of the AION Constitutional Stack — applied to community
 
 <div align="center">
 
-CERTUS Engine v3.2.1 — hardened baseline v3.0.0, four-instrument audit complete, 25 findings resolved.
+CERTUS Engine v3.2.2 — hardened baseline v3.0.0, four-instrument audit complete, 25 findings resolved.
 STP Template Registry — 16 permanent seal types.
 VERITAS — Every report sealed. Every rescue signal prioritized on the deployment dashboard. Every export verifiable.
 
