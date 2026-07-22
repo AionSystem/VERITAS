@@ -1,5 +1,16 @@
-// ==================== AI ANALYSIS MODULE v3.2.1 ====================
-// Integrated with CERTUS Engine v3.2.1
+// ==================== AI ANALYSIS MODULE v3.2.2 ====================
+// Integrated with CERTUS Engine v3.2.2
+//
+// v3.2.2 repair (independent review):
+//   AI-01  FATAL-class honesty fix: the backend-failure fallback no longer fabricates
+//          a random damage level/score/confidence. It returns a NULL judgment with
+//          is_mock:true, so the engine's genuine NOT_EVALUABLE path handles the photo
+//          instead of scoring an invented assessment. This was the last place in the
+//          photo->score pipeline where fabricated evidence could enter scoring.
+//   AI-02  tier strings aligned to the engine ('Minimal/No damage', no spaces)
+//   AI-03  request timeout added (AbortController) — no indefinite hang on stalled
+//          crisis-zone connections
+//   AI-05  version strings bumped to v3.2.2
 // Backend: Vercel serverless function (OpenRouter API)
 // API URL should be set to your deployed Vercel function
 
@@ -12,6 +23,19 @@ const AI_ANALYSIS = (() => {
   let HMAC_SECRET = null;
 
   // ─── INTERNAL HELPERS ─────────────────────────────────────────────────
+  // [AI-03] fetch with an abortable timeout — a stalled connection in a crisis
+  // zone must not hang the photo step forever. Timeout is treated as a failure,
+  // which now routes to the HONEST null fallback (AI-01), not a fabricated score.
+  async function _fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(id);
+    }
+  }
+
   // Generate HMAC‑SHA‑256 signature using Web Crypto API
   async function _generateHMAC(message, secret) {
     const encoder = new TextEncoder();
@@ -72,7 +96,7 @@ const AI_ANALYSIS = (() => {
         const headers = { 'Content-Type': 'application/json' };
         let timestamp = null;
 
-        // Add HMAC signature if secret is provided (matches CERTUS v3.2.1)
+        // Add HMAC signature if secret is provided (matches CERTUS v3.2.2)
         if (HMAC_SECRET) {
           timestamp = Date.now().toString();
           const signature = await _generateHMAC(timestamp + body, HMAC_SECRET);
@@ -80,12 +104,12 @@ const AI_ANALYSIS = (() => {
           headers['X-CERTUS-Signature'] = signature;
         }
 
-        // Execute request
-        const response = await fetch(API_URL, {
+        // Execute request (with timeout — AI-03)
+        const response = await _fetchWithTimeout(API_URL, {
           method: 'POST',
           headers,
           body
-        });
+        }, 15000);
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -98,7 +122,7 @@ const AI_ANALYSIS = (() => {
 
         // Map damage level to display text (matches CERTUS expected values)
         const damageMap = {
-          minimal: 'Minimal / No damage',
+          minimal: 'Minimal/No damage',
           partial: 'Partially damaged',
           complete: 'Completely damaged'
         };
@@ -129,38 +153,28 @@ const AI_ANALYSIS = (() => {
       }
     },
 
-    // Fallback when backend is unreachable (always returns a valid structure)
+    // Fallback when the backend is unreachable.
+    // [AI-01] HONEST NULL FALLBACK. Previously this invented a random damage level,
+    // score, and confidence — meaning a collapsed hospital and an intact building got
+    // the same random draw when the backend was down, and those fabricated numbers
+    // flowed into PES scoring. It now returns NO judgment: null score, null confidence,
+    // null damage level. The CERTUS v3.2.2 engine treats a photo with null analysis as
+    // NOT_EVALUABLE (the same way it handles a report with no photo at all) and scores
+    // honestly on the remaining evidence. A system must say "I could not analyze this,"
+    // never "here is a random guess dressed as an analysis."
     _fallback(errorMsg = null) {
-      // Deterministic pseudo‑random choice (not for cryptography, just fallback)
-      const random = Math.random();
-      let damage = 'partial';
-      if (random > 0.7) damage = 'complete';
-      if (random < 0.3) damage = 'minimal';
-
-      const damageMap = {
-        minimal: 'Minimal / No damage',
-        partial: 'Partially damaged',
-        complete: 'Completely damaged'
-      };
-      const tierMap = {
-        minimal: 'minimal',
-        partial: 'partial',
-        complete: 'complete'
-      };
-
-      // Generate a plausible score based on chosen damage level
-      let score = damage === 'complete' ? 0.85 : damage === 'partial' ? 0.55 : 0.25;
-      const confidence = 0.5 + Math.random() * 0.3;
-
       return {
         success: false,
-        damage_level: damageMap[damage],
-        internal_tier: tierMap[damage],
-        score,
-        confidence,
-        description: errorMsg || 'AI backend unavailable – using fallback scoring',
-        model_used: 'fallback',
+        damage_level: null,
+        internal_tier: null,
+        score: null,
+        confidence: null,
+        description: errorMsg
+          ? `AI analysis unavailable (${errorMsg}) — photo not scored by AI`
+          : 'AI analysis unavailable — photo not scored by AI',
+        model_used: 'none',
         is_mock: true,
+        analysis_available: false,
         error: errorMsg
       };
     },
@@ -208,7 +222,7 @@ const AI_ANALYSIS = (() => {
 })();
 
 // Initialisation log
-console.log('✅ AI Analysis module v3.2.1 loaded');
+console.log('✅ AI Analysis module v3.2.2 loaded');
 console.log('📡 Backend URL:', AI_ANALYSIS.getApiUrl());
 
 // Optional: set HMAC secret if available (from environment)
