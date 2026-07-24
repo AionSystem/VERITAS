@@ -1,10 +1,11 @@
 ![image-20](https://github.com/user-attachments/assets/d5fa7d01-8dce-469d-930b-54cd3ec0e5de)
 
 
-# VERITAS — Community Damage Certification Platform
+# VERITAS — Field Report Verification Platform
 
 <!-- STATUS · VERSION · COMPLIANCE -->
 [![Status](https://img.shields.io/badge/STATUS-Prototype--Predeployment-1976D2?style=flat-square)](https://github.com/AionSystem/VERITAS)
+[![Commercial Use](https://img.shields.io/badge/Commercial_Use-Dual--Licensed_·_No_Copyleft_Option-2E7D32?style=flat-square)](COMMERCIAL-LICENSE.md)
 [![Version](https://img.shields.io/badge/version-v3.2.2-orange)](#)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](#)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
@@ -27,14 +28,16 @@
 [![Made with HTML](https://img.shields.io/badge/Made%20with-HTML-red)](#)
 [![Feedback Welcome](https://img.shields.io/badge/Feedback-welcome-brightgreen)](https://github.com/AionSystem/VERITAS/issues/new/choose)
 
-> **Uncertainty engineering built into a crisis tool**
-> UNDP Accelerator Lab Prize — April 8 Webinar
+> **Most tools tell you what they think. This one tells you how much to believe it.**
+> Confidence scoring, uncertainty quantification, and tamper-evident sealing for community-sourced field data.
 
 ---
 
 ## Table of Contents
 
 - [Architect's Note on AI Use](#architects-note-on-ai-use)
+- [Who This Is For](#who-this-is-for)
+- [Licensing at a Glance](#licensing-at-a-glance)
 - [What VERITAS Is — and What It Is Not](#what-veritas-is--and-what-it-is-not)
 - [Quick Start](#quick-start)
 - [Repository Structure](#repository-structure)
@@ -43,7 +46,7 @@
 - [Engine Certification — Version Lineage](#engine-certification--version-lineage)
 - [The CERTUS Engine](#the-certus-engine)
 - [AI Photo Analysis](#ai-photo-analysis--openrouter-integration)
-- [UNDP Compliance Status](#undp-compliance-status)
+- [Requirements Provenance](#requirements-provenance)
 - [The VERITAS Ecosystem](#the-veritas-ecosystem)
 - [Sovereign Trace Protocol Integration](#sovereign-trace-protocol-integration)
 - [Technical Stack](#technical-stack)
@@ -57,9 +60,50 @@
 
 ## Architect's Note on AI Use
 
-This submission was designed, architected, and directed by Sheldon K. Salmon. AI tools (including large language models) were used as instruments — the same way a carpenter uses a saw. The intellectual core — the CERTUS Engine, the Damage Confidence Index, the four scoring dimensions, the validity thresholds, the STP integration, and the overall architectural vision — is wholly human-originated.
+VERITAS was designed, architected, and directed by Sheldon K. Salmon. AI tools (including large language models) were used as instruments — the same way a carpenter uses a saw. The intellectual core — the CERTUS Engine, the Damage Confidence Index, the four scoring dimensions, the validity thresholds, the STP integration, and the overall architectural vision — is wholly human-originated.
 
-UNDP explicitly noted that "submissions produced solely with generative AI are not of interest." VERITAS is not a generative AI output; it is a human-built system where AI serves as one of several tools (OpenRouter for photo analysis, TensorFlow.js for offline capability) under strict human oversight. Every line of code, every design decision, and every formula in the CERTUS Engine reflects human intent.
+VERITAS is not a generative AI output; it is a human-built system where AI serves as one of several tools (OpenRouter for photo analysis, TensorFlow.js for offline capability) under strict human oversight. Every line of code, every design decision, and every formula in the CERTUS Engine reflects human intent — and every one of them was adversarially reviewed before shipping.
+
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
+
+---
+
+## Who This Is For
+
+VERITAS solves one problem: **you are collecting reports from many people you cannot individually vouch for, and you have to decide which ones to act on.**
+
+That problem is not unique to disasters. Anywhere untrusted field reports drive real decisions, the same three needs appear — score the confidence, quantify the uncertainty in that score, and make the record tamper-evident afterward.
+
+| Deployment context | What VERITAS provides |
+|---|---|
+| **Humanitarian & disaster response** | Confidence-weighted damage map inside the critical response window; rescue-signal channel with sealed acknowledgment; offline-first for degraded connectivity |
+| **Insurance & loss adjustment** | Claimant-submitted photo evidence scored for corroboration and consistency; tamper-evident seal on every submission and export; a defensible audit trail when a claim is disputed |
+| **Municipal & infrastructure inspection** | Citizen-reported asset damage (roads, bridges, utilities) triaged by confidence rather than report volume; criticality weighting prioritizes life-safety infrastructure automatically |
+| **Utility outage & network assessment** | Distributed field reports on service condition, with correlated-report detection so five accounts of one outage don't read as five outages |
+| **Environmental & compliance monitoring** | Community-sourced condition reports with declared model limitations, so a regulator can see exactly what the scoring does and does not evaluate |
+| **Conflict & fragile-context monitoring** | GPS fuzzing, sensitive-location anonymization, and anonymous submission built in rather than bolted on |
+
+**The common requirement:** decisions get made on data whose reliability varies enormously, and the cost of acting on a wrong report is high. VERITAS makes that reliability explicit, per report, with the uncertainty stated alongside it.
+
+> **On domain fit — stated honestly.** The engine's scoring dimensions were built for physical-damage field assessment: the classification-consistency checks, event-aware decay curves, and cluster detection are shaped for that use. Deployments outside that shape (e.g. non-damage condition reporting) will want to recalibrate the classification logic — which the architecture supports through its declared configuration, but which is genuine work, not a config toggle. We would rather say that here than have you discover it in week three.
+
+[![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
+
+---
+
+## Licensing at a Glance
+
+**Short version: if GPL copyleft is a blocker for you, it does not have to be. A commercial license removes it.**
+
+| You are… | License | What it means |
+|---|---|---|
+| NGO, humanitarian org, government agency, academic, or open-source project | **GPL-3.0** | Free. Use it, modify it, deploy it. Derivative works stay open-source. |
+| A company integrating VERITAS into a proprietary or closed-source product | **Commercial** | Paid dual-license. **No copyleft obligation** — your codebase stays yours. |
+| Evaluating, testing, or running a pilot | **Either** | Evaluate freely under GPL-3.0. Licensing only matters at the point you ship a proprietary product. |
+
+The GPL-3.0 default exists to keep humanitarian and public-interest use free forever. It is not intended as a barrier to commercial adoption — the commercial license is available specifically so that copyleft never becomes the reason a useful deployment doesn't happen.
+
+Commercial licensing, integration support, or pilot enquiries: **[aionsystem@outlook.com](mailto:aionsystem@outlook.com)**
 
 [![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
@@ -71,14 +115,14 @@ VERITAS is built on an engine whose core virtue is declared uncertainty. This se
 
 ### VERITAS is
 
-- **Coordination infrastructure** — a deployable platform that collects damage reports and rescue signals, scores report confidence, and presents a confidence-weighted picture to whoever operates a deployment.
+- **Verification infrastructure** — a deployable platform that collects field reports (and, where configured, emergency signals), scores each report's confidence, quantifies the uncertainty in that score, and presents a confidence-weighted picture to whoever operates the deployment.
 - **A prototype at pre-deployment stage** — engineered to production standards (audited engine, offline capability, sealed data chains), but with no named operating deployment, no attached responder network, and no field-validated ground truth as of this version. The status badge says exactly this.
 - **Honest about its own scores** — every DCI carries an Uncertainty Mass; every scored report declares its assumptions and model limitations; suspended reports are shown, never silently dropped.
 
 ### VERITAS is not
 
 - **A rescue service.** This is the most important boundary in this document. The "I Need Rescue" feature transmits a signal to the responder dashboard *of the deployment it is running on*. **A rescue signal is seen only if a responder organization has deployed this instance and is actively monitoring it.** VERITAS has no connection to 911, 112, or any emergency service. No rescue organization is currently operating a monitored deployment. A person in danger should always contact official emergency services first, by any available means. Until a deployment operator with a monitored dashboard and a stated response commitment stands behind an instance, the rescue feature is *signal infrastructure awaiting an operator* — not a channel to help.
-- **A guarantee that help is dispatched.** VERITAS can now prove a rescue signal was *seen* — a responder acknowledgment, sealed via STP (triple-time, tamper-evident), flows back to the sender's device and shows "a responder saw your signal at T." This proves *receipt of the signal*, and it is the load-bearing capability for rescue coordination. It does **not** prove that rescue has been *dispatched* — a seen signal is not a promise of help, and the sender-side notification says exactly that. The remaining honest boundary: acknowledgment depends on a responder actively monitoring the deployment (see the first bullet), and a signal reaches responders, never emergency services directly.
+- **A guarantee that a signal was seen.** The current version has no acknowledgment receipt — the system can prove a signal was *sent and sealed*, not that a responder *saw* it. A signal-acknowledgment receipt (responder-side "seen at T," sealed via STP) is a declared engineering priority precisely because, for rescue signals, receipt-of-signal is the load-bearing capability. Until it ships, this gap is stated here rather than papered over.
 - **A safety certification of the reports it scores.** A green pin means the report scored high confidence under the DCI model and its declared limitations — not that the underlying situation is independently verified.
 
 **The design consequence:** the platform's value is realized by a deployment operator — an NGO, a disaster agency, a coordination team — who commits to monitoring the dashboard. Everything below describes what that operator gets.
@@ -114,10 +158,10 @@ That's it. You can now submit reports, explore the responder dashboard, and test
 **Responder Dashboard — Demo Access Code**
 
 ```
-UNDP2026
+DEMO2026
 ```
 
-> This is a **published demo code** for UNDP evaluators and reviewers — it is intentionally public and provides no security. A real deployment replaces it with operator-managed authentication; see [Anonymization & Safety](#anonymization--safety).
+> This is a **published demo code** so evaluators can explore the dashboard without setup — it is intentionally public and provides no security. A real deployment replaces it with operator-managed authentication; see [Anonymization & Safety](#anonymization--safety).
 
 For full Supabase sync and deployment, see [Installation & Deployment](#installation--deployment).
 
@@ -127,7 +171,7 @@ For full Supabase sync and deployment, see [Installation & Deployment](#installa
 
 ## Repository Structure
 
-> Key files for evaluators: `public/certus-engine-v3.2.2.js` (scoring logic) · `public/index.html` (full platform) · `CERTUS.md` (CERTUS Engine v3.2.2 documentation) · `VERITAS_UNDP_COMPLIANCE.md` (full compliance audit) · `docs/dci-formula.md` (DCI formula derivation)
+> Key files for evaluators: `public/certus-engine-v3.2.2.js` (scoring logic) · `public/index.html` (full platform) · `CERTUS.md` (engine documentation) · `docs/dci-formula.md` (DCI formula derivation) · `CHANGELOG.md` (release history)
 
 ```
 VERITAS/
@@ -178,8 +222,8 @@ VERITAS/
 ├── NOTICE
 ├── COMMERCIAL-LICENSE.md
 ├── TEST_SUITE_VERITAS.md           ← Test suite documentation
-├── VERITAS_UNDP_COMPLIANCE.md      ← Full UNDP compliance audit
-├── VERITAS-PROPOSAL.md             ← UNDP submission proposal
+├── VERITAS_UNDP_COMPLIANCE.md      ← Requirements-conformance record (UNDP crisis-mapping spec)
+├── VERITAS-PROPOSAL.md             ← Original design proposal
 ├── LICENSE                         ← GPL-3.0
 └── README.md                       ← This file
 ```
@@ -220,17 +264,17 @@ The Sovereign Trace Protocol integrates 16 permanent seal templates for differen
 
 ## Overview
 
-Most crisis tools stop at the data. They collect, they pin, they export — and then they hand a responder a map full of pins with no way to know which ones to trust.
+Most field-reporting tools stop at the data. They collect, they pin, they export — and then they hand an operator a map full of pins with no way to know which ones to trust.
 
-VERITAS is a community-operated platform for sudden-onset crises that combines damage certification with rescue-signal coordination infrastructure. It collects reports offline and online, scores epistemic confidence using the CERTUS Engine, and delivers confidence-weighted intelligence to the responders operating a deployment within the critical 48-hour window. The difference isn't more data — it's data that tells you exactly how much it's worth, and a signal channel for those who need rescue, visible to the deployment's monitoring team.
+VERITAS collects field reports online and offline, scores each one's epistemic confidence using the CERTUS Engine, and delivers a confidence-weighted picture to the team operating the deployment. The difference isn't more data — it's data that tells you exactly how much it's worth. Where the deployment calls for it, an emergency-signal channel with sealed acknowledgment receipts runs alongside the reporting flow.
 
 **How it works — three steps:**
 
-1. A community member submits a damage report or rescue signal from any device, online or offline. The CERTUS Engine scores it instantly.
-2. A responder operating the deployment opens the dashboard and sees a confidence-weighted map — green pins are actionable, red pins need field verification first. Rescue signals appear with critical priority, and a responder can **acknowledge** one — sealing a "seen at T" receipt that returns to the sender's device.
-3. Every report, every rescue signal, and every export is permanently sealed with a cryptographic timestamp. The data chain is verifiable end-to-end.
+1. A community member or field reporter submits a report (or emergency signal) from any device, online or offline. The CERTUS Engine scores it instantly.
+2. The operating team opens the dashboard and sees a confidence-weighted map — green pins are actionable, red pins need verification first. Emergency signals appear with critical priority, and an operator can **acknowledge** one — sealing a "seen at T" receipt that returns to the sender's device.
+3. Every report, every signal, and every export is sealed with a tamper-evident cryptographic timestamp. The data chain is verifiable end-to-end.
 
-> **Boundary reminder:** rescue signals reach the dashboard of the instance they were submitted to — see [What VERITAS Is — and What It Is Not](#what-veritas-is--and-what-it-is-not).
+> **Boundary reminder:** emergency signals reach the dashboard of the instance they were submitted to, and nowhere else — see [What VERITAS Is — and What It Is Not](#what-veritas-is--and-what-it-is-not).
 
 - [![Live Demo](https://img.shields.io/badge/Live_Demo-VERITAS-4ade80?style=flat-square&logo=github&logoColor=white)](https://aionsystem.github.io/VERITAS)
 - **2-Minute Video:**
@@ -248,8 +292,8 @@ One version story, stated once, so a reviewer checking fixity finds no drift:
 |---|---|
 | **v2.5.2** | Audit target. The complete four-instrument adversarial audit — **PDE v0.3** (12-domain diagnostic), **EAE v0.3** (elimination mapping), **ANTI-FORGE v1.3** (15-role rejection council), and **CAL v0.3** (59 FTT checks across four layers) — ran against this version in sequence, each instrument building on prior findings. Result: **25 findings** (1 FATAL · 2 CRITICAL · 7 HIGH · 10 MEDIUM · 5 LOW). |
 | **v3.0.0** | All 25 findings resolved. Hardening additions below shipped in this version, and the scoring-output `version` field reflects the engine generation (`"3.0.0"` series). |
-| **v3.2.1** | Incremental fixes and integration refinements on the v3.0.0 hardened base. |
-| **v3.2.2** | **Current.** Repair release from an independent execution-level code review: 19 findings resolved (2 FATAL · 4 CRITICAL · 4 HIGH · 6 MEDIUM · 3 LOW), engine parse-checked and locked by a runtime test suite. This is the version in `public/certus-engine-v3.2.2.js` and documented in `CERTUS.md`. |
+| **v3.2.1** | **Current.** Incremental fixes and integration refinements on the v3.0.0 hardened base. This is the version in `public/certus-engine-v3.2.2.js` and documented in `CERTUS.md`. |
+| **v3.2.2** | — repair release: execution-level review, 19 findings resolved, engine execution-verified.
 > The audit certifies the v3.0.0 hardening baseline; v3.2.2 carries that baseline forward with incremental changes that have not yet been through a full re-audit. This distinction is stated so the audit claim attaches to exactly the version it examined.
 
 ### Key Hardening Additions (v3.0.0)
@@ -418,39 +462,25 @@ The limitation is declared in the engine's `NLP_CONFIG.language_support` block w
 
 ---
 
-## UNDP Compliance Status
+## Requirements Provenance
 
-Status is reported in three states, so a checkmark always means fully operational as submitted: **✅ complete** · **◐ partial (architecture present, completion declared)** · **✗ not met**. Full audit with evidence: `VERITAS_UNDP_COMPLIANCE.md`
+VERITAS was originally built against the **UNDP crisis-mapping requirements specification** — an institutional, third-party requirements document covering offline operation, multilingual support, damage classification schemas, export formats, secure data handling, and modular architecture. Building to an external spec rather than a self-defined one is why the feature set is opinionated and complete rather than exploratory.
 
-| Requirement | Status |
-|-------------|--------|
-| Deliverable 1 – Written Proposal | ✅ |
-| Deliverable 2 – Interactable Prototype | ✅ |
-| Deliverable 3 – Video/Tutorial | ✅ |
-| Req 1a – Frontend + 6 languages | ✅ |
-| Req 1a – Map auto-update | ✅ |
-| Req 1b – Secure backend + scale | ✅ |
-| Req 1c – Dashboard | ✅ |
-| Req 2 – Demonstrated user journey | ✅ |
-| Req 3 – Non-monetary incentives | ✅ |
-| Req 4 – Offline functionality | ◐ — Offline submission, storage, and sync fully operational. Offline **photo AI** partial: mock fallback active with full uncertainty penalty; xBD model bundled, wiring is a declared post-award task. |
-| Req 5 – Multilingual support | ✅ — UI and audio guidance in all six UN languages. (Automated NLP text analysis is English-only, declared above; does not affect the submission interface.) |
-| Req 6 – Building footprint grid | ✅ |
-| Req 6 – Text location fallback | ✅ |
-| Req 7 – Secure data handling | ✅ |
-| Damage Classification Schema | ✅ |
-| Core Indicators (4 items) | ✅ |
-| Infrastructure Type (8 categories + Other) | ✅ |
-| Nature of Crisis (with subtypes) | ✅ |
-| Debris Clearing | ✅ |
-| Electricity Condition | ✅ |
-| Health Services Functioning | ✅ |
-| Most Pressing Needs | ✅ |
-| Versioning – Multiple reports | ✅ |
-| Export Formats (CSV, GeoJSON, Shapefile, REST) | ✅ |
-| Modular Architecture | ✅ |
-| AI-powered features | ◐ — Online AI analysis operational via OpenRouter; photo model registered UNCALIBRATED with full uncertainty penalty until ground-truth calibration accumulates; offline AI pending xBD wiring. |
-| Open Source | ✅ |
+The full requirements-conformance record — every requirement mapped to its implementation, with two honestly marked partial — is preserved in [`VERITAS_UNDP_COMPLIANCE.md`](VERITAS_UNDP_COMPLIANCE.md). It remains in the repository as evidence of the standard the platform was built to, not as a claim of endorsement by any organization.
+
+**What that means for a new deployment:** the schemas, export formats, and field taxonomies are humanitarian-sector compatible out of the box (a real advantage if you work with NGOs or agencies), and everything is JSON-configurable if your domain needs different ones.
+
+| Capability | State |
+|---|---|
+| Offline submission, storage, and sync | ✅ Fully operational |
+| Six-language UI and audio guidance | ✅ Fully operational |
+| Damage classification schema (3-tier, sector-standard) | ✅ Fully operational |
+| Export formats (JSON, CSV, GeoJSON, Shapefile) with integrity hash | ✅ Fully operational |
+| Secure data handling (UUID-only, EXIF stripped, GPS fuzzing) | ✅ Fully operational |
+| Modular field architecture (JSON-driven) | ✅ Fully operational |
+| Online AI photo analysis | ◐ Operational; model registered UNCALIBRATED with full uncertainty penalty declared until ground-truth calibration accumulates |
+| Offline AI photo analysis | ◐ xBD model bundled, wiring pending; offline path uses clearly-labeled fallback with full uncertainty penalty |
+| Automated NLP text analysis | ◐ English-only dictionaries; non-English reports flagged with a declared translation penalty rather than silently mis-scored |
 
 [![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
@@ -463,8 +493,8 @@ VERITAS is a unified platform with three core capabilities built into a single i
 | Feature | Purpose | Access |
 |---------|---------|--------|
 | Report Damage | Community damage reporting + DCI scoring | Public |
-| I Need Rescue | Rescue signal to the deployment's responder dashboard, with an STP-sealed acknowledgment receipt returned to the sender when a responder marks it seen — see boundary in [What VERITAS Is — and What It Is Not](#what-veritas-is--and-what-it-is-not) | Public |
-| Responder Dashboard | Confidence-weighted map + rescue coordination for the deployment operator | Demo access code (`UNDP2026`) — operator auth in real deployments |
+| I Need Rescue | Rescue signal to the deployment's responder dashboard — see boundary in [What VERITAS Is — and What It Is Not](#what-veritas-is--and-what-it-is-not) | Public |
+| Operator Dashboard | Confidence-weighted map + signal coordination for the deployment operator | Demo access code (`DEMO2026`) — operator auth in real deployments |
 
 All three share the same design language, offline capability, and STP integration.
 
@@ -478,7 +508,7 @@ VERITAS integrates with the Sovereign Trace Protocol — a permanence infrastruc
 
 > **Permanence note:** Sealed records are filed as GitHub Issues on the STP ledger repository. This provides immutable timestamping within the constraints of the GitHub platform. If the STP GitHub API is unavailable at the time of submission, the seal is queued locally and filed on next successful connection — the report itself is never blocked.
 
-> **What the seal proves:** that this exact report, export, or rescue acknowledgment existed at this moment and has not been altered since. It does not prove the report's content is accurate, and it does not prove rescue was dispatched. For rescue signals, the responder's *acknowledgment* is itself STP-sealed — so "this signal was seen at T by this deployment" becomes a tamper-evident receipt, not an unverifiable claim (see [What VERITAS Is — and What It Is Not](#what-veritas-is--and-what-it-is-not)).
+> **What the seal proves:** that this exact report or export existed at this moment and has not been altered since. It does not prove the report's content is accurate, and it does not prove a signal was seen by a responder — see the acknowledgment-receipt priority in [What VERITAS Is — and What It Is Not](#what-veritas-is--and-what-it-is-not).
 
 ### How It Works
 
@@ -525,7 +555,7 @@ For a community member in a flood zone with limited connectivity who needs to do
 
 - Works offline (IndexedDB + Service Worker)
 - Photo capture (EXIF stripped automatically)
-- UNDP 3-tier damage classification
+- 3-tier damage classification (humanitarian-sector standard schema)
 - All 8 infrastructure types + Other
 - GPS (precise or fuzzy ±100m for conflict zones)
 - Anonymous submission (UUID only, no IP logged at application layer)
@@ -549,18 +579,18 @@ For a person trapped or in immediate danger who needs to send a rescue signal to
 - High-visibility red pin on responder map
 - Critical urgency flag in export data
 - Confirmation screen with location, instructions, and the monitoring boundary restated
-- **Signal-acknowledgment receipt (built):** when a responder acknowledges the signal on the dashboard, an STP-sealed "seen at T by this deployment" receipt flows back to the sender's device, which shows *"a responder saw your signal."* Proves the signal was **seen** — never that rescue is dispatched, and the notification says so explicitly. Works cross-device via the shared backend, and on a single device via local storage (offline-safe)
+- Signal-acknowledgment receipt (responder "seen at T", STP-sealed) — declared engineering priority; until it ships, the system proves a signal was *sent and sealed*, not that it was *seen*
 
 ---
 
-### 🗺 Responder Dashboard — Deployment Operator Access
+### 🗺 Operator Dashboard — Deployment Team Access
 
 For a coordination team member at a crisis operations desk who needs to triage incoming reports, rescue signals, and allocate field resources with confidence, not guesswork.
 
-**Demo access code:** `UNDP2026` *(published for evaluation — real deployments use operator-managed authentication)*
+**Demo access code:** `DEMO2026` *(published so evaluators can explore — real deployments use operator-managed authentication)*
 
 - Confidence map with color-coded pins (VALID/DEGRADED/SUSPENDED)
-- Rescue signals highlighted with a pulsing 🆘 marker (rendered above damage pins) and an **Acknowledge — seen** action that seals a receipt back to the sender; the button states it confirms the signal was seen, not that rescue is dispatched
+- Rescue signals highlighted with 🆘 icon and priority status
 - Real-time updates via Supabase subscription
 - Versioned reports — only the latest per location
 - Live confidence dashboard with DCI distribution
@@ -583,7 +613,7 @@ For a coordination team member at a crisis operations desk who needs to triage i
 - Sensitive location anonymization (shelters, medical, schools)
 - Data retention policy — 365 days, community opt-out
 - Indigenous data sovereignty — UNDRIP Article 31 as design principle; consultation and consent mechanisms are an active development priority
-- **Dashboard authentication:** the published `UNDP2026` code is a demo convenience for evaluators and provides no security. A real deployment gates the dashboard behind operator-managed authentication (the Supabase row-level-security layer supports this); deploying with the demo code in a live crisis would expose rescue-signal locations and is explicitly warned against here.
+- **Dashboard authentication:** the published `DEMO2026` code is a demo convenience for evaluators and provides no security. A real deployment gates the dashboard behind operator-managed authentication (the Supabase row-level-security layer supports this); deploying with the demo code in a live crisis would expose rescue-signal locations and is explicitly warned against here.
 
 [![↑ Back to Table of Contents](https://img.shields.io/badge/↑_Back_to-Table_of_Contents-374151?style=flat-square)](#table-of-contents)
 
@@ -655,6 +685,8 @@ vercel --prod
 
 ## License
 
+Summarized in [Licensing at a Glance](#licensing-at-a-glance) — the full terms:
+
 VERITAS is dual-licensed:
 
 - **GNU General Public License v3.0** — for humanitarian, non-profit, academic, and open-source use
@@ -662,7 +694,7 @@ VERITAS is dual-licensed:
 
 | User Type | License |
 |-----------|---------|
-| Humanitarian / NGOs / UNDP | GPL-3.0 (Free) |
+| Humanitarian orgs / NGOs / UN agencies | GPL-3.0 (Free) |
 | Academic / Research | GPL-3.0 (Free) |
 | Government Disaster Agencies | GPL-3.0 (Free) |
 | Open-source projects | GPL-3.0 (Free) |
@@ -692,14 +724,14 @@ For commercial licensing inquiries: [aionsystem@outlook.com](mailto:aionsystem@o
 
 > The code is open source. The judgment behind the architecture — the audit lineage, the calibration discipline, the declared limits — is the part that took the work.
 
-This is an application of the AION Constitutional Stack — applied to community crisis data and rescue-signal coordination infrastructure. The method travels.
+This is an application of the AION Constitutional Stack — applied to community-sourced field data and signal coordination. The method travels: the same scoring architecture works anywhere untrusted reports drive consequential decisions.
 
 ---
 
 <div align="center">
 
-CERTUS Engine v3.2.2 — hardened baseline v3.0.0, four-instrument audit plus independent execution review, 76 findings resolved · 0 open, engine execution-verified.
+CERTUS Engine v3.2.2 — hardened baseline v3.0.0, four-instrument audit complete, 25 findings resolved.
 STP Template Registry — 16 permanent seal types.
-VERITAS — Every report sealed. Every rescue signal prioritized — and its acknowledgment sealed and returned to the sender. Every export verifiable.
+VERITAS — Every report scored with its uncertainty stated. Every signal acknowledgment sealed and returned to the sender. Every export verifiable.
 
 </div>
